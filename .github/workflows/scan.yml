@@ -1,1 +1,56 @@
+name: AI Market Watch
 
+on:
+  schedule:
+    # Toutes les 15 min, lun-ven, 13h-21h UTC (couvre la séance US été comme hiver).
+    # Minutes décalées (7/22/37/52) : GitHub retarde moins ces créneaux que les heures pile.
+    - cron: "7,22,37,52 13-21 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "test = diagnostic immédiat (même le week-end) · normal = cycle réel"
+        required: true
+        default: "test"
+        type: choice
+        options: [test, normal]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-market-watch
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Installation
+        run: pip install -r requirements.txt
+
+      - name: Analyse des marchés
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          MODE: ${{ github.event.inputs.mode || 'normal' }}
+        run: python bot.py
+
+      - name: Sauvegarde de la mémoire du bot (state.json)
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain state.json)" ]; then
+            git config user.name "ai-market-watch"
+            git config user.email "actions@users.noreply.github.com"
+            git add state.json
+            git commit -m "maj état [skip ci]"
+            git pull --rebase
+            git push
+          fi
