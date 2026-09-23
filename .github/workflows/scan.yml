@@ -1,56 +1,78 @@
-name: AI Market Watch
+name: AI Market Bots v2
 
 on:
   schedule:
-    # Toutes les 15 min, lun-ven, 13h-21h UTC (couvre la séance US été comme hiver).
-    # Minutes décalées (7/22/37/52) : GitHub retarde moins ces créneaux que les heures pile.
-    - cron: "7,22,37,52 13-21 * * 1-5"
+    - cron: "2-59/5 4-21 * * *"   # toutes les 5 min de 6h à minuit (heure de Paris), 7 j/7 (crypto le week-end)
   workflow_dispatch:
     inputs:
       mode:
-        description: "test = diagnostic immédiat (même le week-end) · normal = cycle réel"
-        required: true
+        description: "test / scan / force / matin / preus / recap"
         default: "test"
-        type: choice
-        options: [test, normal]
 
 permissions:
   contents: write
 
 concurrency:
-  group: ai-market-watch
+  group: ai-bots
   cancel-in-progress: false
 
 jobs:
-  scan:
+  run:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          python-version: "3.11"
+          cache: pip
 
-      - name: Installation
-        run: pip install -r requirements.txt
+      - run: pip install -q -r requirements.txt
 
-      - name: Analyse des marchés
+      - name: Restaurer la mémoire du bot
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            state.json
+            cache_d1.pkl
+          key: etat-${{ github.run_id }}
+          restore-keys: etat-
+
+      - name: Lancer le bot
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          MODE: ${{ github.event.inputs.mode || 'normal' }}
-        run: python bot.py
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+        run: |
+          [ -z "$LLM_BASE_URL" ] && unset LLM_BASE_URL
+          [ -z "$LLM_MODEL" ] && unset LLM_MODEL
+          case "${{ github.event.inputs.mode }}" in
+            test)  python bot.py --test ;;
+            force) python bot.py --force ;;
+            matin) python bot.py --matin ;;
+            preus) python bot.py --preus ;;
+            recap) python bot.py --recap ;;
+            *)     python bot.py ;;
+          esac
 
-      - name: Sauvegarde de la mémoire du bot (state.json)
+      - name: Sauvegarder la mémoire du bot
+        if: always() && hashFiles('state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            state.json
+            cache_d1.pkl
+          key: etat-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Archiver le bilan hebdo (garde aussi le dépôt actif)
         if: always()
         run: |
-          if [ -n "$(git status --porcelain state.json)" ]; then
-            git config user.name "ai-market-watch"
-            git config user.email "actions@users.noreply.github.com"
-            git add state.json
-            git commit -m "maj état [skip ci]"
-            git pull --rebase
-            git push
+          if [ -d bilans ]; then
+            git config user.name "ai-bots"
+            git config user.email "ai-bots@users.noreply.github.com"
+            git add bilans
+            git diff --cached --quiet || (git commit -m "Bilan hebdo [skip ci]" && git push)
           fi
