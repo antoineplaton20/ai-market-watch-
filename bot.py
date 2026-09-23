@@ -1386,9 +1386,18 @@ if __name__ == "__main__":
     if "--test" in sys.argv:
         ok = telegram("✅ AI Market Bots v2 connectés.\n" + AIDE)
         if LLM_KEY:
-            r = llm([{"role": "user", "content": "Réponds juste : OK"}], max_tokens=5)
-            telegram(f"🧠 IA d'analyse : {'connectée ✅' if r else 'ERREUR ❌ (vérifie LLM_API_KEY)'}")
+            try:
+                r = requests.post(f"{LLM_BASE}/chat/completions", timeout=30,
+                                  headers={"Authorization": f"Bearer {LLM_KEY}", "Content-Type": "application/json"},
+                                  json={"model": LLM_MODEL, "messages": [{"role": "user", "content": "Réponds juste : OK"}], "max_tokens": 5})
+                if r.ok:
+                    telegram(f"🧠 IA d'analyse : connectée ✅ (modèle {LLM_MODEL})")
+                else:
+                    telegram(f"🧠 IA ERREUR {r.status_code} — base:{LLM_BASE} modèle:{LLM_MODEL}\n{r.text[:600]}")
+            except Exception as e:
+                telegram(f"🧠 IA EXCEPTION — base:{LLM_BASE} modèle:{LLM_MODEL}\n{e}")
         else:
             telegram("🧠 IA d'analyse : non configurée (analyse des actus par mots-clés seulement).")
         sys.exit(0 if ok else 1)
+    scan()
     scan()
