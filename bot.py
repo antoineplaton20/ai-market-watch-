@@ -36,7 +36,18 @@ import univers as U
 CAPITAL_DEFAUT = 20.0        # € (modifiable depuis Telegram : /capital 25)
 FRAIS_ORDRE = 1.0            # € par ordre chez Trade Republic (achat ET vente)
 MISE_PART = 1.0              # part du capital par trade. Frais fixes => mieux vaut 1 seul trade à la fois
+RATIO_MIN_APRES_FRAIS = 1.0  # gain espéré ≥ perte possible, APRÈS les 2 € de frais (sinon pas d'alerte "acheter")
 STOP_ATR, OBJECTIF_ATR = 1.5, 3.0   # stop / objectif en multiples de la volatilité journalière (ATR 14j)
+# Petit capital (< 100 €) : les 2 € de frais pèsent trop sur des petits mouvements -> on vise des
+# mouvements plus grands sur 1 à 4 semaines (même rapport gain/perte de 2 pour 1).
+PETIT_CAPITAL, STOP_ATR_PETIT, OBJECTIF_ATR_PETIT = 100, 2.5, 5.0
+_NIV = {"stop": STOP_ATR, "obj": OBJECTIF_ATR, "horizon": "1 à 5 jours"}
+
+def regler_niveaux(capital):
+    if capital < PETIT_CAPITAL:
+        _NIV.update(stop=STOP_ATR_PETIT, obj=OBJECTIF_ATR_PETIT, horizon="1 à 4 semaines")
+    else:
+        _NIV.update(stop=STOP_ATR, obj=OBJECTIF_ATR, horizon="1 à 5 jours")
 
 SCORE_MIN = 4                # score mini pour alerter (4 ≈ ★★★). 5 = plus exigeant, 3 = plus d'alertes
 MIN_CONDITIONS = 2           # conditions techniques indépendantes minimum
@@ -46,17 +57,19 @@ MAX_ALERTES_PAR_SCAN = 4
 MAX_ALERTES_PAR_JOUR = 25
 COOLDOWN_GLOBAL_MIN = 30     # même titre + même sens, tous modules confondus
 
-ATTENTE_OUVERTURE = {"US": 30, "EU": 15, "UK": 15, "CRYPTO": 0}   # minutes ignorées après l'ouverture
+ATTENTE_OUVERTURE = {"US": 30, "EU": 15, "UK": 15, "CRYPTO": 0, "FUT": 0}   # minutes ignorées après l'ouverture
 FRAICHEUR_MAX_MIN = 25       # donnée plus vieille que ça = ignorée (jamais de signal sur un cours périmé)
 FENETRE_CRYPTO = ((7, 0), (23, 0))   # heures de Paris où les alertes crypto sont envoyées
 BLACKOUT_AVANT, BLACKOUT_APRES = 30, 15   # minutes sans nouvelle alerte autour d'une annonce macro majeure
 DEVISES_CALENDRIER = {"USD", "EUR", "CNY", "JPY", "GBP"}
 NB_CHAUDS = 25               # titres retenus par le scanner tous marchés
+MODE_SIMPLE_DEFAUT = True    # alertes courtes en français simple (/complet pour la version technique)
+DIGEST_HEURES = [(12, 30), (18, 0), (22, 10)]   # récap des titres "à surveiller" (Paris, jours ouvrés)
 
 LLM_BASE = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1").rstrip("/")
-LLM_MODEL = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 LLM_KEY = os.getenv("LLM_API_KEY", "").strip()
-LLM_MAX_PAR_SCAN, LLM_MAX_PAR_JOUR = 3, 400
+LLM_MAX_PAR_SCAN, LLM_MAX_PAR_JOUR = 2, 80   # quota gratuit Groq ≈ 200k jetons/jour
 
 MODULES = {
     "ia": {"nom": "AI INFRASTRUCTURE", "emoji": "🚀", "liste": U.IA_INFRA, "cooldown": 45, "regles": [
@@ -84,6 +97,13 @@ MODULES = {
         ("volume_jour", {"mult": 1.7}),
         ("range_jours", {"n": 10}),
         ("correlation", {"refs": ["NVDA", "SMCI"], "min": 0.5})]},
+    "commo": {"nom": "MATIÈRES PREMIÈRES (ETC)", "emoji": "🥇", "liste": list(U.COMMOS), "cooldown": 120, "max_jour": 2, "regles": [
+        ("momentum", {"min": 120, "seuil": 2.0, "vol": 1.5, "pts": 2}),
+        ("breakout", {"tf": "h1", "n": 24, "vol": 1.5, "pts": 2}),
+        ("range_jours", {"n": 10}),
+        ("rsi", {"tf": "h1", "bas": 28, "haut": 72, "mode": "retour"}),
+        ("croise_mm", {"tf": "h1", "rapide": 9, "lente": 21}),
+        ("tendance_tf", {"tf": "h4", "n": 21})]},
     "scanner": {"nom": "SCANNER TOUS MARCHÉS", "emoji": "🌍", "liste": "chauds", "cooldown": 60, "vol_min": 1.5, "regles": [
         ("breakout", {"tf": "h1", "n": 20, "vol": 2.0, "pts": 2}),
         ("momentum", {"min": 60, "seuil": 3.0, "vol": 2.0, "pts": 2}),
@@ -102,7 +122,8 @@ REGLES_CONFIRMATION = {"tendance_tf", "correlation"}   # ne comptent pas comme c
 
 PARIS, NY, LONDRES = ZoneInfo("Europe/Paris"), ZoneInfo("America/New_York"), ZoneInfo("Europe/London")
 SUFFIXES_EU = {"DE", "PA", "AS", "MI", "MC", "SW", "CO", "ST", "HE", "BR", "LS", "VI", "OL", "IR"}
-SEANCES = {"US": (NY, (9, 30), (16, 0)), "EU": (PARIS, (9, 0), (17, 30)), "UK": (LONDRES, (8, 0), (16, 30))}
+SEANCES = {"US": (NY, (9, 30), (16, 0)), "EU": (PARIS, (9, 0), (17, 30)), "UK": (LONDRES, (8, 0), (16, 30)),
+           "FUT": (PARIS, (8, 0), (22, 0))}   # matières premières : heures où les ETC se négocient bien sur TR
 ICI = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(ICI, "state.json")
 CACHE_D1 = os.path.join(ICI, "cache_d1.pkl")
@@ -122,6 +143,8 @@ def log(*a):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def marche(sym):
+    if sym.endswith("=F"):
+        return "FUT"
     if sym.endswith("-EUR") or sym.endswith("-USD"):
         return "CRYPTO"
     suf = sym.rsplit(".", 1)[-1] if "." in sym else ""
@@ -376,7 +399,14 @@ def dedoublonner(items, n):
             out.append(it)
     return out[:n]
 
+COMMOS_EN = {"GC=F": "gold", "SI=F": "silver", "PL=F": "platinum", "HG=F": "copper", "CL=F": "WTI crude oil",
+             "BZ=F": "Brent oil", "NG=F": "natural gas", "ZW=F": "wheat", "ZC=F": "corn", "ZS=F": "soybeans",
+             "KC=F": "coffee", "CC=F": "cocoa", "SB=F": "sugar"}
+
 def actus_symbole(sym):
+    if sym in U.COMMOS:
+        en, fr = COMMOS_EN.get(sym, sym), U.COMMOS[sym][0].lower()
+        return dedoublonner(google_news(f"{en} price", "en", 24, 8) + google_news(f"cours {fr} matière première", "fr", 48, 5), 10)
     nom = U.NOMS.get(sym, sym.split(".")[0].split("-")[0])
     items = []
     if marche(sym) == "US":
@@ -437,6 +467,9 @@ def llm(messages, json_mode=False, max_tokens=500, s=None):
             return None
         s["llm_jour"] = {jour: s["llm_jour"].get(jour, 0) + 1}
     corps = {"model": LLM_MODEL, "messages": messages, "temperature": 0.2, "max_tokens": max_tokens}
+    if "gpt-oss" in LLM_MODEL:           # modèle "qui réfléchit" : on limite la réflexion et on laisse de la place
+        corps["reasoning_effort"] = "low"
+        corps["max_tokens"] = max_tokens + 800
     if json_mode:
         corps["response_format"] = {"type": "json_object"}
     for essai in range(3):
@@ -445,6 +478,9 @@ def llm(messages, json_mode=False, max_tokens=500, s=None):
                               headers={"Authorization": f"Bearer {LLM_KEY}", "Content-Type": "application/json"})
             if r.status_code == 429:
                 time.sleep(min(30, float(r.headers.get("retry-after", 10 * (essai + 1)))))
+                continue
+            if r.status_code == 400 and "reasoning_effort" in corps:
+                corps.pop("reasoning_effort")
                 continue
             if r.status_code == 400 and "response_format" in corps:
                 corps.pop("response_format")   # modèle sans mode JSON : on réessaie en texte libre
@@ -481,7 +517,7 @@ def verdict_actus(c, s):
     monde = actus_monde()
     sens = "ACHAT" if c["dir"] > 0 else "VENTE"
     donnees = (
-        f"Titre : {c['sym']} ({U.NOMS.get(c['sym'], '')}) — {U.CONTEXTE.get(c['sym'], '')}\n"
+        f"Titre : {c['sym']} ({nom_tr(c['sym'])}) — {U.CONTEXTE.get(c['sym'], '')}\n"
         f"Signal technique : {sens} ({c['module_nom']}), score {c['score']}\n"
         f"Conditions : {'; '.join(t for _, _, t, _ in c['conds'])}\n"
         f"Prix {c['prix']:.4g} · variation {c['var_label']} {f1(c['var'])} · jour {f1(c['var_jour'])} · "
@@ -506,7 +542,9 @@ def verdict_actus(c, s):
              'Réponds en JSON : {"verdict":"CONFIRME|PRUDENCE|REJETE","impact":-2..2,'
              '"actu":"cause probable du mouvement en 20 mots max, ou \'aucune actu identifiée\'",'
              '"risque":"principal risque macro/géopolitique pour ce titre, 15 mots max",'
-             '"avis":"avis clair en 25 mots max"}'}], json_mode=True, max_tokens=300, s=s)
+             '"avis":"avis clair en 25 mots max",'
+             '"simple":"UNE phrase pour un débutant, sans aucun jargon (pas de RSI, MM, volume...), qui dit ce qui se passe et pourquoi, 30 mots max"}'}],
+            json_mode=True, max_tokens=350, s=s)
     if isinstance(rep, dict) and rep.get("verdict") in ("CONFIRME", "PRUDENCE", "REJETE"):
         rep["source"] = "ia"
         return rep
@@ -549,14 +587,37 @@ def regime_marche(macro):
     if r == 0 and not np.isnan(vix_niv) and vix_niv < 17 and not np.isnan(nq) and nq > 0.4:
         r = 1
         raisons.append(f"VIX bas {vix_niv:.1f}, Nasdaq futures {nq:+.1f}%")
-    label = {1: "🟢 Risk-on", 0: "⚪ Neutre", -1: "🔴 Risk-off"}[r]
+    label = {1: "🟢 Marché confiant", 0: "⚪ Marché neutre", -1: "🔴 Marché inquiet"}[r]
     if not raisons and not np.isnan(vix_niv):
         raisons.append(f"VIX {vix_niv:.1f}" + (f", Nasdaq fut. {nq:+.1f}%" if not np.isnan(nq) else ""))
     return r, f"{label} ({', '.join(raisons)})" if raisons else label
 
-def eurusd(macro):
-    df = macro.get("EURUSD=X")
-    return float(df["Close"].iloc[-1]) if df is not None else np.nan
+DEVISES_SUFFIXE = {"SW": "CHF", "CO": "DKK", "ST": "SEK", "L": "GBp", "OL": "NOK"}
+
+def devise(sym):
+    m = marche(sym)
+    if m in ("US", "FUT"):
+        return "USD"
+    if m == "CRYPTO":
+        return "EUR"
+    return DEVISES_SUFFIXE.get(sym.rsplit(".", 1)[-1] if "." in sym else "", "EUR")
+
+def taux_change(macro):
+    """Multiplicateurs devise locale -> euro (Trade Republic affiche tout en €)."""
+    def dernier(k):
+        df = macro.get(k)
+        return float(df["Close"].iloc[-1]) if df is not None and len(df) else np.nan
+    eu = dernier("EURUSD=X")
+    t = {"EUR": 1.0, "USD": 1 / eu if eu and not np.isnan(eu) else np.nan}
+    g = dernier("GBPEUR=X")
+    t["GBp"] = g / 100 if not np.isnan(g) else np.nan
+    for dv in ("CHF", "DKK", "SEK", "NOK"):
+        t[dv] = dernier(f"{dv}EUR=X")
+    return t
+
+def en_eur(sym, p, fx):
+    r = (fx or {}).get(devise(sym), np.nan)
+    return p * r if p is not None and r and not np.isnan(r) else np.nan
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 7. RÈGLES D'ANALYSE — chaque règle renvoie [(points, sens, texte, principale)]
@@ -794,26 +855,37 @@ def niveaux(ctx, d):
     if np.isnan(a):
         a = 3.0 if ctx["marche"] == "CRYPTO" else 2.0
     p = ctx["prix"]
-    stop, obj = p * (1 - d * STOP_ATR * a / 100), p * (1 + d * OBJECTIF_ATR * a / 100)
-    return stop, obj, STOP_ATR * a, OBJECTIF_ATR * a
+    k_s, k_o = _NIV["stop"], _NIV["obj"]
+    stop, obj = p * (1 - d * k_s * a / 100), p * (1 + d * k_o * a / 100)
+    return stop, obj, k_s * a, k_o * a
 
 def rentabilite(capital, obj_pct, stop_pct):
     mise = capital * MISE_PART
     return mise, mise * obj_pct / 100 - 2 * FRAIS_ORDRE, mise * stop_pct / 100 + 2 * FRAIS_ORDRE
 
+def rentable(capital, obj_pct, stop_pct):
+    """Vrai si, frais inclus, ce qu'on gagne quand ça marche vaut au moins RATIO_MIN × ce qu'on perd quand ça rate."""
+    _, gain, perte = rentabilite(capital, obj_pct, stop_pct)
+    return gain > 0 and gain >= RATIO_MIN_APRES_FRAIS * perte
+
 # ═════════════════════════════════════════════════════════════════════════════
 # 9. FORMAT DES ALERTES
 # ═════════════════════════════════════════════════════════════════════════════
 
+def feur(x):
+    if x is None or np.isnan(x):
+        return "n/d"
+    return (f"{x:,.2f} €" if abs(x) >= 1 else f"{x:.4g} €").replace(",", " ")
+
 def fprix(sym, p, fx):
-    if marche(sym) == "CRYPTO":
-        return f"{p:,.4g} €".replace(",", " ")
-    if marche(sym) == "US":
-        eur = f" (≈ {p / fx:,.2f} € sur TR)".replace(",", " ") if fx and not np.isnan(fx) else ""
-        return f"${p:,.2f}{eur}"
-    if marche(sym) == "UK":
-        return f"{p:,.1f} GBp"
-    return f"{p:,.2f} €"
+    dv = devise(sym)
+    if dv == "EUR":
+        return feur(p)
+    loc = {"USD": f"${p:,.2f}", "GBp": f"{p:,.1f} GBp"}.get(dv, f"{p:,.2f} {dv}").replace(",", " ")
+    if marche(sym) == "FUT":
+        return f"{loc} (contrat de référence)"
+    e = en_eur(sym, p, fx)
+    return f"{loc} (≈ {feur(e)} sur TR)" if not np.isnan(e) else loc
 
 def f1(x, fmt="{:+.1f}%"):
     return "n/d" if x is None or (isinstance(x, float) and np.isnan(x)) else fmt.format(x)
@@ -842,7 +914,7 @@ def formater_alerte(c, s, fx):
     lignes.append(f"✅ Vérif. actus ({v.get('source')}) : {v['verdict']}")
     if d > 0:
         mise, gain, perte = rentabilite(capital, c["obj_pct"], c["stop_pct"])
-        lignes += [f"🎯 Objectif : {fprix(sym, c['obj'], fx)} (+{c['obj_pct']:.1f}%) · horizon 1 à 5 jours",
+        lignes += [f"🎯 Objectif : {fprix(sym, c['obj'], fx)} (+{c['obj_pct']:.1f}%) · horizon {_NIV['horizon']}",
                    f"🛑 Stop : {fprix(sym, c['stop'], fx)} (−{c['stop_pct']:.1f}%)",
                    f"💶 Avec {mise:.0f} € : gain net à l'objectif {gain:+.2f} € / perte au stop −{perte:.2f} € "
                    f"(frais TR {2 * FRAIS_ORDRE:.0f} € inclus)"]
@@ -852,6 +924,106 @@ def formater_alerte(c, s, fx):
     lignes.append(f"🕒 Cours de {c['ts'].astimezone(PARIS):%H:%M} (Paris), analyse {datetime.now(PARIS):%H:%M}")
     return "\n".join(lignes)
 
+# ─── Version simple (pour débutant) ─────────────────────────────────────────
+
+TRADUCTIONS = [   # (motif dans la condition technique, sens, explication sans jargon)
+    ("cassure du plus haut", 1, "le prix dépasse son plus haut des derniers jours"),
+    ("cassure du plus bas", -1, "le prix passe sous son plus bas des derniers jours"),
+    ("sortie par le haut", 1, "le prix atteint son plus haut depuis 2 semaines"),
+    ("sortie par le bas", -1, "le prix tombe à son plus bas depuis 2 semaines"),
+    ("hausse de", 1, "le prix monte fort depuis quelques heures"),
+    ("baisse de", -1, "le prix chute fort depuis quelques heures"),
+    ("variation du jour", 0, "grosse variation aujourd'hui"),
+    ("survente", 1, "il a beaucoup baissé en peu de temps : un rebond arrive souvent"),
+    ("surachat", -1, "il a beaucoup monté en peu de temps : une pause ou une baisse arrive souvent"),
+    ("sort par le haut", 1, "les acheteurs prennent nettement le dessus"),
+    ("sort par le bas", -1, "les vendeurs prennent nettement le dessus"),
+    ("divergence rsi haussière", 1, "la baisse s'essouffle"),
+    ("divergence rsi baissière", -1, "la hausse s'essouffle"),
+    ("croisement", 0, "la tendance à court terme vient de changer de sens"),
+    ("vwap", 0, "le prix repasse de l'autre côté du prix moyen payé aujourd'hui"),
+    ("repasse au-dessus", 1, "le prix repasse au-dessus de sa moyenne récente"),
+    ("casse la mm", -1, "le prix passe sous sa moyenne récente"),
+    ("écart de", 0, "le prix est très éloigné de sa moyenne récente"),
+    ("aligné avec", 0, "il suit le mouvement de Nvidia / du secteur IA"),
+    ("volume", 0, "beaucoup plus d'échanges que d'habitude : le mouvement est sérieux"),
+]
+
+def expliquer(conds, nmax=3):
+    out = []
+    for _, _, texte, principale in conds:
+        if not principale:
+            continue
+        t = texte.lower()
+        for motif, _, phrase in TRADUCTIONS:
+            if motif in t:
+                if phrase not in out:
+                    out.append(phrase)
+                break
+    if any("volume" in c[2].lower() for c in conds) and TRADUCTIONS[-1][2] not in out:
+        out.append(TRADUCTIONS[-1][2])
+    return out[:nmax]
+
+def nom_tr(sym):
+    """Ce qu'il faut taper dans la recherche de l'appli Trade Republic."""
+    if sym in U.COMMOS:
+        return U.COMMOS[sym][1]
+    return U.NOMS.get(sym, sym)
+
+def formater_simple(c, s, fx):
+    sym, d = c["sym"], c["dir"]
+    capital = s.get("capital", CAPITAL_DEFAUT)
+    et = c["etoiles"]
+    v = c["verdict"]
+    nom = U.COMMOS[sym][0] if sym in U.COMMOS else U.NOMS.get(sym, sym)
+    act = c["action"]
+    if d > 0 and act == "Acheter":
+        tete = f"🟢 ACHETER {nom}"
+    elif d > 0:
+        tete = f"🟡 ACHAT POSSIBLE (petite mise) : {nom}"
+    else:
+        tete = f"🔴 VENDRE {nom}"
+    lignes = [tete, f"Fiabilité : {'●' * et}{'○' * (5 - et)} ({et}/5)", ""]
+    pourquoi = v.get("simple") or ""
+    raisons = expliquer(c["conds"])
+    lignes.append("Pourquoi :")
+    if pourquoi:
+        lignes.append(f"• {pourquoi}")
+    lignes += [f"• {r[0].upper() + r[1:]}" for r in raisons[: (2 if pourquoi else 3)]]
+    actu = v.get("actu") or ""
+    if actu and "aucune" not in actu.lower() and not pourquoi:
+        lignes.append(f"• Actu : {actu}")
+    lignes.append("")
+    commo = sym in U.COMMOS
+    if d > 0:
+        mise, gain, perte = rentabilite(capital, c["obj_pct"], c["stop_pct"])
+        prix_eur = en_eur(sym, c["prix"], fx)
+        lignes.append("Sur Trade Republic :")
+        lignes.append(f"1. Cherche « {nom_tr(sym)} »")
+        lignes.append(f"2. Achète pour {mise:.0f} € (ordre au marché)"
+                      + (f" — prix actuel ≈ {feur(prix_eur)}" if not commo and not np.isnan(prix_eur) else ""))
+        if commo:
+            lignes.append(f"3. Revends quand ta ligne affiche +{c['obj_pct']:.0f}% (objectif) "
+                          f"ou −{c['stop_pct']:.0f}% (on coupe la perte)")
+        else:
+            lignes.append(f"3. Revends si le prix monte vers {feur(en_eur(sym, c['obj'], fx))} (+{c['obj_pct']:.0f}%) "
+                          f"ou descend vers {feur(en_eur(sym, c['stop'], fx))} (−{c['stop_pct']:.0f}%)")
+        lignes.append(f"💶 Résultat attendu, frais de 2 € inclus : {gain:+.2f} € si ça marche / "
+                      f"−{perte:.2f} € si ça rate · durée {_NIV['horizon']}")
+        lignes.append("👉 Après l'achat, appuie sur « ✅ J'ai acheté » : je te préviendrai quand revendre.")
+    else:
+        lignes.append("Sur Trade Republic :")
+        lignes.append(f"1. Ouvre ta ligne « {nom_tr(sym)} » → Vendre (tout).")
+        lignes.append("2. Puis appuie sur « ✅ J'ai vendu ».")
+    if v.get("risque"):
+        lignes.append(f"⚠️ Risque : {v['risque']}")
+    lignes.append(f"🕒 {datetime.now(PARIS):%H:%M}")
+    return "\n".join(lignes)
+
+def envoyable_simple(c):
+    a = c["action"]
+    return a.startswith("Acheter") or a.startswith("Vendre")
+
 def decider_action(c, s):
     capital = s.get("capital", CAPITAL_DEFAUT)
     d, et, v = c["dir"], c["etoiles"], c["verdict"]["verdict"]
@@ -859,8 +1031,7 @@ def decider_action(c, s):
         return "Vendre (tu détiens ce titre)" if c["sym"] in s.get("positions", {}) else "Éviter / ne pas acheter"
     if c["sym"] in U.NON_TR:
         return "Indicateur seulement"
-    _, gain, perte = rentabilite(capital, c["obj_pct"], c["stop_pct"])
-    if gain <= 0:
+    if not rentable(capital, c["obj_pct"], c["stop_pct"]):
         return f"Surveiller — non rentable avec {capital:.0f} € (les {2 * FRAIS_ORDRE:.0f} € de frais mangent le gain)"
     if et >= 4 and v == "CONFIRME" and c["tendance"] >= 0:
         return "Acheter"
@@ -872,16 +1043,21 @@ def decider_action(c, s):
 # 10. TELEGRAM
 # ═════════════════════════════════════════════════════════════════════════════
 
-def telegram(msg):
+def telegram(msg, clavier=None):
     morceaux = [msg[i:i + 3900] for i in range(0, len(msg), 3900)] or [""]
     if not TG_TOKEN or not TG_CHAT:
-        print("──── (Telegram non configuré) ────\n" + msg + "\n", flush=True)
+        extra = ""
+        if clavier and "inline_keyboard" in clavier:
+            extra = "\n[boutons] " + " | ".join(b["text"] for l in clavier["inline_keyboard"] for b in l)
+        print("──── (Telegram non configuré) ────\n" + msg + extra + "\n", flush=True)
         return True
     ok = True
-    for m in morceaux:
+    for i, m in enumerate(morceaux):
+        corps = {"chat_id": TG_CHAT, "text": m, "disable_web_page_preview": True}
+        if clavier and i == len(morceaux) - 1:
+            corps["reply_markup"] = clavier
         try:
-            r = requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage", timeout=15,
-                              json={"chat_id": TG_CHAT, "text": m, "disable_web_page_preview": True})
+            r = requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage", timeout=15, json=corps)
             ok &= r.ok
             if not r.ok:
                 log("[telegram]", r.status_code, r.text[:200])
@@ -890,17 +1066,25 @@ def telegram(msg):
             ok = False
     return ok
 
-AIDE = ("🤖 Commandes :\n"
+AIDE = ("📱 Utilise les boutons en bas de l'écran. Pour analyser un titre, tape juste son nom (ex : airbus).\n"
+        "Sous chaque alerte : « ✅ J'ai acheté » / « ✅ J'ai vendu » pour que je suive ta position.\n\n"
+        "🤖 Commandes (facultatif) :\n"
         "/etat – capital, positions, portefeuille virtuel, marché\n"
         "/analyse NVDA – analyse complète d'un titre (ou nom : /analyse airbus)\n"
-        "/achete NVDA [prix] – je surveille ta position (stop / objectif / signal de vente)\n"
+        "/achete NVDA 118,50 – tu as acheté (prix en € vu sur TR) : je te dis quand revendre\n"
         "/vendu NVDA – je retire la position\n"
         "/capital 25 – met à jour ton capital\n"
         "/pause · /reprise – coupe / relance les alertes\n"
         "/briefing – briefing marché immédiat\n"
-        "Réponse sous 5 min (au prochain passage du bot).")
+        "/detail NVDA – détails techniques de la dernière alerte\n"
+        "/simple · /complet – alertes simples (défaut) ou techniques\n"
+        "Réponse sous 5 min, de 6h à minuit (au prochain passage du bot).")
 
 def resoudre_symbole(txt):
+    low = txt.strip().lower()
+    for sym, (nom, _) in U.COMMOS.items():
+        if low == nom.lower() or low == COMMOS_EN.get(sym, ""):
+            return sym
     t = txt.strip().upper()
     if t in U.NOMS:
         return t
@@ -913,6 +1097,117 @@ def resoudre_symbole(txt):
             return sym
     return t   # symbole Yahoo saisi tel quel
 
+# ─── Menu et boutons ────────────────────────────────────────────────────────
+
+B_ETAT, B_POS, B_SURV, B_BRIEF, B_ANALYSE, B_REGL = ("📋 État", "💼 Mes positions", "👀 À surveiller",
+                                                       "☀️ Briefing", "🔎 Analyser", "⚙️ Réglages")
+MENU = {"keyboard": [[{"text": B_ETAT}, {"text": B_POS}], [{"text": B_SURV}, {"text": B_BRIEF}],
+                     [{"text": B_ANALYSE}, {"text": B_REGL}]],
+        "resize_keyboard": True, "is_persistent": True,
+        "input_field_placeholder": "Tape un nom pour l'analyser (ex : airbus)"}
+
+def boutons(*lignes):
+    """boutons(("Texte", "action:SYM"), ...) -> clavier sous le message. Une ligne = un tuple ou une liste de tuples."""
+    rows = []
+    for l in lignes:
+        l = [l] if isinstance(l, tuple) else l
+        rows.append([{"text": t, "callback_data": d[:64]} for t, d in l])
+    return {"inline_keyboard": rows}
+
+def boutons_achat(sym):
+    return boutons([("✅ J'ai acheté", f"achat:{sym}"), ("📊 Détails", f"detail:{sym}")])
+
+def boutons_vente(sym):
+    return boutons([("✅ J'ai vendu", f"vendu:{sym}"), ("📊 Détails", f"detail:{sym}")])
+
+def envoyer_reglages(s):
+    cap = s.get("capital", CAPITAL_DEFAUT)
+    simple = s.get("mode_simple", MODE_SIMPLE_DEFAUT)
+    telegram(f"⚙️ RÉGLAGES\nCapital : {cap:.0f} € · Mode : {'simple' if simple else 'complet'} · "
+             f"Alertes : {'en pause ⏸' if s.get('pause') else 'actives ▶️'}\n\nChoisis ton capital :",
+             boutons([(f"{'• ' if cap == v else ''}{v} €", f"cap:{v}") for v in (20, 50, 100)],
+                     [(f"{'• ' if cap == v else ''}{v} €", f"cap:{v}") for v in (200, 300, 500)],
+                     [("🗣 Mode simple" if not simple else "🔧 Mode complet", "mode:complet" if simple else "mode:simple")],
+                     [("▶️ Reprendre les alertes", "pause:0") if s.get("pause") else ("⏸ Mettre en pause", "pause:1")]))
+
+def changer_capital(s, valeur):
+    s["capital"] = float(valeur)
+    msg = f"💶 Capital : {s['capital']:.0f} €"
+    if not s["virtuel"]["pos"]:
+        s["virtuel"].update({"cash": s["capital"], "debut_semaine": s["capital"]})
+        msg += " (portefeuille virtuel remis au même montant)"
+    telegram(msg)
+
+def noter_achat(s, sym, prix=None):
+    s.setdefault("positions", {})[sym] = {"prix_eur": prix, "ts": maintenant().isoformat()}
+    telegram(f"📌 {nom_tr(sym)} noté{f' (acheté {prix:.2f} €)' if prix else ' au prix actuel'}. "
+             f"Je te préviens quand revendre (objectif, seuil de perte ou signal de baisse)."
+             + ("" if prix else f"\nSi ton prix d'achat est différent, envoie : /achete {sym} 118,50"))
+
+def noter_vente(s, sym):
+    s.setdefault("positions", {}).pop(sym, None)
+    telegram(f"✔️ {nom_tr(sym)} retiré de tes positions.")
+
+def envoyer_surveillance(s):
+    lignes, _ = lignes_surveillance(s, 24)
+    telegram("👀 À SURVEILLER (24 dernières heures)\n\n" + "\n\n".join(lignes) if lignes
+             else "👀 Rien de particulier à surveiller pour l'instant.")
+
+def traiter_commande(s, cmd, args):
+    if cmd in ("/aide", "/start", "/help", "/menu"):
+        telegram(AIDE, MENU)
+    elif cmd == "/capital" and args:
+        try:
+            changer_capital(s, float(args[0].replace(",", ".").replace("€", "")))
+        except ValueError:
+            telegram("Format : /capital 25")
+    elif cmd == "/achete" and args:
+        try:
+            prix = float(args[1].replace(",", ".").replace("€", "")) if len(args) > 1 else None
+        except ValueError:
+            prix = None
+        noter_achat(s, resoudre_symbole(args[0]), prix)
+    elif cmd == "/vendu" and args:
+        noter_vente(s, resoudre_symbole(args[0]))
+    elif cmd == "/pause":
+        s["pause"] = True
+        telegram("⏸ Alertes en pause.", boutons(("▶️ Reprendre", "pause:0")))
+    elif cmd == "/reprise":
+        s["pause"] = False
+        telegram("▶️ Alertes relancées.")
+    elif cmd == "/analyse" and args:
+        s.setdefault("a_analyser", []).append(resoudre_symbole(" ".join(args)))
+    elif cmd == "/briefing":
+        s["briefing_demande"] = True
+    elif cmd == "/etat":
+        s["etat_demande"] = True
+    elif cmd == "/positions":
+        s["positions_demande"] = True
+    elif cmd == "/detail" and args:
+        sym = resoudre_symbole(args[0])
+        telegram(s.get("details", {}).get(sym) or f"Pas d'alerte récente pour {nom_tr(sym)}. Tape son nom pour l'analyser.")
+    elif cmd == "/simple":
+        s["mode_simple"] = True
+        telegram("✅ Mode simple : alertes courtes, uniquement quand il y a quelque chose à faire.")
+    elif cmd == "/complet":
+        s["mode_simple"] = False
+        telegram("✅ Mode complet : toutes les alertes avec les détails techniques.")
+
+def traiter_bouton(s, data):
+    action, _, val = data.partition(":")
+    if action == "achat":
+        noter_achat(s, val)
+    elif action == "vendu":
+        noter_vente(s, val)
+    elif action == "detail":
+        traiter_commande(s, "/detail", [val])
+    elif action == "cap":
+        changer_capital(s, val)
+    elif action == "mode":
+        traiter_commande(s, "/simple" if val == "simple" else "/complet", [])
+    elif action == "pause":
+        traiter_commande(s, "/pause" if val == "1" else "/reprise", [])
+
 def commandes_telegram(s):
     if not TG_TOKEN:
         return
@@ -924,47 +1219,62 @@ def commandes_telegram(s):
         return
     for u in maj:
         s["tg_offset"] = u["update_id"]
+        cb = u.get("callback_query")
+        if cb:                                             # appui sur un bouton sous un message
+            if str(cb.get("message", {}).get("chat", {}).get("id")) == TG_CHAT:
+                try:
+                    requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/answerCallbackQuery",
+                                  json={"callback_query_id": cb["id"]}, timeout=10)
+                except Exception:
+                    pass
+                traiter_bouton(s, cb.get("data", ""))
+            continue
         m = u.get("message") or {}
         if str(m.get("chat", {}).get("id")) != TG_CHAT:
             continue
         txt = (m.get("text") or "").strip()
-        if not txt.startswith("/"):
+        if not txt:
             continue
-        cmd, *args = txt.split()
-        cmd = cmd.lower().split("@")[0]
-        if cmd in ("/aide", "/start", "/help"):
-            telegram(AIDE)
-        elif cmd == "/capital" and args:
-            try:
-                s["capital"] = float(args[0].replace(",", "."))
-                msg = f"💶 Capital mis à jour : {s['capital']:.2f} €"
-                if not s["virtuel"]["pos"]:
-                    s["virtuel"].update({"cash": s["capital"], "debut_semaine": s["capital"]})
-                    msg += " (portefeuille virtuel réinitialisé au même montant)"
-                telegram(msg)
-            except ValueError:
-                telegram("Format : /capital 25")
-        elif cmd == "/achete" and args:
-            sym = resoudre_symbole(args[0])
-            prix = float(args[1].replace(",", ".")) if len(args) > 1 else None
-            s.setdefault("positions", {})[sym] = {"prix": prix, "ts": maintenant().isoformat()}
-            telegram(f"📌 Position {sym} enregistrée{f' à {prix}' if prix else ''}. Je surveille stop, objectif et signaux de vente.")
-        elif cmd == "/vendu" and args:
-            sym = resoudre_symbole(args[0])
-            s.setdefault("positions", {}).pop(sym, None)
-            telegram(f"✔️ Position {sym} retirée.")
-        elif cmd == "/pause":
-            s["pause"] = True
-            telegram("⏸ Alertes en pause. /reprise pour relancer.")
-        elif cmd == "/reprise":
-            s["pause"] = False
-            telegram("▶️ Alertes relancées.")
-        elif cmd == "/analyse" and args:
-            s.setdefault("a_analyser", []).append(resoudre_symbole(" ".join(args)))
-        elif cmd == "/briefing":
-            s["briefing_demande"] = True
-        elif cmd == "/etat":
+        if txt.startswith("/"):
+            cmd, *args = txt.split()
+            traiter_commande(s, cmd.lower().split("@")[0], args)
+        elif txt == B_ETAT:
             s["etat_demande"] = True
+        elif txt == B_POS:
+            s["positions_demande"] = True
+        elif txt == B_SURV:
+            envoyer_surveillance(s)
+        elif txt == B_BRIEF:
+            s["briefing_demande"] = True
+        elif txt == B_ANALYSE:
+            telegram("🔎 Tape simplement un nom : une action (airbus, nvidia), une crypto (bitcoin) "
+                     "ou une matière première (or, café). Réponse sous 5 min.")
+        elif txt == B_REGL:
+            envoyer_reglages(s)
+        elif len(txt) <= 40:                               # texte libre = analyse de ce titre
+            s.setdefault("a_analyser", []).append(resoudre_symbole(txt))
+
+def message_positions(s, ctxs, fx):
+    pos = s.get("positions", {})
+    if not pos:
+        telegram("💼 Aucune position suivie.\nQuand tu achètes suite à une alerte, appuie sur « ✅ J'ai acheté ».")
+        return
+    lignes, rangs = ["💼 MES POSITIONS", ""], []
+    for sym, p in pos.items():
+        c = ctxs.get(sym)
+        nom = nom_tr(sym)
+        if not c or not p.get("prix"):
+            lignes.append(f"• {nom} : cours indisponible pour le moment")
+        else:
+            perf = pct(c["prix"], p["prix"])
+            ico = "⚪" if abs(perf) < 0.1 else ("🟢" if perf > 0 else "🔴")
+            e_now, e_in = en_eur(sym, c["prix"], fx), en_eur(sym, p["prix"], fx)
+            prix_txt = f"{feur(e_in)} → {feur(e_now)}" if marche(sym) != "FUT" else "(suivi en %)"
+            lignes.append(f"{ico} {nom} : {perf:+.1f}% {prix_txt}")
+            if p.get("obj") and p.get("stop") and marche(sym) != "FUT":
+                lignes.append(f"   objectif {feur(en_eur(sym, p['obj'], fx))} · seuil de perte {feur(en_eur(sym, p['stop'], fx))}")
+        rangs.append((f"✅ J'ai vendu {nom[:20]}", f"vendu:{sym}"))
+    telegram("\n".join(lignes), boutons(*rangs))
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 11. ÉTAT (anti-spam, journal, positions, portefeuille virtuel)
@@ -990,6 +1300,8 @@ def sauver_etat(s):
     auj = datetime.now(PARIS).strftime("%Y-%m-%d")
     s["compteur"] = {k: v for k, v in s["compteur"].items() if k.startswith(auj)}
     s["cooldowns"] = {k: v for k, v in s["cooldowns"].items() if time.time() - v < 86400}
+    if len(s.get("details", {})) > 40:
+        s["details"] = dict(list(s["details"].items())[-40:])
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(s, f, indent=1, ensure_ascii=False, default=str)
 
@@ -1041,7 +1353,7 @@ def acheter_virtuel(s, c):
     v = s["virtuel"]
     if v["pos"] or v["cash"] < FRAIS_ORDRE + 2 or c["sym"] in U.NON_TR:
         return
-    if rentabilite(v["cash"], c["obj_pct"], c["stop_pct"])[1] <= 0:
+    if not rentable(v["cash"], c["obj_pct"], c["stop_pct"]):
         return   # avec le capital virtuel actuel, les frais mangeraient le gain
     eur = round(v["cash"] * MISE_PART - FRAIS_ORDRE, 2)
     v["cash"] = round(v["cash"] - eur - FRAIS_ORDRE, 2)
@@ -1093,9 +1405,42 @@ def ligne_var(noms, donnees):
             parts.append(f"{nom} {v:+.1f}%")
     return " · ".join(parts) if parts else "n/d"
 
+RAISONS_SIMPLES = [("non rentable", "gain trop petit pour ton capital une fois les 2 € de frais payés"),
+                   ("Éviter", "signal de baisse : à éviter pour l'instant"),
+                   ("Indicateur", "non achetable sur Trade Republic"),
+                   ("Surveiller", "signal pas encore assez sûr")]
+
+def ajouter_surveillance(s, c):
+    raison = next((r for k, r in RAISONS_SIMPLES if k in c["action"]), "signal pas encore assez sûr")
+    expl = (c["verdict"].get("simple") or (expliquer(c["conds"], 1) or [""])[0]).strip()
+    nom = U.COMMOS[c["sym"]][0] if c["sym"] in U.COMMOS else U.NOMS.get(c["sym"], c["sym"])
+    liste = [x for x in s.setdefault("a_surveiller", []) if x["sym"] != c["sym"]]
+    liste.append({"ts": maintenant().isoformat(), "sym": c["sym"], "nom": nom, "dir": c["dir"],
+                  "expl": expl, "raison": raison, "vu": False})
+    s["a_surveiller"] = liste[-30:]
+
+def lignes_surveillance(s, heures=24, non_vus=False):
+    limite = (maintenant() - timedelta(hours=heures)).isoformat()
+    items = [x for x in s.get("a_surveiller", []) if x["ts"] >= limite and (not non_vus or not x["vu"])]
+    return [f"{'↗' if x['dir'] > 0 else '↘'} {x['nom']} : {x['expl'] or 'mouvement notable'} → {x['raison']}"
+            for x in items[-10:]], items
+
+def envoyer_digest(s):
+    lignes, items = lignes_surveillance(s, 12, non_vus=True)
+    if not lignes:
+        return
+    cap = s.get("capital", CAPITAL_DEFAUT)
+    note = (f"\n\nℹ️ Avec {cap:.0f} €, les 2 € de frais (achat + vente) = {2 * FRAIS_ORDRE / cap * 100:.0f} % de ton "
+            f"capital : je n'envoie un 🟢 que si le gain attendu reste positif APRÈS frais." if cap < PETIT_CAPITAL else "")
+    telegram("👀 À SURVEILLER (rien à faire pour l'instant)\n\n" + "\n\n".join(lignes)
+             + "\n\nSi l'un d'eux devient une vraie occasion, je t'enverrai une alerte 🟢." + note)
+    for x in items:
+        x["vu"] = True
+
 def briefing(s, type_="matin"):
     macro = telecharger(list(U.MACRO), "5d", "1d")
     asie = telecharger(list(U.ASIE) + list(U.EST), "5d", "1d")
+    simple = s.get("mode_simple", MODE_SIMPLE_DEFAUT)
     evts = [e for e in calendrier(s) if e[0].astimezone(PARIS).date() == datetime.now(PARIS).date()]
     evts_txt = "\n".join(f"• {dt.astimezone(PARIS):%H:%M} {pays} – {t}" for dt, pays, t in evts) or "• aucune annonce majeure"
     reg, reg_txt = regime_marche(macro)
@@ -1107,19 +1452,32 @@ def briefing(s, type_="matin"):
                     {"role": "user", "content":
                      f"Rédige le briefing {'du matin (avant ouverture de Trade Republic à 7h30)' if type_ == 'matin' else 'avant ouverture de Wall Street (15h30)'} "
                      f"pour un investisseur centré sur l'IA (puces, électricité, refroidissement, matières premières) "
-                     f"avec un petit capital. 150 mots max, format : 1) Climat : risk-on/neutre/risk-off + pourquoi "
-                     f"2) 3 faits marquants (géopolitique, macro, entreprises) 3) Impact probable sur les valeurs IA "
-                     f"4) Ce qu'il faut surveiller aujourd'hui. N'utilise QUE ces données :\n"
+                     f"avec un petit capital{' qui DÉBUTE complètement : aucun jargon (pas de RSI, risk-on, taux directeur non expliqué...), phrases courtes et concrètes' if simple else ''}. "
+                     f"130 mots max, format : 1) Ambiance du marché : confiant / neutre / inquiet + pourquoi en une phrase "
+                     f"2) Les 3 nouvelles importantes (monde, économie, entreprises) et ce qu'elles changent "
+                     f"3) Effet probable sur les valeurs IA et les matières premières "
+                     f"4) À quoi faire attention aujourd'hui. N'utilise QUE ces données :\n"
                      f"Régime : {reg_txt}\nAsie : {asie_txt}\nEurope de l'Est : {est_txt}\nMacro : {macro_txt}\n"
                      f"Agenda : {evts_txt}\nActualités :\n{fmt_actus(monde, 15)}"}], max_tokens=450, s=s)
     titre = "☀️ BRIEFING DU MATIN" if type_ == "matin" else "🇺🇸 BRIEFING AVANT WALL STREET"
     jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
     np_ = datetime.now(PARIS)
-    msg = (f"{titre} – {jours[np_.weekday()]} {np_:%d/%m %H:%M}\n\nMarché : {reg_txt}\n\n"
-           f"🌏 Asie : {asie_txt}\n\n🇪🇺 Est : {est_txt}\n\n📊 Macro : {macro_txt}\n\n"
-           f"🗓 Annonces à fort impact (heure de Paris) :\n{evts_txt}\n\n")
+    if simple:
+        asie_txt = ligne_var({k: U.ASIE[k] for k in ("^N225", "^HSI", "2330.TW", "000660.KS")}, asie)
+        macro_txt = ligne_var({k: U.MACRO[k] for k in ("NQ=F", "^GDAXI", "^FCHI", "GC=F", "BZ=F", "BTC-EUR")}, macro)
+        msg = (f"{titre} – {jours[np_.weekday()]} {np_:%d/%m %H:%M}\n\n{reg_txt}\n\n"
+               f"📊 En bref : {macro_txt}\n🌏 Asie cette nuit : {asie_txt}\n\n"
+               f"🗓 Annonces qui peuvent faire bouger les marchés (heure de Paris) :\n{evts_txt}\n"
+               f"(je n'envoie aucune alerte 30 min avant / 15 min après)\n\n")
+    else:
+        msg = (f"{titre} – {jours[np_.weekday()]} {np_:%d/%m %H:%M}\n\nMarché : {reg_txt}\n\n"
+               f"🌏 Asie : {asie_txt}\n\n🇪🇺 Est : {est_txt}\n\n📊 Macro : {macro_txt}\n\n"
+               f"🗓 Annonces à fort impact (heure de Paris) :\n{evts_txt}\n\n")
     msg += f"🧠 Synthèse :\n{synthese}\n" if synthese else f"📰 À la une :\n{fmt_actus(monde, 8)}\n"
-    if s.get("chauds_detail"):
+    surv, _ = lignes_surveillance(s, 24)
+    if surv:
+        msg += "\n👀 À surveiller :\n" + "\n".join(surv[-5:]) + "\n"
+    if s.get("chauds_detail") and not simple:
         msg += "\n🔥 Titres les plus actifs (dernier scan) : " + ", ".join(s["chauds_detail"][:8])
     telegram(msg)
 
@@ -1135,7 +1493,8 @@ def message_etat(s, prix_actuels, reg_txt):
              f"Marché : {reg_txt}\n\n🧪 Portefeuille virtuel : {val:.2f} € (début de semaine {v['debut_semaine']:.2f} €, "
              f"{pct(val, v['debut_semaine']):+.1f}%)\nPosition virtuelle : {vp}\n"
              f"Titres chauds : {', '.join(s.get('chauds', [])[:10]) or 'n/d'}\nAppels IA aujourd'hui : "
-             f"{s.get('llm_jour', {}).get(auj, 0)}")
+             f"{s.get('llm_jour', {}).get(auj, 0)}\nMode : {'simple' if s.get('mode_simple', MODE_SIMPLE_DEFAUT) else 'complet'}"
+             + ("\n\n👀 À surveiller :\n" + "\n".join(lignes_surveillance(s, 24)[0][-5:]) if lignes_surveillance(s, 24)[0] else ""))
 
 def bilan_hebdo(s):
     depuis = (maintenant() - timedelta(days=7)).isoformat()
@@ -1193,6 +1552,11 @@ def briefings_programmes(s):
         bilan_hebdo(s)
     if s.pop("briefing_demande", False):
         briefing(s, "matin" if mins < 15 * 60 else "preus")
+    for h, m in DIGEST_HEURES:
+        cle = f"digest{h}{m:02d}"
+        if now.weekday() < 5 and h * 60 + m <= mins < h * 60 + m + 60 and b.get(cle) != auj:
+            b[cle] = auj
+            envoyer_digest(s)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # 14. SCAN PRINCIPAL
@@ -1211,11 +1575,25 @@ def analyse_a_la_demande(sym, ctx, regime, reg_txt, evts_txt, s, fx):
     c["verdict"] = verdict_actus(c, s)
     c["etoiles"] = etoiles(score) if d else 1
     c["action"] = decider_action(c, s) if d else "Pas de signal technique net : attendre"
-    telegram("🔎 ANALYSE À LA DEMANDE\n" + formater_alerte(c, s, fx))
+    complet = formater_alerte(c, s, fx)
+    s.setdefault("details", {})[c["sym"]] = complet
+    if not s.get("mode_simple", MODE_SIMPLE_DEFAUT):
+        telegram("🔎 ANALYSE À LA DEMANDE\n" + complet, boutons_achat(sym) if d > 0 else None)
+        return
+    nom = nom_tr(sym)
+    if d > 0 and c["action"].startswith("Acheter"):
+        telegram("🔎 " + formater_simple(c, s, fx), boutons_achat(sym))
+        return
+    raisons = expliquer(conds) or ["pas de mouvement particulier en ce moment"]
+    avis = c["verdict"].get("simple") or c["verdict"].get("avis") or ""
+    verdict = ("⏸ PAS MAINTENANT" if d >= 0 else "🔴 PLUTÔT À ÉVITER POUR L'INSTANT")
+    telegram(f"🔎 {nom} : {verdict}\n\n" + (f"• {avis}\n" if avis else "")
+             + "\n".join(f"• {r[0].upper() + r[1:]}" for r in raisons)
+             + f"\n\nAction : {c['action']}.", boutons(("📊 Détails techniques", f"detail:{sym}")))
 
 def candidat(mod, ctx, conds, d, score, reg_txt, evts_txt):
     stop, obj, sp, op = niveaux(ctx, d)
-    var_label, var = ("1h", var_minutes(ctx, 60)) if mod != "power" else ("2h", var_minutes(ctx, 120))
+    var_label, var = ("1h", var_minutes(ctx, 60)) if mod not in ("power", "commo") else ("2h", var_minutes(ctx, 120))
     if mod == "matieres":
         var_label, var = "jour", ctx["var_jour"]
     return {"mod": mod, "module_nom": MODULES[mod]["nom"], "sym": ctx["sym"], "dir": d, "score": score,
@@ -1227,27 +1605,28 @@ def candidat(mod, ctx, conds, d, score, reg_txt, evts_txt):
 
 def scan():
     s = charger_etat()
+    regler_niveaux(s.get("capital", CAPITAL_DEFAUT))
     commandes_telegram(s)
     briefings_programmes(s)
 
-    ouverts = {m for m in ("US", "EU", "UK", "CRYPTO") if seance_ouverte(m)}
-    besoin = ouverts or s.get("a_analyser") or s.get("etat_demande")
+    ouverts = {m for m in ("US", "EU", "UK", "CRYPTO", "FUT") if seance_ouverte(m)}
+    besoin = ouverts or s.get("a_analyser") or s.get("etat_demande") or s.get("positions_demande")
     if not besoin:
         log("Aucun marché ouvert (fenêtre d'analyse) — fin.")
         sauver_etat(s)
         return
     log(f"Marchés ouverts : {sorted(ouverts)}")
 
-    macro = telecharger(list(U.MACRO), "5d", "1d")
+    macro = telecharger(list(U.MACRO) + U.FX, "5d", "1d")
     regime, reg_txt = regime_marche(macro)
-    fx = eurusd(macro)
+    fx = taux_change(macro)
     evts = calendrier(s)
     evts_auj = [e for e in evts if e[0] > maintenant() and e[0].astimezone(PARIS).date() == datetime.now(PARIS).date()]
     evts_txt = ", ".join(f"{dt.astimezone(PARIS):%H:%M} {p} {t}" for dt, p, t in evts_auj[:5]) or "aucune"
     blackout = None if FORCE else blackout_macro(evts)
 
     # Scanner horaire de tout l'univers
-    actions_ouvertes = ouverts - {"CRYPTO"}
+    actions_ouvertes = ouverts - {"CRYPTO", "FUT"}
     if actions_ouvertes and (time.time() - s.get("chauds_ts", 0) > 3600 or FORCE):
         maj_chauds(s, donnees_jour(U.UNIVERS_SCANNER + U.MATIERES + U.IA_INFRA + U.SEMIS + U.POWER_COOLING, s))
     elif not actions_ouvertes:
@@ -1268,7 +1647,7 @@ def scan():
     ctxs = {}
     for sym in tous:
         try:
-            c = construire_ctx(sym, m5_all, d1_all, tolerer_perime=sym in demandes)
+            c = construire_ctx(sym, m5_all, d1_all, tolerer_perime=sym in demandes or sym in s["positions"])
             if c:
                 c["_d1_all"], c["_ctx_all"] = d1_all, ctxs
                 ctxs[sym] = c
@@ -1308,21 +1687,31 @@ def scan():
         c = ctxs.get(sym)
         if not c:
             continue
+        frais_cours = c["age"] <= FRAICHEUR_MAX_MIN
         if not pos.get("prix"):
-            pos["prix"] = c["prix"]
+            taux = (fx or {}).get(devise(sym), np.nan)
+            if pos.get("prix_eur") and marche(sym) != "FUT" and taux and not np.isnan(taux):
+                pos["prix"] = pos["prix_eur"] / taux      # prix TR en € -> devise de cotation
+            else:
+                pos["prix"] = c["prix"]
         if not pos.get("stop"):
             stop, obj, _, _ = niveaux(c, 1)
             ratio = pos["prix"] / c["prix"]
             pos["stop"], pos["obj"] = stop * ratio, obj * ratio
         perf = pct(c["prix"], pos["prix"])
-        if c["prix"] <= pos["stop"] and not pos.get("alerte_stop"):
+        if frais_cours and c["prix"] <= pos["stop"] and not pos.get("alerte_stop"):
             pos["alerte_stop"] = True
-            telegram(f"🛑 STOP ATTEINT – {sym}\nPrix {fprix(sym, c['prix'], fx)} ≤ stop {fprix(sym, pos['stop'], fx)} "
-                     f"({perf:+.1f}% depuis ton achat).\n👉 Vendre pour limiter la perte (puis /vendu {sym}).")
-        elif c["prix"] >= pos["obj"] and not pos.get("alerte_obj"):
+            telegram(f"🛑 REVENDS {nom_tr(sym)} MAINTENANT\n{perf:+.1f}% depuis ton achat : c'est le seuil prévu pour "
+                     f"limiter la perte.\nSur TR : ouvre ta ligne → Vendre, puis appuie sur « J'ai vendu ».\n"
+                     f"(prix {fprix(sym, c['prix'], fx)})", boutons(("✅ J'ai vendu", f"vendu:{sym}")))
+        elif frais_cours and c["prix"] >= pos["obj"] and not pos.get("alerte_obj"):
             pos["alerte_obj"] = True
-            telegram(f"🎯 OBJECTIF ATTEINT – {sym}\nPrix {fprix(sym, c['prix'], fx)} ({perf:+.1f}% depuis ton achat).\n"
-                     f"👉 Prendre tout ou partie du gain (puis /vendu {sym}).")
+            telegram(f"🎯 OBJECTIF ATTEINT : {nom_tr(sym)} ({perf:+.1f}% depuis ton achat)\n"
+                     f"Sur TR : vends tout pour encaisser le gain, puis appuie sur « J'ai vendu ».\n"
+                     f"(prix {fprix(sym, c['prix'], fx)})", boutons(("✅ J'ai vendu", f"vendu:{sym}")))
+
+    if s.pop("positions_demande", False):
+        message_positions(s, ctxs, fx)
 
     gerer_virtuel(s, prix_actuels, ventes)
 
@@ -1368,7 +1757,15 @@ def scan():
             continue
         c["etoiles"] = etoiles(c["score"])
         c["action"] = decider_action(c, s)
-        if telegram(formater_alerte(c, s, fx)):
+        complet = formater_alerte(c, s, fx)
+        s.setdefault("details", {})[c["sym"]] = complet
+        simple = s.get("mode_simple", MODE_SIMPLE_DEFAUT)
+        if simple and not envoyable_simple(c):
+            ajouter_surveillance(s, c)          # pas d'action concrète : ira dans le récap "à surveiller"
+            s["cooldowns"][cle_mod] = time.time()
+            continue
+        if telegram(formater_simple(c, s, fx) if simple else complet,
+                    boutons_achat(c["sym"]) if c["dir"] > 0 else boutons_vente(c["sym"])):
             n_scan += 1
             envoyes += 1
             now = time.time()
@@ -1384,7 +1781,19 @@ def scan():
 
 if __name__ == "__main__":
     if "--test" in sys.argv:
-        ok = telegram("✅ AI Market Bots v2 connectés.\n" + AIDE)
+        ok = telegram("✅ AI Market Bots v2.2 connectés.\n\n" + AIDE, MENU)
+        if TG_TOKEN:
+            try:
+                requests.post(f"https://api.telegram.org/bot{TG_TOKEN}/setMyCommands", timeout=10, json={"commands": [
+                    {"command": "menu", "description": "Afficher les boutons"},
+                    {"command": "etat", "description": "Capital, positions, portefeuille virtuel"},
+                    {"command": "positions", "description": "Mes positions en cours"},
+                    {"command": "briefing", "description": "Briefing marché immédiat"},
+                    {"command": "capital", "description": "Changer le capital (ex : /capital 200)"},
+                    {"command": "achete", "description": "J'ai acheté (ex : /achete NVDA 118,50)"},
+                    {"command": "vendu", "description": "J'ai vendu (ex : /vendu NVDA)"}]})
+            except Exception:
+                pass
         if LLM_KEY:
             try:
                 r = requests.post(f"{LLM_BASE}/chat/completions", timeout=30,
@@ -1399,5 +1808,4 @@ if __name__ == "__main__":
         else:
             telegram("🧠 IA d'analyse : non configurée (analyse des actus par mots-clés seulement).")
         sys.exit(0 if ok else 1)
-    scan()
     scan()
