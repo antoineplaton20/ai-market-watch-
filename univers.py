@@ -25,6 +25,28 @@ MATIERES = ["FCX", "MP", "SCCO", "TECK", "RIO", "BHP", "CCJ", "ALB", "NEM", "GLE
 CRYPTO = ["BTC-EUR", "ETH-EUR", "SOL-EUR", "XRP-EUR", "ADA-EUR", "DOGE-EUR", "DOT-EUR",
           "LINK-EUR", "AVAX-EUR", "LTC-EUR", "TRX-EUR", "XLM-EUR"]
 
+# ─── Matières premières via ETC (Exchange Traded Commodities) achetables sur Trade Republic ──────
+# Le signal est calculé sur le contrat de référence (Yahoo "=F") ; sur TR tu achètes l'ETC qui le suit.
+# (symbole Yahoo) : (nom simple, ce qu'il faut taper dans la recherche Trade Republic)
+COMMOS = {
+    "GC=F": ("Or", "Xetra-Gold (ou Invesco Physical Gold)"),
+    "SI=F": ("Argent", "WisdomTree Physical Silver"),
+    "PL=F": ("Platine", "WisdomTree Physical Platinum"),
+    "HG=F": ("Cuivre", "WisdomTree Copper"),
+    "CL=F": ("Pétrole WTI", "WisdomTree WTI Crude Oil"),
+    "BZ=F": ("Pétrole Brent", "WisdomTree Brent Crude Oil"),
+    "NG=F": ("Gaz naturel", "WisdomTree Natural Gas"),
+    "ZW=F": ("Blé", "WisdomTree Wheat"),
+    "ZC=F": ("Maïs", "WisdomTree Corn"),
+    "ZS=F": ("Soja", "WisdomTree Soybeans"),
+    "KC=F": ("Café", "WisdomTree Coffee"),
+    "CC=F": ("Cacao", "WisdomTree Cocoa"),
+    "SB=F": ("Sucre", "WisdomTree Sugar"),
+}
+
+# Taux de change (TR affiche tout en euros)
+FX = ["EURUSD=X", "GBPEUR=X", "CHFEUR=X", "DKKEUR=X", "SEKEUR=X", "NOKEUR=X"]
+
 # Symboles utilisés comme indicateurs mais NON achetables sur Trade Republic (ETF US hors UCITS)
 NON_TR = {"COPX"}
 
@@ -91,6 +113,10 @@ NOMS = {
     # ETF / ETC UCITS (achetables sur TR)
     "SXR8.DE": "iShares Core S&P 500", "EUNL.DE": "iShares MSCI World", "SXRV.DE": "iShares Nasdaq 100",
     "VVSM.DE": "VanEck Semiconductor ETF", "4GLD.DE": "Xetra-Gold",
+    "XAIX.DE": "Xtrackers Artificial Intelligence & Big Data ETF", "2B76.DE": "iShares Automation & Robotics ETF",
+    "IQQH.DE": "iShares Global Clean Energy ETF", "EXS1.DE": "iShares Core DAX ETF", "C40.PA": "Amundi CAC 40 ETF",
+    "EXSA.DE": "iShares STOXX Europe 600 ETF", "IS3N.DE": "iShares Core MSCI Emerging Markets IMI ETF",
+    "DFEN.DE": "VanEck Defense ETF",
     # Crypto
     "BTC-EUR": "Bitcoin", "ETH-EUR": "Ethereum", "SOL-EUR": "Solana", "XRP-EUR": "XRP Ripple",
     "ADA-EUR": "Cardano", "DOGE-EUR": "Dogecoin", "DOT-EUR": "Polkadot", "LINK-EUR": "Chainlink",
