@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Équipe de bots</title>
+<meta name="description" content="Tableau de bord et commandes de l'équipe de bots de trading.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bots">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/app/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/app/icon-180.png">
+<link rel="icon" type="image/png" href="/app/icon-192.png">
+<style>
+:root {
+  --fond: #f4f6fa; --carte: #ffffff; --carte-2: #eef1f6; --texte: #0f172a; --doux: #5b6577; --trait: #dde3ec;
+  --accent: #2563eb; --vert: #0f9d63; --rouge: #d6364a; --ambre: #b7791f; --gris: #94a3b8;
+  --vert-fond: #e3f6ee; --rouge-fond: #fde8eb; --ambre-fond: #fdf3e1;
+  --ombre: 0 1px 2px rgba(15, 23, 42, .06), 0 1px 1px rgba(15, 23, 42, .04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #0b1220; --carte: #131c2e; --carte-2: #1a2539; --texte: #e8edf5; --doux: #93a0b5; --trait: #24314a;
+    --accent: #5b9bff; --vert: #34d399; --rouge: #fb7185; --ambre: #fbbf24; --gris: #64748b;
+    --vert-fond: rgba(52, 211, 153, .13); --rouge-fond: rgba(251, 113, 133, .13); --ambre-fond: rgba(251, 191, 36, .13);
+    --ombre: none;
+  }
+}
+:root[data-theme="dark"] {
+  --fond: #0b1220; --carte: #131c2e; --carte-2: #1a2539; --texte: #e8edf5; --doux: #93a0b5; --trait: #24314a;
+  --accent: #5b9bff; --vert: #34d399; --rouge: #fb7185; --ambre: #fbbf24; --gris: #64748b;
+  --vert-fond: rgba(52, 211, 153, .13); --rouge-fond: rgba(251, 113, 133, .13); --ambre-fond: rgba(251, 191, 36, .13);
+  --ombre: none;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--fond); color: var(--texte); }
+body {
+  font: 15px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased; min-height: 100dvh; overscroll-behavior-y: none;
+}
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* En-tête et barre d'onglets (zones sûres de l'iPhone) */
+header {
+  position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--fond) 88%, transparent);
+  backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  padding: calc(env(safe-area-inset-top) + 10px) 16px 10px; display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--trait);
+}
+header h1 { font-size: 22px; font-weight: 700; margin: 0; flex: 1; letter-spacing: -.01em; }
+#maj { font-size: 12px; color: var(--doux); text-align: right; }
+.icone-btn {
+  width: 36px; height: 36px; border-radius: 18px; border: 0; background: var(--carte-2); display: grid;
+  place-items: center; cursor: pointer;
+}
+.icone-btn svg { width: 18px; height: 18px; stroke: var(--texte); }
+.tourne svg { animation: tourne .9s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+main { padding: 12px 16px calc(env(safe-area-inset-bottom) + 84px); max-width: 720px; margin: 0 auto; }
+nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
+  background: color-mix(in srgb, var(--carte) 92%, transparent); border-top: 1px solid var(--trait);
+  backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  padding: 6px 4px calc(env(safe-area-inset-bottom) + 4px);
+}
+nav button {
+  border: 0; background: none; padding: 4px 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 10.5px; color: var(--doux); cursor: pointer;
+}
+nav button svg { width: 24px; height: 24px; stroke: currentColor; }
+nav button[aria-selected="true"] { color: var(--accent); }
+
+/* Cartes */
+.carte { background: var(--carte); border-radius: 16px; padding: 14px 16px; margin: 0 0 12px; box-shadow: var(--ombre); }
+.carte h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--doux);
+  margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.titre-section { font-size: 20px; font-weight: 700; margin: 18px 2px 10px; }
+.grand { font-size: 32px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+.sous { color: var(--doux); font-size: 13px; }
+.ligne { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0;
+  border-top: 1px solid var(--trait); }
+.ligne:first-of-type { border-top: 0; }
+.ligne .g { min-width: 0; }
+.ligne .d { text-align: right; flex-shrink: 0; }
+.ligne b { font-weight: 600; }
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+.stat { background: var(--carte-2); border-radius: 12px; padding: 10px 12px; }
+.stat .v { font-size: 17px; font-weight: 650; }
+.stat .l { font-size: 12px; color: var(--doux); }
+.plus { color: var(--vert); } .moins { color: var(--rouge); }
+.puce { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 8px;
+  border-radius: 999px; background: var(--carte-2); color: var(--doux); white-space: nowrap; }
+.puce.ok { background: var(--vert-fond); color: var(--vert); }
+.puce.ko { background: var(--rouge-fond); color: var(--rouge); }
+.puce.att { background: var(--ambre-fond); color: var(--ambre); }
+.puces { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.point { width: 9px; height: 9px; border-radius: 50%; background: var(--gris); display: inline-block; flex-shrink: 0; }
+.point.ok { background: var(--vert); } .point.ko { background: var(--rouge); } .point.att { background: var(--ambre); }
+.alerte { display: flex; gap: 10px; align-items: flex-start; background: var(--rouge-fond); color: var(--rouge);
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-weight: 550; font-size: 14px; }
+.info { background: var(--carte-2); color: var(--texte); border-radius: 12px; padding: 10px 12px; font-size: 14px;
+  margin-bottom: 12px; }
+.vide { color: var(--doux); text-align: center; padding: 18px 0 8px; font-size: 14px; }
+svg.courbe { width: 100%; height: 64px; display: block; margin-top: 10px; }
+
+/* Journal */
+.segments { display: flex; gap: 4px; background: var(--carte-2); padding: 3px; border-radius: 10px; margin-bottom: 12px;
+  overflow-x: auto; scrollbar-width: none; }
+.segments button { flex: 1; border: 0; background: none; padding: 7px 10px; border-radius: 8px; font-size: 13px;
+  font-weight: 600; color: var(--doux); white-space: nowrap; cursor: pointer; }
+.segments button[aria-pressed="true"] { background: var(--carte); color: var(--texte); box-shadow: var(--ombre); }
+pre.journal { margin: 0; white-space: pre-wrap; word-break: break-word; font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  background: var(--carte); border-radius: 12px; padding: 12px; max-height: 64dvh; overflow: auto; }
+pre.journal .e { color: var(--rouge); } pre.journal .w { color: var(--ambre); }
+.texte { white-space: pre-wrap; font-size: 14px; line-height: 1.5; }
+
+/* Commandes */
+.action { width: 100%; display: flex; align-items: center; gap: 12px; border: 0; background: var(--carte-2);
+  border-radius: 12px; padding: 13px 14px; margin-top: 8px; text-align: left; cursor: pointer; font-weight: 600; }
+.action:active { opacity: .7; }
+.action .ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0;
+  background: var(--carte); font-size: 17px; }
+.action small { display: block; font-weight: 400; color: var(--doux); font-size: 12.5px; }
+.action.danger { color: var(--rouge); background: var(--rouge-fond); }
+
+/* Connexion */
+#connexion { max-width: 420px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 48px) 20px 40px; text-align: center; }
+#connexion img { width: 88px; height: 88px; border-radius: 22px; }
+#connexion h1 { font-size: 26px; margin: 18px 0 6px; }
+#connexion p { color: var(--doux); margin: 0 0 22px; }
+input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 17px; padding: 13px 14px;
+  border-radius: 12px; border: 1px solid var(--trait); background: var(--carte); color: var(--texte); }
+.principal { width: 100%; margin-top: 12px; border: 0; border-radius: 12px; padding: 14px; font-weight: 650;
+  font-size: 16px; background: var(--accent); color: #fff; cursor: pointer; }
+.lien { border: 0; background: none; color: var(--accent); font-weight: 600; margin-top: 16px; cursor: pointer; }
+#erreur-connexion { color: var(--rouge); min-height: 20px; margin-top: 10px; font-size: 14px; }
+
+#toast { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 10;
+  background: var(--texte); color: var(--fond); padding: 12px 14px; border-radius: 12px; font-size: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .25); opacity: 0; transform: translateY(10px); pointer-events: none;
+  transition: opacity .2s, transform .2s; max-width: 688px; margin: 0 auto; }
+#toast.visible { opacity: 1; transform: none; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<section id="connexion" hidden>
+  <img src="/app/icon-180.png" alt="">
+  <h1>Équipe de bots</h1>
+  <p>Entre le code d'accès affiché par <b>bots app</b> dans Termius.</p>
+  <form id="form-code">
+    <input id="code" type="password" autocomplete="current-password" placeholder="Code d'accès" required>
+    <button class="principal" type="submit">Se connecter</button>
+  </form>
+  <div id="erreur-connexion" role="alert"></div>
+  <button class="lien" id="voir-demo" type="button">Voir une démonstration</button>
+</section>
+
+<div id="appli" hidden>
+  <header>
+    <h1 id="titre">Accueil</h1>
+    <div id="maj" class="num"></div>
+    <button class="icone-btn" id="rafraichir" aria-label="Actualiser">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+    </button>
+  </header>
+  <main id="contenu"></main>
+  <nav role="tablist">
+    <button role="tab" data-onglet="accueil" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil</button>
+    <button role="tab" data-onglet="positions" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg>Positions</button>
+    <button role="tab" data-onglet="journal" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Journal</button>
+    <button role="tab" data-onglet="veille" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>Veille</button>
+    <button role="tab" data-onglet="commandes" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Commandes</button>
+  </nav>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+// ================================================================ état
+const DEMO = new URLSearchParams(location.search).has("demo");
+const TITRES = {accueil: "Accueil", positions: "Positions", journal: "Journal", veille: "Veille", commandes: "Commandes"};
+const JOURNAUX = [["principal", "Principal"], ["v17", "v17"], ["marches", "Marchés"], ["renseignement", "Rens."], ["tr", "TR"]];
+const SERVICES = [["principal", "Bot principal"], ["v17", "Moteur v17"], ["tr", "Veille Trade Republic"],
+                  ["marches", "Veille marchés"], ["renseignement", "Armée de renseignement"]];
+const MODES = {paper: "Portefeuille fictif", demo: "Compte démo", testnet: "Testnet", live: "Argent réel"};
+let onglet = "accueil", donnees = null, journalSource = "principal", minuterie = null, horsLigne = false;
+
+const stock = {                              // localStorage peut être indisponible : jamais bloquant
+  lire(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+  ecrire(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  effacer(k) { try { localStorage.removeItem(k); } catch {} },
+};
+let code = stock.lire("code", "");
+
+// ================================================================ outils
+function h(tag, attrs, ...enfants) {         // construction du DOM : le texte n'est JAMAIS interprété comme du HTML
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") el.className = v; else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const e of enfants.flat()) if (e !== null && e !== undefined && e !== false) el.append(e instanceof Node ? e : String(e));
+  return el;
+}
+const nf = (d) => new Intl.NumberFormat("fr-FR", {minimumFractionDigits: d, maximumFractionDigits: d});
+const N0 = nf(0), N2 = nf(2);
+function dollars(x, signe = false) {
+  if (x === null || x === undefined || isNaN(x)) return "—";
+  const s = (Math.abs(x) >= 1000 ? N0 : N2).format(Math.abs(x));
+  return (x < 0 ? "−" : signe && x > 0 ? "+" : "") + s + " $";
+}
+function prix(x) {
+  if (!x) return "—";
+  const d = x >= 1000 ? 0 : x >= 1 ? 2 : x >= 0.01 ? 4 : 6;
+  return nf(d).format(x) + " $";
+}
+function pct(x) { return x === null || x === undefined || isNaN(x) ? "—" : (x > 0 ? "+" : x < 0 ? "−" : "") + N2.format(Math.abs(x)) + " %"; }
+const signe = (x) => (x > 0 ? "plus" : x < 0 ? "moins" : "");
+function duree(s) {
+  if (s === null || s === undefined) return "—";
+  if (s < 90) return Math.round(s) + " s";
+  if (s < 5400) return Math.round(s / 60) + " min";
+  if (s < 172800) return Math.round(s / 3600) + " h";
+  return Math.round(s / 86400) + " j";
+}
+const heure = (ts) => new Date(ts * 1000).toLocaleString("fr-FR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"});
+const base = (sym) => String(sym || "").split("/")[0];
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("visible");
+  clearTimeout(toast.m); toast.m = setTimeout(() => t.classList.remove("visible"), 3800);
+}
+function puce(texte, genre) { return h("span", {class: "puce " + (genre || "")}, texte); }
+function carte(titre, droite, ...contenu) { return h("section", {class: "carte"}, titre ? h("h2", {}, titre, droite || "") : null, ...contenu); }
+function ligne(g, d) { return h("div", {class: "ligne"}, h("div", {class: "g"}, g), h("div", {class: "d"}, d)); }
+function stat(v, l, cls) { return h("div", {class: "stat"}, h("div", {class: "v num " + (cls || "")}, v), h("div", {class: "l"}, l)); }
+
+function courbe(points) {                    // petite courbe de la valeur du portefeuille v17
+  if (!points || points.length < 2) return null;
+  const ys = points.map((p) => p[1]), min = Math.min(...ys), max = Math.max(...ys), W = 300, H = 64, m = 4;
+  const x = (i) => (i / (points.length - 1)) * W, y = (v) => max === min ? H / 2 : m + (1 - (v - min) / (max - min)) * (H - 2 * m);
+  const d = points.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+  const couleur = ys[ys.length - 1] >= ys[0] ? "var(--vert)" : "var(--rouge)";
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("preserveAspectRatio", "none"); svg.setAttribute("class", "courbe");
+  svg.setAttribute("role", "img"); svg.setAttribute("aria-label", `Valeur du portefeuille : de ${dollars(ys[0])} à ${dollars(ys[ys.length - 1])}`);
+  const aire = document.createElementNS(ns, "path");
+  aire.setAttribute("d", d + ` L${W} ${H} L0 ${H} Z`); aire.setAttribute("fill", couleur); aire.setAttribute("opacity", ".12");
+  const trait = document.createElementNS(ns, "path");
+  trait.setAttribute("d", d); trait.setAttribute("fill", "none"); trait.setAttribute("stroke", couleur);
+  trait.setAttribute("stroke-width", "2"); trait.setAttribute("vector-effect", "non-scaling-stroke"); trait.setAttribute("stroke-linejoin", "round");
+  svg.append(aire, trait);
+  return svg;
+}
+
+// ================================================================ réseau
+async function appel(chemin, options = {}) {
+  if (DEMO) return demo(chemin, options);
+  const r = await fetch(chemin, {...options, cache: "no-store",
+    headers: {...(options.headers || {}), "Authorization": "Bearer " + code, "Content-Type": "application/json"}});
+  if (r.status === 401 || r.status === 503 || r.status === 429) {
+    let msg = "Accès refusé.";
+    try { msg = (await r.json()).detail || msg; } catch {}
+    const e = new Error(msg); e.acces = true; throw e;
+  }
+  if (!r.ok) throw new Error("Erreur du serveur (" + r.status + ")");
+  return r.status === 204 ? null : r.json();
+}
+
+async function charger(silencieux = false) {
+  const btn = document.getElementById("rafraichir");
+  btn.classList.add("tourne");
+  try {
+    donnees = await appel("/app/api/tableau");
+    horsLigne = false;
+    stock.ecrire("dernier", JSON.stringify(donnees));
+  } catch (e) {
+    if (e.acces) { deconnecter(e.message); return; }
+    horsLigne = true;
+    if (!donnees) { try { donnees = JSON.parse(stock.lire("dernier", "null")); } catch {} }
+    if (!silencieux) toast("Serveur injoignable : dernières données connues affichées.");
+  } finally { btn.classList.remove("tourne"); }
+  afficher();
+}
+
+// ================================================================ écrans
+function afficher() {
+  document.getElementById("titre").textContent = TITRES[onglet];
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.onglet === onglet)));
+  const maj = document.getElementById("maj");
+  maj.textContent = donnees ? (horsLigne ? "hors ligne · " : "") + new Date(donnees.ts * 1000).toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"}) : "";
+  const zone = document.getElementById("contenu");
+  zone.replaceChildren();
+  if (!donnees && onglet !== "commandes") { zone.append(h("div", {class: "vide"}, "Chargement…")); return; }
+  ({accueil: ecranAccueil, positions: ecranPositions, journal: ecranJournal, veille: ecranVeille, commandes: ecranCommandes})[onglet](zone);
+}
+
+function etatService(v) {
+  if (v === "active") return ["ok", "en marche"];
+  if (v === "activating" || v === "reloading") return ["att", "redémarre"];
+  if (v === null || v === undefined) return ["", "inconnu"];
+  if (v === "inactive") return ["", "arrêté"];
+  return ["ko", v === "failed" ? "en panne" : v];
+}
+
+function ecranAccueil(zone) {
+  const d = donnees, p = d.principal || {}, w = d.v17 || {};
+  if (DEMO) zone.append(h("div", {class: "info"}, "Démonstration : données fictives. ", h("a", {href: "/app/"}, "Se connecter")));
+  if (!window.navigator.standalone && !DEMO && /iPhone|iPad/.test(navigator.userAgent) && !stock.lire("astuce-vue")) {
+    zone.append(h("div", {class: "info"}, "Astuce : dans Safari, touche ", h("b", {}, "Partager"), " puis ",
+      h("b", {}, "Sur l'écran d'accueil"), " pour ouvrir l'application en plein écran.",
+      h("button", {class: "lien", style: "margin:6px 0 0;display:block;padding:0", onclick: () => { stock.ecrire("astuce-vue", "1"); afficher(); }}, "Compris")));
+  }
+  const alertes = [...(d.alertes || [])];
+  for (const [cle, nom] of SERVICES) {
+    const v = (d.services || {})[cle];
+    if (v && v !== "active" && v !== "inactive") alertes.push(`${nom} : ${etatService(v)[1]}`);
+  }
+  if (p.age_battement_s !== null && p.age_battement_s !== undefined && !p.vivant) alertes.push(`Bot principal : aucun signe de vie depuis ${duree(p.age_battement_s)}`);
+  for (const a of alertes) zone.append(h("div", {class: "alerte", role: "alert"}, "⚠️", h("span", {}, a)));
+
+  // Moteur v17
+  if (w.erreur) zone.append(carte("Moteur v17", null, h("div", {class: "vide"}, "Base v17 illisible : " + w.erreur)));
+  else if (w.heartbeat_age_s === null || w.heartbeat_age_s === undefined) zone.append(carte("Moteur v17", null, h("div", {class: "vide"}, "Pas encore démarré (bots v17-demarrer).")));
+  else {
+    const total = w.equity - w.start_equity, jour = (w.today || {}).realized_pnl || 0;
+    const puces = h("div", {class: "puces"},
+      puce(w.alive ? "● actif" : "● silencieux", w.alive ? "ok" : "ko"),
+      w.paused ? puce("⏸ achats en pause", "att") : null,
+      w.pending ? puce("⛔ rapprochement", "ko") : null,
+      w.kill_switch ? puce("KILL_SWITCH", "ko") : null,
+      w.network_failures ? puce(`Binance muet ×${w.network_failures}`, "att") : null);
+    zone.append(carte("Moteur v17", puce(MODES[w.mode] || w.mode),
+      h("div", {class: "grand num"}, dollars(w.equity)),
+      h("div", {class: "sous num"}, h("span", {class: signe(total)}, dollars(total, true)), " depuis le départ · disponible ", dollars(w.cash)),
+      courbe(w.courbe),
+      h("div", {class: "stats"},
+        stat(dollars(jour, true), "résultat du jour", signe(jour)),
+        stat(`${(w.today || {}).buys || 0} / ${(w.today || {}).sells || 0}`, "achats / ventes du jour"),
+        stat(String((w.positions || []).length), "positions ouvertes"),
+        stat(dollars(w.realized_pnl, true), "résultat encaissé", signe(w.realized_pnl))),
+      puces));
+  }
+
+  // Bot principal
+  zone.append(carte("Bot principal", puce(p.compte === "reel" ? "Argent réel" : "Compte démo", p.compte === "reel" ? "ko" : ""),
+    h("div", {class: "grand num " + signe(p.latent)}, dollars(p.latent, true)),
+    h("div", {class: "sous"}, "gain ou perte pas encore encaissé"),
+    h("div", {class: "stats"},
+      stat(String((p.positions || []).length), "achats en cours"),
+      stat(p.niveau_risque || "—", "niveau de risque"),
+      stat("palier " + (p.palier || 1), "capital autorisé"),
+      stat(duree(p.age_battement_s), "dernier signe de vie")),
+    h("div", {class: "puces"},
+      puce(p.vivant ? "● actif" : "● silencieux", p.vivant ? "ok" : "ko"),
+      p.arret_manuel ? puce("⏸ achats arrêtés (/stop)", "att") : null,
+      p.arret_jour ? puce("perte du jour atteinte", "att") : null,
+      p.disjoncteur ? puce("⛔ sécurité générale", "ko") : null,
+      p.reseau_ko ? puce("Binance instable", "att") : null)));
+
+  // Services
+  const services = carte("Services", null);
+  for (const [cle, nom] of SERVICES) {
+    const [genre, texte] = etatService((d.services || {})[cle]);
+    services.append(ligne(h("span", {}, h("span", {class: "point " + genre}), " ", nom), h("span", {class: "sous"}, texte)));
+  }
+  zone.append(services);
+}
+
+function ecranPositions(zone) {
+  const p = donnees.principal || {}, w = donnees.v17 || {};
+  zone.append(h("div", {class: "titre-section"}, "Bot principal"));
+  const cp = carte(null, null);
+  if (!(p.positions || []).length) cp.append(h("div", {class: "vide"}, "Aucun achat en cours."));
+  for (const x of p.positions || []) {
+    cp.append(ligne(
+      h("div", {}, h("b", {}, base(x.symbole)), " ", x.essai ? puce("🧪 essai") : null, " ",
+        x.securise ? puce("🔒 sans perte", "ok") : null, !x.protege ? puce("⚠ sans stop", "ko") : null,
+        h("div", {class: "sous num"}, "acheté " + prix(x.entree) + (x.ouvert ? " · " + heure(x.ouvert) : ""))),
+      h("div", {class: "num"}, h("b", {}, dollars(x.valeur_entree)),
+        h("div", {class: "sous"}, "stop " + prix(x.stop)), x.objectif ? h("div", {class: "sous"}, "objectif " + prix(x.objectif)) : null)));
+  }
+  zone.append(cp);
+
+  zone.append(h("div", {class: "titre-section"}, "Moteur v17"));
+  const cv = carte(null, null);
+  if (!(w.positions || []).length) cv.append(h("div", {class: "vide"}, "Aucune position v17."));
+  for (const x of w.positions || []) {
+    cv.append(ligne(
+      h("div", {}, h("b", {}, base(x.symbol)), h("div", {class: "sous num"}, "acheté " + prix(x.entry) + " · maintenant " + prix(x.price))),
+      h("div", {class: "num"}, h("b", {}, dollars(x.value)), h("div", {class: signe(x.pnl_pct)}, pct(x.pnl_pct)))));
+  }
+  zone.append(cv);
+
+  const co = carte("Derniers ordres v17", null);
+  if (!(w.ordres || []).length) co.append(h("div", {class: "vide"}, "Aucun ordre."));
+  for (const o of w.ordres || []) {
+    const vente = o.cote === "sell", ok = o.statut === "filled";
+    co.append(ligne(
+      h("div", {}, h("b", {}, (vente ? "Vente " : "Achat ") + base(o.symbole)), h("div", {class: "sous"}, heure(o.ts))),
+      h("div", {class: "num"}, prix(o.prix), h("div", {}, puce(ok ? "exécuté" : o.statut.replace("_", " "), ok ? (vente ? "" : "ok") : "att")))));
+  }
+  zone.append(co);
+}
+
+async function ecranJournal(zone) {
+  const seg = h("div", {class: "segments", role: "group", "aria-label": "Journal"});
+  for (const [cle, nom] of JOURNAUX) {
+    seg.append(h("button", {"aria-pressed": String(cle === journalSource), onclick: () => { journalSource = cle; afficher(); }}, nom));
+  }
+  const pre = h("pre", {class: "journal"}, "Chargement…");
+  zone.append(seg, pre);
+  try {
+    const r = await appel("/app/api/journal?lignes=150&source=" + encodeURIComponent(journalSource));
+    pre.replaceChildren();
+    if (!r.lignes.length) pre.append("Journal vide (service jamais démarré ?).");
+    for (const l of r.lignes) {
+      const cls = /erreur|error|❗|🚨|⛔|traceback|exception/i.test(l) ? "e" : /⚠|warning|instable|injoignable/i.test(l) ? "w" : "";
+      pre.append(h("span", {class: cls}, l + "\n"));
+    }
+    pre.scrollTop = pre.scrollHeight;
+  } catch (e) {
+    if (e.acces) return deconnecter(e.message);
+    pre.textContent = "Journal indisponible : " + e.message;
+  }
+}
+
+function ecranVeille(zone) {
+  const r = donnees.renseignement, m = donnees.marches;
+  if (!r) zone.append(carte("Armée de renseignement", null, h("div", {class: "vide"}, "Pas déployée (bots renseignement-demarrer).")));
+  else {
+    const c = carte("Armée de renseignement", puce(`${r.actifs}/${r.bots} bots actifs`, r.actifs ? "ok" : "ko"));
+    if (r.climat !== null && r.climat !== undefined) {
+      c.append(h("div", {class: "grand num " + signe(r.climat)}, (r.climat > 0 ? "+" : "") + N2.format(r.climat)),
+        h("div", {class: "sous"}, `climat mondial (échelle −2 à +2) · confiance ${Math.round((r.confiance || 0) * 100)} %`));
+    }
+    c.append(h("div", {class: "stats"}, stat(N0.format(r.faits_24h), "infos en 24 h"), stat(N0.format(r.sources_24h), "sources")));
+    for (const a of r.alertes || []) c.append(ligne(h("span", {}, (a.niveau >= 3 ? "🚨 " : "📡 ") + a.titre), a.ts ? h("span", {class: "sous"}, heure(a.ts)) : ""));
+    if ((r.en_erreur || []).length) c.append(h("div", {class: "sous", style: "margin-top:10px"}, "En difficulté (ils réessaient seuls) : " + r.en_erreur.join(", ")));
+    zone.append(c);
+  }
+  zone.append(carte("Veille marchés mondiaux", null,
+    m && m.texte ? h("div", {class: "texte"}, m.texte) : h("div", {class: "vide"}, "Pas déployée (bots marches-demarrer).")));
+}
+
+function bouton(icone, titre, detail, action, confirmation, danger) {
+  return h("button", {class: "action" + (danger ? " danger" : ""), onclick: async () => {
+    if (confirmation && !confirmation()) return;
+    try {
+      const r = await appel("/app/api/action", {method: "POST", body: JSON.stringify({action})});
+      toast(r.message || "C'est fait.");
+      setTimeout(() => charger(true), 1500);
+    } catch (e) {
+      if (e.acces) return deconnecter(e.message);
+      toast("Échec : " + e.message);
+    }
+  }}, h("span", {class: "ic", "aria-hidden": "true"}, icone), h("span", {}, titre, h("small", {}, detail)));
+}
+
+function ecranCommandes(zone) {
+  const p = (donnees || {}).principal || {}, w = (donnees || {}).v17 || {};
+  zone.append(carte("Bot principal", p.arret_manuel ? puce("achats arrêtés", "att") : puce("achats actifs", "ok"),
+    bouton("⏸", "Arrêter les achats", "Les achats en cours restent protégés chez Binance (/stop).", "principal_stop",
+      () => confirm("Arrêter les nouveaux achats du bot principal ?")),
+    bouton("▶️", "Reprendre les achats", "(/reprise)", "principal_reprise"),
+    p.disjoncteur ? bouton("🔁", "Réarmer la sécurité générale", "Après avoir compris pourquoi elle s'est déclenchée (/rearmer).",
+      "principal_rearmer", () => confirm("Réarmer la sécurité générale du bot principal ?")) : null,
+    bouton("🚨", "Tout vendre", "Revend toutes les positions du bot principal et arrête les achats (/vendre_tout).",
+      "principal_vendre_tout", () => (prompt("Pour tout revendre maintenant, écris VENDRE :") || "").trim().toUpperCase() === "VENDRE", true),
+    h("div", {class: "sous", style: "margin-top:10px"}, "Appliqué par le bot dans les 20 secondes ; confirmation sur Telegram.")));
+  zone.append(carte("Moteur v17", w.paused ? puce("achats en pause", "att") : puce("achats actifs", "ok"),
+    bouton("⏸", "Mettre les achats en pause", "Ventes et protections continuent (/v17 stop).", "v17_stop",
+      () => confirm("Mettre en pause les achats de la v17 ?")),
+    bouton("▶️", "Reprendre les achats", "Lève aussi une pause automatique (/v17 reprise).", "v17_reprise")));
+
+  const auto = stock.lire("auto", "1") === "1";
+  const theme = stock.lire("theme", "auto");
+  zone.append(carte("Réglages", null,
+    ligne("Actualisation automatique (20 s)", h("input", {type: "checkbox", checked: auto, "aria-label": "Actualisation automatique",
+      style: "width:22px;height:22px", onchange: (e) => { stock.ecrire("auto", e.target.checked ? "1" : "0"); planifier(); }})),
+    ligne("Apparence", h("select", {"aria-label": "Apparence", style: "font:inherit;padding:6px;border-radius:8px;background:var(--carte-2);color:var(--texte);border:0",
+      onchange: (e) => { stock.ecrire("theme", e.target.value); appliquerTheme(); }},
+      ...[["auto", "Automatique"], ["light", "Clair"], ["dark", "Sombre"]].map(([v, t]) => h("option", {value: v, selected: v === theme}, t)))),
+    h("button", {class: "action danger", onclick: () => { if (confirm("Oublier le code d'accès sur ce téléphone ?")) deconnecter(); }},
+      h("span", {class: "ic", "aria-hidden": "true"}, "🔑"), h("span", {}, "Se déconnecter", h("small", {}, "Le code sera redemandé.")))));
+}
+
+// ================================================================ connexion / navigation
+function deconnecter(message) {
+  code = ""; stock.effacer("code"); stock.effacer("dernier"); donnees = null;
+  clearInterval(minuterie);
+  document.getElementById("appli").hidden = true;
+  document.getElementById("connexion").hidden = false;
+  document.getElementById("erreur-connexion").textContent = message || "";
+}
+
+function entrer() {
+  document.getElementById("connexion").hidden = true;
+  document.getElementById("appli").hidden = false;
+  afficher(); charger(); planifier();
+}
+
+function planifier() {
+  clearInterval(minuterie);
+  if (stock.lire("auto", "1") === "1") minuterie = setInterval(() => { if (!document.hidden && onglet !== "journal") charger(true); }, 20000);
+}
+
+function appliquerTheme() {
+  const t = stock.lire("theme", "auto");
+  if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.dataset.theme = t;
+}
+
+document.getElementById("form-code").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  code = document.getElementById("code").value.trim();
+  const msg = document.getElementById("erreur-connexion");
+  msg.textContent = "Vérification…";
+  try {
+    await appel("/app/api/verifier");
+    stock.ecrire("code", code); msg.textContent = ""; entrer();
+  } catch (err) { msg.textContent = err.acces ? err.message : "Serveur injoignable : " + err.message; }
+});
+document.getElementById("voir-demo").addEventListener("click", () => { location.href = "/app/?demo=1"; });
+document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
+  onglet = b.dataset.onglet; afficher(); window.scrollTo(0, 0);
+}));
+document.getElementById("rafraichir").addEventListener("click", () => (onglet === "journal" ? afficher() : charger()));
+document.addEventListener("visibilitychange", () => { if (!document.hidden && (code || DEMO)) charger(true); });
+
+// ================================================================ démonstration (?demo=1)
+function demo(chemin, options) {
+  const t = Date.now() / 1000;
+  if (chemin.startsWith("/app/api/action")) return Promise.resolve({ok: true, message: "Démonstration : aucune commande envoyée."});
+  if (chemin.startsWith("/app/api/verifier")) return Promise.resolve(null);
+  if (chemin.startsWith("/app/api/journal")) {
+    const l = [];
+    for (let i = 30; i > 0; i--) {
+      const d = new Date((t - i * 60) * 1000).toISOString().replace("T", " ").slice(0, 19);
+      l.push(i === 12 ? `${d} | ⚠️ Réseau instable (binance GET /api/v3/klines timeout), essai 1`
+        : i === 11 ? `${d} | ✅ La connexion à Binance est revenue.`
+        : `${d} | BTC/USDT {'status': 'no_trade', 'price': ${(64000 + i * 12).toFixed(2)}, 'score': 0.4${i % 9}}`);
+    }
+    return Promise.resolve({source: "demo", lignes: l});
+  }
+  const courbe = []; let v = 1000;
+  for (let i = 0; i < 120; i++) { v += Math.sin(i / 9) * 1.6 + 0.35; courbe.push([t - (120 - i) * 900, +v.toFixed(2)]); }
+  return Promise.resolve({
+    ts: t, alertes: [],
+    services: {principal: "active", v17: "active", tr: "active", marches: "active", renseignement: "activating", api: "active"},
+    principal: {compte: "demo", vivant: true, age_battement_s: 14, arret_manuel: false, arret_jour: false, disjoncteur: null,
+      niveau_risque: "SÛR", reseau_ko: false, latent: 23.4, palier: 1, positions: [
+        {symbole: "SOL/USDT", entree: 148.2, quantite: 0.67, valeur_entree: 99.3, stop: 143.1, objectif: 158.9, securise: true, essai: false, protege: true, ouvert: t - 7200},
+        {symbole: "ETH/USDT", entree: 2512.4, quantite: 0.02, valeur_entree: 50.2, stop: 2440, objectif: 2680, securise: false, essai: true, protege: true, ouvert: t - 26000}]},
+    v17: {mode: "demo", alive: true, heartbeat_age_s: 31, network_failures: 0, paused: false, kill_switch: false, pending: null,
+      cash: 845.1, equity: v, start_equity: 1000, realized_pnl: 12.6, today: {buys: 2, sells: 1, realized_pnl: 4.2},
+      positions: [{symbol: "BTC/USDT", qty: 0.0024, entry: 63890, price: 64410, value: 154.6, pnl_pct: 0.81}],
+      ordres: [{ts: t - 900, symbole: "BTC/USDT", cote: "buy", qte: 0.0024, prix: 63890, statut: "filled"},
+        {ts: t - 5400, symbole: "ETH/USDT", cote: "sell", qte: 0.04, prix: 2530, statut: "filled"},
+        {ts: t - 9000, symbole: "ETH/USDT", cote: "buy", qte: 0.04, prix: 2490, statut: "risk_rejected"}],
+      courbe},
+    renseignement: {bots: 48, actifs: 45, faits_24h: 3120, sources_24h: 212, climat: -0.34, confiance: 0.71, en_erreur: ["gdelt-asie"],
+      alertes: [{titre: "Banque centrale : décision de taux attendue jeudi", niveau: 2, ts: t - 3600}]},
+    marches: {texte: "🌍 Briefing : marchés européens stables, volatilité en baisse.\n\n⭐ Top du moment :\n• LVMH 4/5 · moment d'achat\n• Apple 3/5 · neutre"},
+  });
+}
+
+// ================================================================ démarrage
+appliquerTheme();
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "127.0.0.1" || location.hostname === "localhost")) {
+  navigator.serviceWorker.register("/app/sw.js", {scope: "/app/"}).catch(() => {});
+}
+if (DEMO || code) entrer(); else deconnecter();
+</script>
+</body>
+</html>

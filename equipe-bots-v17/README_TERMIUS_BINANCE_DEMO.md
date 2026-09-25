@@ -13,6 +13,7 @@ bots increvable                               # une fois après la mise à jour 
 ```
 
 V17.6 « increvable » : voir `INCREVABLE.md`.
+Application iPhone : `bots app` puis voir `APPLI_IPHONE.md`.
 
 Les clés : celles du bot principal (même compte démo), sauf si tu mets `V17_API_KEY` / `V17_API_SECRET`.
 Les scripts `termius_demo_*.sh` détectent ce serveur et passent la main à `bots` : pas de `nohup` en root,

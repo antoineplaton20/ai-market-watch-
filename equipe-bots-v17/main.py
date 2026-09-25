@@ -80,8 +80,18 @@ def traiter_approbation(etat, ident, accepte):
             alerte("Palier refusé : le capital autorisé ne change pas.")
 
 
+def _commandes_app():
+    """Commandes de l'application iPhone (file commandes_app.txt, liste blanche)."""
+    try:
+        from v17_ops import commandes_app
+        return commandes_app.lire()
+    except Exception as e:
+        log(f"Commandes de l'application illisibles : {e}")
+        return []
+
+
 def traiter_commandes(ex, etat):
-    for c in commandes():
+    for c in commandes() + _commandes_app():
         morceaux = c.split()
         cmd, arg = morceaux[0], (morceaux[1] if len(morceaux) > 1 else None)
         if cmd == "/stop":

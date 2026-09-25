@@ -1,15 +1,18 @@
-"""API de supervision V17 (lecture seule). Écoute sur 127.0.0.1 : jamais exposée sur Internet.
-Depuis le téléphone : redirection de port dans Termius (port 8080 du serveur), puis http://127.0.0.1:8080/state"""
+"""API de supervision V17. Écoute sur 127.0.0.1 : jamais exposée sur Internet.
+Les routes historiques (/state, /orders...) sont en lecture seule. L'application iPhone (/app, voir mobile.py)
+exige le code V17_APP_TOKEN ; depuis le téléphone : Tailscale (HTTPS privé) ou redirection de port Termius."""
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
 
 from .. import rapport
+from . import mobile
 from ..core.config import settings
 from ..core.store import OpsStore
 
 app = FastAPI(title='Trading Army V17 OPS', version='17.1.0')
 store = OpsStore(settings.ops_db)
+app.include_router(mobile.router)
 
 
 @app.get('/health')

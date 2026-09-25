@@ -346,6 +346,49 @@ Depuis le téléphone : Termius > Port Forwarding > Local, port $(lire_env V17_A
 puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" ;;
   v17-api-arreter)
     systemctl disable --now $SERVICE_V17_API > /dev/null 2>&1; echo -e "${J}API v17 arrêtée.${N}" ;;
+  app|app-nouveau-code)
+    # Application iPhone : code d'accès + API (127.0.0.1) + lien HTTPS privé par Tailscale.
+    [ -d "$DOSSIER/v17_ops" ] || { echo -e "${R}Version sans application : fais d'abord la mise à jour.${N}"; exit 1; }
+    CODE=$(lire_env V17_APP_TOKEN "")
+    if [ "$1" = app-nouveau-code ] || [ ${#CODE} -lt 16 ]; then
+      CODE=$(od -An -N18 -tx1 /dev/urandom | tr -d ' \n')
+      regler_env V17_APP_TOKEN "$CODE"
+      echo -e "${J}Nouveau code d'accès créé (l'ancien ne marche plus).${N}"
+    fi
+    PORT=$(lire_env V17_API_PORT 8080)
+    service_v17_api > /dev/null && sleep 3
+    systemctl is-active --quiet $SERVICE_V17_API \
+      || { echo -e "${R}L'API ne démarre pas :${N}"; journalctl -u $SERVICE_V17_API -n 20 --no-pager; exit 1; }
+    ADRESSE=""
+    if command -v tailscale > /dev/null 2>&1 && tailscale status > /dev/null 2>&1; then
+      tailscale serve --bg "$PORT" > /dev/null 2>&1 || tailscale serve --bg --https=443 "http://127.0.0.1:$PORT" > /dev/null 2>&1 \
+        || echo -e "${J}Tailscale serve a échoué : active « HTTPS Certificates » dans la console Tailscale (DNS), puis relance bots app.${N}"
+      NOM=$(tailscale status --json 2> /dev/null | "$DOSSIER/.venv/bin/python" -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))' 2> /dev/null)
+      [ -n "$NOM" ] && ADRESSE="https://$NOM/app/"
+    fi
+    echo -e "${V}✔ Application iPhone prête.${N}"
+    echo
+    if [ -n "$ADRESSE" ]; then
+      echo "  1) iPhone : installe l'app Tailscale (App Store), connecte-toi avec le MÊME compte."
+      echo "  2) Safari : $ADRESSE"
+    else
+      echo "  Accès depuis l'iPhone, au choix :"
+      echo "   • Recommandé (HTTPS privé, fonctionne partout) : bots app-tailscale"
+      echo "   • Dépannage : Termius > Port Forwarding > Local, port $PORT vers 127.0.0.1:$PORT,"
+      echo "     puis Safari : http://127.0.0.1:$PORT/app/   (seulement pendant que Termius est ouvert)"
+    fi
+    echo "  3) Safari > Partager > « Sur l'écran d'accueil » : l'icône « Bots » apparaît."
+    echo -e "  4) Code d'accès à saisir une fois : ${V}$CODE${N}"
+    echo "     (ne le partage pas ; nouveau code : bots app-nouveau-code)" ;;
+  app-tailscale)
+    # Réseau privé chiffré entre le serveur et ton iPhone : aucun port ouvert sur Internet.
+    if ! command -v tailscale > /dev/null 2>&1; then
+      echo "Installation de Tailscale..."
+      curl -fsSL https://tailscale.com/install.sh | sh || { echo -e "${R}Installation impossible.${N}"; exit 1; }
+    fi
+    echo "Connexion du serveur à ton compte Tailscale : ouvre le lien affiché, sur ton téléphone ou ailleurs."
+    tailscale up || { echo -e "${R}Connexion Tailscale non terminée.${N}"; exit 1; }
+    exec "$0" app ;;
   increvable)
     # Réécrit toutes les unités avec la relance sans fin et redémarre ce qui était en service.
     service_principal; systemctl restart $SERVICE
@@ -422,6 +465,10 @@ Télécommande de l'équipe de bots (à taper sur le serveur) :
                                          (ou un lien Drive ; vérifiée, retour arrière automatique)
   bots version         version installée
   bots increvable      relance sans fin de tous les services (à faire une fois après la mise à jour)
+Application iPhone (tableau de bord + commandes, voir APPLI_IPHONE.md) :
+  bots app             prépare l'application et affiche l'adresse et le code d'accès
+  bots app-tailscale   installe Tailscale : accès HTTPS privé depuis l'iPhone, partout
+  bots app-nouveau-code   change le code d'accès (l'ancien ne marche plus)
 Veille Trade Republic (signaux manuels) :
   bots tr-test         test en direct : liste officielle TR + Yahoo Finance
   bots tr-univers      relire la liste officielle maintenant (ou : bots tr-univers /root/liste.pdf)
