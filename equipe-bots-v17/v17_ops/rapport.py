@@ -36,13 +36,18 @@ def etat(store=None, settings=None):
         'mode': mode, 'symbols': hb.get('symbols', list(s.symbols)), 'timeframe': hb.get('timeframe', s.timeframe),
         'alive': age is not None and age < 3 * s.interval + 120, 'heartbeat_age_s': age,
         'network_failures': int(hb.get('network_failures', 0) or 0),
-        'paused': bool(store.get('pause', False)), 'kill_switch': s.kill_switch,
+        'paused': bool(store.get('pause', False)) or time.time() < float(store.get('pause_until', 0) or 0),
+        'kill_switch': s.kill_switch,
         'pending': store.get(f'pending:{mode}'),
         'cash': book.cash, 'equity': book.equity(prices), 'start_equity': depart,
         'realized_pnl': book.realized_pnl, 'positions': positions,
         'today': {'buys': len(ordres) - len(ventes), 'sells': len(ventes),
                   'realized_pnl': sum(float(o['payload'].get('pnl', 0) or 0) for o in ventes)},
     }
+
+
+def s_auto(settings=None):
+    return bool(getattr(settings or SETTINGS, 'auto_reconcile', False))
 
 
 def texte_statut(store=None, settings=None):
@@ -59,8 +64,10 @@ def texte_statut(store=None, settings=None):
         lignes.append(f"⚠️ Binance ne répond pas depuis {e['network_failures']} tour(s) : la v17 attend")
     if e['pending']:
         p = e['pending']
+        auto = e['mode'] in ('demo', 'testnet') and s_auto(settings)
         lignes.append(f"⛔ BLOQUÉE : rapprochement requis ({p.get('symbol', '?')} · {p.get('reason') or p.get('side', '?')}). "
-                      "Aucun ordre, ventes et protection comprises. Termius : bots v17-rapprochement")
+                      + ("Rapprochement automatique avec Binance en cours (essai chaque minute)."
+                         if auto else "Aucun ordre, ventes et protection comprises. Termius : bots v17-rapprochement"))
     if e['kill_switch']:
         lignes.append("⛔ KILL_SWITCH actif : aucun ordre")
     elif e['paused']:
@@ -85,6 +92,8 @@ def regler_pause(active, store=None, settings=None):
     s = settings or SETTINGS
     store = _store(store, s)
     store.set('pause', bool(active))
+    if not active:
+        store.set('pause_until', 0)                    # /v17 reprise lève aussi une pause automatique
     store.event('pause', {'active': bool(active)})
     return ("⏸ v17 : achats en pause. Les ventes et la protection continuent. Pour reprendre : /v17 reprise"
             if active else "▶️ v17 : les achats reprennent.")

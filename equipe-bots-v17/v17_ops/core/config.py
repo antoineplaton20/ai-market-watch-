@@ -90,6 +90,8 @@ class Settings:
     telegram: bool = True
     demo_only: bool = False
     renseignement: bool = True           # consulter l'armée de renseignement avant chaque achat
+    auto_reconcile: bool = True          # démo/testnet : lever seul un blocage en interrogeant Binance
+    slippage_pause_min: float = 60.0     # pause des achats après un glissement excessif (0 = jusqu'à /v17 reprise)
 
     def __post_init__(self):
         positive = ('capital_max_usdt', 'max_order_usdt', 'max_position_usdt',
@@ -107,6 +109,8 @@ class Settings:
             raise ValueError('score_min hors limites')
         if self.max_open_orders < 1 or self.min_order_usdt > self.max_order_usdt:
             raise ValueError('limites d’ordre incohérentes')
+        if not math.isfinite(self.slippage_pause_min) or self.slippage_pause_min < 0:
+            raise ValueError('slippage_pause_min hors limites')
 
     # Compatibilité V17 d'origine : un seul symbole
     @property
@@ -119,8 +123,29 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
+        return cls.tolerant(**cls._env())
+
+    @classmethod
+    def tolerant(cls, **valeurs) -> "Settings":
+        """Construit les réglages SANS jamais faire tomber le moteur : une valeur invalide du .env est
+        remplacée par sa valeur par défaut, et la correction est notée dans CORRECTIONS (signalée au démarrage)."""
+        try:
+            return cls(**valeurs)
+        except ValueError:
+            pass
+        retenus = {}
+        for nom, valeur in valeurs.items():
+            try:
+                cls(**{**retenus, nom: valeur})
+                retenus[nom] = valeur
+            except ValueError:
+                CORRECTIONS.append(f"{nom}={valeur!r} invalide : valeur par défaut utilisée")
+        return cls(**retenus)
+
+    @classmethod
+    def _env(cls) -> dict:
         mode = _txt("V17_MODE", defaut="paper").lower()
-        return cls(
+        return dict(
             mode=mode if mode in MODES else "paper",
             symbols=_symboles(_txt("V17_SYMBOLS", "SYMBOL", defaut="BTC/USDT")),
             timeframe=_txt("V17_TIMEFRAME", defaut="15m"),
@@ -151,7 +176,10 @@ class Settings:
             telegram=_bool("V17_TELEGRAM", defaut=True),
             demo_only=_bool("V17_DEMO_ONLY", defaut=False),
             renseignement=_bool("V17_RENSEIGNEMENT", defaut=True),
+            auto_reconcile=_bool("V17_AUTO_RECONCILE", defaut=True),
+            slippage_pause_min=_float("V17_SLIPPAGE_PAUSE_MIN", defaut=60),
         )
 
 
+CORRECTIONS: list[str] = []             # réglages du .env invalides remplacés par leur valeur par défaut
 settings = Settings.from_env()

@@ -7,7 +7,10 @@ Règles de fonctionnement (spot, jamais de levier, jamais de vente à découvert
 - vente de toute la position sur signal de vente, ou si la protection (V17_STOP_LOSS_PCT) est touchée ;
 - un signal de vente sans position ne fait rien (le spot ne permet pas de vendre ce qu'on n'a pas) ;
 - /v17 stop (Telegram) bloque les achats ; les ventes et la protection continuent ; KILL_SWITCH=1 bloque tout ;
-- le portefeuille et la dernière bougie traitée sont enregistrés : un redémarrage ne rejoue rien.
+- le portefeuille et la dernière bougie traitée sont enregistrés : un redémarrage ne rejoue rien ;
+- démo / testnet : un ordre au résultat incertain (coupure réseau pendant l'envoi) ou un solde incohérent est
+  rapproché AUTOMATIQUEMENT en interrogeant Binance (identifiant client de l'ordre), puis le moteur reprend seul.
+  En argent réel, le rapprochement reste manuel.
 """
 from __future__ import annotations
 
@@ -30,6 +33,10 @@ from ..strategies.ensemble import Ensemble
 
 HISTORIQUE = 300
 BOUGIES_MIN = 30
+RAPPROCHEMENT_PAUSE_S = 60        # au plus une interrogation de Binance par minute pendant un blocage
+AGE_ORDRE_INCONNU_S = 120         # ordre inconnu de Binance après 2 min : il n'est jamais parti
+AGE_SOLDE_S = 600                 # solde incohérent confirmé pendant 10 min avant de corriger le carnet
+MODES_AUTO_RAPPROCHEMENT = ('demo', 'testnet')
 
 RAISONS = {
     'order_notional_limit': "montant hors limites (MAX_ORDER_USDT)",
@@ -118,6 +125,7 @@ class OpsEngine:
         self.closes = {sym: [] for sym in self.symbols}
         self.prices = {}
         self._rejets = {}
+        self._prochain_rapprochement = 0.0
         self.last_candle = dict(self.store.get(f'last_candle:{self.mode}', {}) or {})
         self.store.event('engine_started', {'mode': self.mode, 'symbols': self.symbols,
                                             'timeframe': self.settings.timeframe})
@@ -130,7 +138,9 @@ class OpsEngine:
         return self._market
 
     def paused(self):
-        return bool(self.store.get('pause', False))
+        if self.store.get('pause', False):                     # /v17 stop : jusqu'à /v17 reprise
+            return True
+        return time.time() < float(self.store.get('pause_until', 0) or 0)   # pause automatique temporaire
 
     def _save_book(self):
         self.store.set(self._cle_book, self.book.to_dict())
@@ -174,7 +184,7 @@ class OpsEngine:
     def tick(self, symbol, price=None):
         if symbol not in self.symbols:
             return {'status': 'rejected', 'reason': 'unknown_symbol'}
-        if self.store.get(f'pending:{self.mode}'):
+        if self.store.get(f'pending:{self.mode}') and not self.rapprocher():
             return {'status': 'reconciliation_required', 'reason': 'uncertain_execution'}
         if price is not None and self.mode != 'paper':
             return {'status': 'invalid_data', 'reason': 'injected_price_requires_paper'}
@@ -316,7 +326,10 @@ class OpsEngine:
             return {'status': 'error', 'error': str(e)}
         self._finish_execution()
         if (px / price - 1) * 100 > s.max_slippage_pct:
-            self.store.set('pause', True)
+            if s.slippage_pause_min > 0:                        # pause temporaire : les achats reprennent seuls
+                self.store.set('pause_until', time.time() + s.slippage_pause_min * 60)
+            else:
+                self.store.set('pause', True)
             self.store.event('slippage_breach', {'symbol': symbol, 'reference': price, 'fill': px})
         self.store.order(intent.id, symbol, 'buy', qte, px, 'filled', oid,
                          {'score': score, 'risk_check_id': rd.risk_check_id, 'notional': qte * px})
@@ -343,10 +356,13 @@ class OpsEngine:
         # A missing/free balance may be locked, transferred or manually sold.
         # Do not invent sale proceeds or erase inventory.
         self.store.set(f'pending:{self.mode}', {'symbol': symbol, 'side': 'reconcile',
-                                              'reason': 'balance_mismatch', 'qty': qte})
+                                              'reason': 'balance_mismatch', 'qty': qte,
+                                              'created_at': time.time()})
         self.store.event('reconciliation_required', {'symbol': symbol, 'qty': qte})
+        auto = self.mode in MODES_AUTO_RAPPROCHEMENT and self.settings.auto_reconcile
         self.notifier.erreur(f'balance-{symbol}',
-                            f"⚠️ Solde {symbol} incohérent : rapprochement requis, carnet conservé.")
+                            f"⚠️ Solde {symbol} incohérent : rapprochement requis, carnet conservé."
+                            + (f" Correction automatique si cela dure {AGE_SOLDE_S // 60} min." if auto else ""))
         return {'status': 'reconciliation_required', 'reason': 'balance_mismatch', 'price': price}
 
     def _sell(self, symbol, price, motif, score=None):
@@ -385,3 +401,91 @@ class OpsEngine:
         self.notifier.send(f"🔴 VENTE {symbol.split('/')[0]} à {prix(px)} $ · résultat {dollars(pnl, True)} "
                            f"({pct((px / pru - 1) * 100)}) · {texte_motif} · {NOMS_MODES[self.mode]}")
         return {'status': 'filled', 'price': px, 'side': 'sell', 'qty': qte, 'order_id': oid, 'pnl': pnl}
+
+    # ------------------------------------------------------ rapprochement auto
+    def rapprocher(self):
+        """Lève un blocage « rapprochement requis » en interrogeant Binance (démo / testnet uniquement).
+
+        Renvoie True si plus rien ne bloque. Toute erreur (réseau...) laisse le blocage en place : nouvel essai
+        une minute plus tard. En argent réel, rien n'est fait automatiquement."""
+        cle = f'pending:{self.mode}'
+        p = self.store.get(cle)
+        if not p:
+            return True
+        if self.mode not in MODES_AUTO_RAPPROCHEMENT or not self.settings.auto_reconcile:
+            return False
+        maintenant = time.time()
+        if maintenant < self._prochain_rapprochement:
+            return False
+        self._prochain_rapprochement = maintenant + RAPPROCHEMENT_PAUSE_S
+        try:
+            issue = self._resoudre(p, maintenant)
+        except Exception as ex:
+            self.store.event('auto_reconcile_error', {'pending': p, 'error': f"{type(ex).__name__}: {ex}"[:300]})
+            return False
+        if issue is None:
+            return False
+        self.store.event('auto_reconciled', {'pending': p, 'issue': issue})
+        self.notifier.send(f"🔓 Blocage levé automatiquement : {issue}. La v17 reprend.", important=False)
+        return True
+
+    def _resoudre(self, p, maintenant):
+        """-> texte de l'issue si le blocage est levé, None s'il faut attendre."""
+        symbole = p.get('symbol')
+        if symbole not in self.book.positions and symbole not in self.symbols:
+            return None
+        base = symbole.split('/')[0]
+        age = maintenant - float(p.get('created_at') or 0)
+        cote = p.get('side')
+        if cote in ('buy', 'sell') and p.get('intent_id'):
+            lookup = getattr(self.adapter, 'lookup_order', None)
+            if lookup is None:
+                return None
+            o = lookup(symbole, p['intent_id'].replace('-', '')[:32])
+            if o is None:
+                if age < AGE_ORDRE_INCONNU_S:
+                    return None
+                self._finish_execution()
+                return f"l'ordre {base} n'a jamais atteint Binance, rien n'a été exécuté"
+            if o['status'] not in ('closed', 'canceled', 'expired', 'rejected'):
+                return None
+            if o['qty'] <= 0:
+                self._finish_execution()
+                return f"ordre {base} clos par Binance sans exécution"
+            if o['price'] <= 0:
+                return None
+            fee = self.settings.fee_rate
+            if cote == 'buy':
+                qte, pnl = o['qty'], None
+                self.book.execute(symbole, 'buy', qte, o['price'], fee_rate=fee, strict=False)
+            else:
+                qte = min(o['qty'], self.book.positions.get(symbole, 0.0))
+                pnl = self.book.execute(symbole, 'sell', qte, o['price'], fee_rate=fee)['pnl'] if qte > 0 else 0.0
+            self._finish_execution()
+            self.store.order(p['intent_id'], symbole, cote, qte, o['price'], 'filled', o['id'],
+                             {'reason': 'auto_reconcile', 'pnl': pnl})
+            return (f"{'achat' if cote == 'buy' else 'vente'} {base} confirmé par Binance "
+                    f"({qte:.8g} à {prix(o['price'])} $), carnet mis à jour")
+        if cote == 'reconcile':                                   # solde du compte inférieur au carnet
+            if age < AGE_SOLDE_S:
+                return None
+            qte = self.book.positions.get(symbole, 0.0)
+            if qte <= 0:
+                self._finish_execution()
+                return f"position {base} déjà soldée"
+            libre = max(0.0, self.adapter.free(base))
+            reference = self.prices.get(symbole) or self.book.avg_cost.get(symbole, 0.0)
+            garde = min(qte, libre)
+            if garde * reference < max(1.0, self.adapter.min_cost(symbole)):
+                garde = 0.0
+            retire = qte - garde
+            if retire > 0:                                        # sortie inconnue : aucune recette inventée
+                part = retire / qte
+                self.book.positions[symbole] = garde
+                self.book.entry_fees[symbole] = self.book.entry_fees.get(symbole, 0.0) * (1 - part)
+            self._finish_execution()
+            self.store.event('position_written_off', {'symbol': symbole, 'removed': retire, 'kept': garde})
+            if garde <= 0:
+                return f"{base} absent du compte Binance : retiré du carnet de la v17 (aucune vente inventée)"
+            return f"carnet {base} aligné sur le compte Binance ({garde:.8g} conservés)"
+        return None

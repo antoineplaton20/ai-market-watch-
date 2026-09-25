@@ -104,3 +104,27 @@ class CCXTAdapter:
                 or filled <= 0 or filled > amount * (1 + 1e-8) or average <= 0):
             raise RuntimeError('unconfirmed_execution: reconciliation required')
         return {'id': str(o['id']), 'qty': filled, 'price': average, 'raw': o}
+
+    def lookup_order(self, symbol, client_order_id):
+        """Rapprochement : que sait Binance de l'ordre envoyé avec cet identifiant client ?
+
+        -> None si Binance ne connaît pas l'ordre (il n'est jamais parti) ;
+        -> {'id', 'status', 'qty', 'price'} sinon. Un ordre encore ouvert est annulé d'abord, pour que
+           la quantité exécutée soit définitive."""
+        import ccxt
+        self._load()
+        try:
+            o = self.exchange.fetch_order(None, symbol, {'origClientOrderId': client_order_id})
+        except ccxt.OrderNotFound:
+            return None
+        if o.get('status') == 'open' and o.get('id'):
+            try:
+                self.exchange.cancel_order(o['id'], symbol)
+            except ccxt.OrderNotFound:
+                pass
+            o = self.exchange.fetch_order(o['id'], symbol)
+        filled = float(o.get('filled') or 0)
+        average = float(o.get('average') or (float(o.get('cost') or 0) / filled if filled else 0))
+        if not math.isfinite(filled) or not math.isfinite(average) or filled < 0:
+            raise RuntimeError('réponse Binance invalide pendant le rapprochement')
+        return {'id': str(o.get('id') or ''), 'status': o.get('status'), 'qty': filled, 'price': average}

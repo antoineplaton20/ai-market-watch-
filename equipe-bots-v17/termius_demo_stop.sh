@@ -8,9 +8,20 @@ if [ -f /etc/systemd/system/equipe-bots.service ] && command -v bots > /dev/null
   echo "Serveur de la plateforme détecté : arrêt avec « bots v17-arreter »."
   exec bots v17-arreter
 fi
-if [ -f runtime/v17_demo.pid ]; then
-  PID="$(cat runtime/v17_demo.pid)"
-  if kill -0 "$PID" 2>/dev/null; then kill "$PID"; fi
-  rm -f runtime/v17_demo.pid
+mkdir -p runtime
+touch runtime/v17_demo.stop                        # le superviseur et le cron ne relancent plus rien
+if command -v crontab > /dev/null 2>&1; then
+  crontab -l 2>/dev/null | grep -vF "$ROOT' && ./termius_demo_start.sh --auto" | crontab - 2>/dev/null || true
 fi
-echo "V17 Demo arrêtée."
+for f in runtime/v17_superviseur.pid runtime/v17_demo.pid; do
+  if [ -f "$f" ]; then
+    PID="$(cat "$f")"
+    if kill -0 "$PID" 2>/dev/null; then kill "$PID"; fi
+  fi
+done
+for _ in $(seq 30); do
+  { [ -f runtime/v17_demo.pid ] && kill -0 "$(cat runtime/v17_demo.pid)" 2>/dev/null; } || break
+  sleep 1
+done
+rm -f runtime/v17_demo.pid runtime/v17_superviseur.pid
+echo "V17 Demo arrêtée (plus de relance automatique). Relancer : ./termius_demo_start.sh"

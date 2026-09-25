@@ -5,6 +5,7 @@ import datetime as dt
 import subprocess
 import sys
 import time
+import traceback
 import ccxt
 import config
 import approbations
@@ -603,17 +604,72 @@ def taches_horaires(ex, etat):
     paliers.proposer(etat)
 
 
+_derniers_signalements = {}
+ERREURS_AVANT_REDEMARRAGE = 20        # ~1 h d'erreurs consécutives (attentes plafonnées à 5 min)
+
+
+def _prevenir(msg, important=True):
+    """Telegram ne doit jamais faire tomber le bot."""
+    try:
+        alerte(msg, important=important)
+    except Exception as e:
+        log(f"{msg} (Telegram indisponible : {e})")
+
+
+def _signaler(cle, msg, fenetre_s=3600):
+    """Erreur répétitive : au plus un message Telegram par heure et par cause (sinon journal seulement)."""
+    if time.time() - _derniers_signalements.get(cle, 0) < fenetre_s:
+        log(msg)
+        return
+    _derniers_signalements[cle] = time.time()
+    _prevenir(msg, important=False)
+
+
+def _etape(nom, fonction, *args, **kwargs):
+    """Exécute une tâche annexe : en cas d'erreur, on journalise, on prévient (1 fois/h) et la boucle continue."""
+    try:
+        return fonction(*args, **kwargs)
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        log(f"Erreur ({nom}) : {traceback.format_exc()[-1500:]}")
+        _signaler(f"etape-{nom}", f"⚠️ {nom} : {type(e).__name__} {str(e)[:200]} — le trading continue.")
+        return None
+
+
+def demarrer_connexion():
+    """Connexion à Binance au démarrage : réessaie sans fin (attente croissante, plafonnée à 5 min)."""
+    essai = 0
+    while True:
+        try:
+            ex = connecter()
+            if essai >= 3:
+                _prevenir("✅ Binance joignable : le bot démarre.", important=False)
+            return ex
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            essai += 1
+            attente = min(300, 15 * 2 ** min(essai - 1, 5))
+            log(f"Connexion à Binance impossible ({type(e).__name__}: {e}) : nouvel essai dans {attente} s")
+            if essai == 3:
+                _prevenir(f"🔴 Binance injoignable au démarrage ({type(e).__name__}). Je réessaie en continu, "
+                          "message au retour de la connexion.", important=False)
+            _etape("signe de vie", securite.battement, "connexion à Binance...")
+            time.sleep(attente)
+
+
 def main():
     if not securite.prendre_verrou():
         log("⛔ Un autre bot tourne déjà dans ce dossier : arrêt (deux bots = ordres en double).")
         sys.exit(3)
     demarrage = time.time()
-    ex = connecter()
+    ex = demarrer_connexion()
     etat = charger_etat()
     etat.setdefault("palier_depuis", time.time())
-    ignorer_anciennes()
+    _etape("commandes", ignorer_anciennes)
     securite.battement("démarrage")
-    reconcilier(ex, etat, au_demarrage=True)
+    _etape("réconciliation", reconcilier, ex, etat, au_demarrage=True)
     sauver_etat(etat)
     if config.REEL:
         alerte(f"⚠️ ARGENT RÉEL : le bot peut engager au maximum {paliers.capital_autorise(etat):.0f} $ (palier {etat.get('palier', 0) + 1}).")
@@ -631,40 +687,56 @@ def main():
                "ce n'est pas parfait, pour apprendre de vrais résultats. Chaque achat d'essai est marqué 🧪. "
                "Bilan : /exploration", important=False)
     dernier_horaire = 0.0
+    erreurs_suite = 0
     while True:
         try:
-            traiter_commandes(ex, etat)
+            # Tâches annexes isolées : une panne (Telegram, évolution, rapport...) ne coupe JAMAIS le trading
+            _etape("commandes Telegram", traiter_commandes, ex, etat)
             capital = verifier_jour(ex, etat)
             surveiller(ex, etat)
+            # Garde-fous : s'ils échouent, pas d'achat ce tour-ci (la protection des positions a déjà tourné)
             disjoncteur.verifier(etat, etat.get("latent_modes", {}).get("strict", etat.get("latent", 0.0)))
             X.verifier_coupe_circuit(etat, paliers.capital_autorise(etat))
             niveau, mult_risque, _ = etat_risque.evaluer(etat)
             if time.time() - dernier_horaire >= 3600:
                 dernier_horaire = time.time()
-                taches_horaires(ex, etat)
+                _etape("tâches horaires", taches_horaires, ex, etat)
             if nouvelle_bougie(etat):
                 cycle_achat(ex, etat, capital, mult_risque)
-            evolution_auto(etat)
-            rapport_auto(etat)
-            securite.message_vivant(etat, capital, demarrage)
-            securite.sauvegarde_quotidienne(etat)
+            _etape("évolution", evolution_auto, etat)
+            _etape("rapport", rapport_auto, etat)
+            _etape("message de vie", securite.message_vivant, etat, capital, demarrage)
+            _etape("sauvegarde", securite.sauvegarde_quotidienne, etat)
             if etat.get("reseau_ko"):
                 etat["reseau_ko"] = False
-                alerte("✅ La connexion à Binance est revenue.")
+                _prevenir("✅ La connexion à Binance est revenue.")
             etat["echecs_reseau"] = 0
-            sauver_etat(etat)
-            securite.battement(f"{len(etat['positions'])} positions, risque {niveau}")
+            erreurs_suite = 0
         except ccxt.NetworkError as e:
             etat["echecs_reseau"] = etat.get("echecs_reseau", 0) + 1
             log(f"Réseau instable ({e}), essai {etat['echecs_reseau']}")
             if etat["echecs_reseau"] >= config.ECHECS_RESEAU_MAX and not etat.get("reseau_ko"):
                 etat["reseau_ko"] = True
-                alerte("🔴 La connexion à Binance est instable : aucun nouvel achat en attendant. "
-                       "Les achats en cours restent protégés chez Binance.")
-            time.sleep(30)
+                _prevenir("🔴 La connexion à Binance est instable : aucun nouvel achat en attendant. "
+                          "Les achats en cours restent protégés chez Binance.")
+            time.sleep(min(300, 30 * etat["echecs_reseau"]))
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
-            alerte(f"❗ Erreur : {e}")
-            time.sleep(60)
+            erreurs_suite += 1
+            log(f"Erreur de boucle : {traceback.format_exc()[-1500:]}")
+            _signaler(f"boucle-{type(e).__name__}", f"❗ Erreur : {e} (le bot continue)")
+            if erreurs_suite >= ERREURS_AVANT_REDEMARRAGE:
+                # Erreur qui persiste (> 1 h) : redémarrage à neuf (nouvelle connexion) par le chien de garde
+                _etape("sauvegarde de l'état", sauver_etat, etat)
+                _prevenir(f"♻️ Même erreur depuis plus d'une heure : je redémarre le bot à neuf ({type(e).__name__}).",
+                          important=False)
+                sys.exit(1)
+            time.sleep(min(300, 30 * erreurs_suite))
+        # Toujours sauvegarder l'état et donner signe de vie, même après une erreur : le chien de garde ne
+        # redémarre ainsi que les bots réellement figés.
+        _etape("sauvegarde de l'état", sauver_etat, etat)
+        _etape("signe de vie", securite.battement, f"{len(etat.get('positions', {}))} positions")
         time.sleep(config.INTERVALLE_BOUCLE_S)
 
 

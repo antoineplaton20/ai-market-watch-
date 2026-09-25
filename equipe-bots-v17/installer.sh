@@ -78,13 +78,16 @@ if [ "$ESSAI" != 1 ]; then
 Description=Equipe de bots crypto (chien de garde)
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=0
 
 [Service]
 User=$COMPTE
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python lanceur.py
-Restart=on-failure
-RestartSec=30
+Restart=always
+RestartSec=15
+RestartSteps=6
+RestartMaxDelaySec=300
 KillSignal=SIGINT
 TimeoutStopSec=60
 Environment=PYTHONUNBUFFERED=1

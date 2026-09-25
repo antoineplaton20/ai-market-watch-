@@ -389,7 +389,10 @@ def test_telecommande_connait_la_v17():
     for cmd in ("v17-etat", "v17-demarrer", "v17-arreter", "v17-journal", "v17-symboles", "v17-demo)",
                 "v17-fictif)", "v17-demo-test)"):
         assert cmd in texte
-    assert "RestartPreventExitStatus=2 3" in texte                    # réglage invalide / déjà lancée : pas de boucle
+    assert "RestartPreventExitStatus" not in texte                    # jamais d'abandon : réglage invalide = attente
+    assert "StartLimitIntervalSec=0" in texte and "StartLimitBurst" not in texte
+    assert "Restart=always" in texte and "Restart=on-failure" not in texte
+    assert "WatchdogSec=900" in texte and "service_principal" in texte and "increvable)" in texte
     assert subprocess.run(["bash", "-n", os.path.join(RACINE, "bots")]).returncode == 0
 
 

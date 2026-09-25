@@ -10,6 +10,37 @@ regler_env() {   # regler_env NOM valeur : remplace ou ajoute la ligne dans .env
   if grep -qE "^$1=" "$DOSSIER/.env"; then sed -i -E "s|^$1=.*|$1=$2|" "$DOSSIER/.env"; else echo "$1=$2" >> "$DOSSIER/.env"; fi
   chown bots:bots "$DOSSIER/.env"; chmod 600 "$DOSSIER/.env"
 }
+# Relance SANS FIN de chaque service (plantage, sortie inattendue, mémoire, moteur figé) : 15 s, puis attente
+# croissante jusqu'à 5 min. StartLimitIntervalSec=0 : systemd n'abandonne jamais. Seul « systemctl stop »
+# (bots arreter, bots v17-arreter...) arrête un service.
+RELANCE='Restart=always
+RestartSec=15
+RestartSteps=6
+RestartMaxDelaySec=300
+'
+service_principal() {   # bot principal (chien de garde lanceur.py) : unité réécrite à chaque mise à jour
+  [ -f "$DOSSIER/lanceur.py" ] || return 0
+  cat > /etc/systemd/system/$SERVICE.service << UNITE
+[Unit]
+Description=Equipe de bots crypto (chien de garde)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+User=bots
+WorkingDirectory=$DOSSIER
+ExecStart=$DOSSIER/.venv/bin/python lanceur.py
+${RELANCE}KillSignal=SIGINT
+TimeoutStopSec=60
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
+UNITE
+  systemctl daemon-reload
+  systemctl enable $SERVICE > /dev/null 2>&1
+}
 SERVICE_TR=equipe-bots-tr
 service_tr() {   # crée / met à jour le service de la veille Trade Republic et le (re)démarre
   if [ ! -f "$DOSSIER/veille_tr.py" ]; then
@@ -20,16 +51,13 @@ service_tr() {   # crée / met à jour le service de la veille Trade Republic et
 Description=Veille Trade Republic (signaux manuels, aucun ordre)
 After=network-online.target
 Wants=network-online.target
-StartLimitIntervalSec=3600
-StartLimitBurst=6
+StartLimitIntervalSec=0
 
 [Service]
 User=bots
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python veille_tr.py
-Restart=on-failure
-RestartSec=60
-Nice=10
+${RELANCE}Nice=10
 MemoryMax=1200M
 Environment=PYTHONUNBUFFERED=1
 
@@ -50,16 +78,13 @@ service_renseignement() {   # armée de renseignement : priorité BASSE (process
 Description=Armée de renseignement (recherche perpétuelle, aucun ordre)
 After=network-online.target
 Wants=network-online.target
-StartLimitIntervalSec=3600
-StartLimitBurst=6
+StartLimitIntervalSec=0
 
 [Service]
 User=bots
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python renseignement.py
-Restart=always
-RestartSec=60
-Nice=15
+${RELANCE}Nice=15
 CPUQuota=50%
 IOSchedulingClass=idle
 MemoryMax=700M
@@ -82,16 +107,13 @@ service_marches() {   # crée / met à jour le service de la veille marchés mon
 Description=Veille marchés mondiaux (presse, notes 0-5, aucun ordre)
 After=network-online.target
 Wants=network-online.target
-StartLimitIntervalSec=3600
-StartLimitBurst=6
+StartLimitIntervalSec=0
 
 [Service]
 User=bots
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python veille_marches.py
-Restart=on-failure
-RestartSec=60
-Nice=10
+${RELANCE}Nice=10
 MemoryMax=900M
 Environment=PYTHONUNBUFFERED=1
 
@@ -113,16 +135,14 @@ service_v17() {   # crée / met à jour le service du moteur v17 (portefeuille f
 Description=Moteur V17 (portefeuille fictif sur vrais prix Binance, signaux Telegram)
 After=network-online.target
 Wants=network-online.target
-StartLimitIntervalSec=3600
-StartLimitBurst=6
+StartLimitIntervalSec=0
 
 [Service]
 User=bots
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python -m v17_ops
-Restart=on-failure
-RestartSec=60
-RestartPreventExitStatus=2 3
+${RELANCE}WatchdogSec=900
+NotifyAccess=main
 KillSignal=SIGINT
 TimeoutStopSec=30
 Nice=10
@@ -142,14 +162,13 @@ service_v17_api() {   # API de supervision v17 : lecture seule, écoute UNIQUEME
 [Unit]
 Description=API de supervision V17 (lecture seule, 127.0.0.1)
 After=network-online.target
+StartLimitIntervalSec=0
 
 [Service]
 User=bots
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python -m uvicorn v17_ops.api.app:app --host 127.0.0.1 --port $(lire_env V17_API_PORT 8080)
-Restart=on-failure
-RestartSec=30
-MemoryMax=300M
+${RELANCE}MemoryMax=300M
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
@@ -327,6 +346,14 @@ Depuis le téléphone : Termius > Port Forwarding > Local, port $(lire_env V17_A
 puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" ;;
   v17-api-arreter)
     systemctl disable --now $SERVICE_V17_API > /dev/null 2>&1; echo -e "${J}API v17 arrêtée.${N}" ;;
+  increvable)
+    # Réécrit toutes les unités avec la relance sans fin et redémarre ce qui était en service.
+    service_principal; systemctl restart $SERVICE
+    systemctl is-enabled --quiet $SERVICE_TR 2> /dev/null && service_tr
+    relancer_v17_si_actif
+    echo -e "${V}✔ Tous les services en place se relancent désormais seuls, sans limite (plantage, bot figé, redémarrage du serveur).${N}"
+    echo "  Arrêt volontaire : bots arreter · bots v17-arreter · bots tr-arreter · bots marches-arreter · bots renseignement-arreter"
+    systemctl --no-pager --plain list-units 'equipe-bots*' 2> /dev/null | head -n 12 ;;
   version)    V=$(ls "$DOSSIER"/VERSION_V*.txt 2>/dev/null | sort -V | tail -n 1); [ -n "$V" ] && cat "$V" || echo "version inconnue" ;;
   ip)         echo "Adresse IP du serveur : $(curl -sf --max-time 10 https://api.ipify.org)" ;;
   mettre-a-jour)
@@ -361,7 +388,7 @@ puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" 
     chown -R bots:bots "$DOSSIER"; install -m 755 "$DOSSIER/bots" /usr/local/bin/bots
     en_bots ".venv/bin/pip install -q -r requirements.txt"
     if en_bots ".venv/bin/python verifier.py"; then
-      systemctl start $SERVICE; service_tr; relancer_v17_si_actif
+      service_principal; systemctl start $SERVICE; service_tr; relancer_v17_si_actif
       echo -e "${V}✔ Mise à jour installée et vérifiée. Ancienne version gardée dans $SAUVE${N}"
       systemctl is-enabled --quiet $SERVICE_RENS 2> /dev/null || [ ! -f "$DOSSIER/renseignement.py" ] \
         || echo -e "${J}Pour déployer l'armée de renseignement : bots renseignement-demarrer${N}"
@@ -394,6 +421,7 @@ Télécommande de l'équipe de bots (à taper sur le serveur) :
   bots mettre-a-jour /root/nouveau.zip   installer une nouvelle version déposée par SFTP
                                          (ou un lien Drive ; vérifiée, retour arrière automatique)
   bots version         version installée
+  bots increvable      relance sans fin de tous les services (à faire une fois après la mise à jour)
 Veille Trade Republic (signaux manuels) :
   bots tr-test         test en direct : liste officielle TR + Yahoo Finance
   bots tr-univers      relire la liste officielle maintenant (ou : bots tr-univers /root/liste.pdf)

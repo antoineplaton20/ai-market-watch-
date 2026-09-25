@@ -87,7 +87,9 @@ def charger_etat(fichier=FICHIER_ETAT):
     try:
         with open(fichier, encoding="utf-8") as f:
             etat = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except Exception:                    # absent, illisible ou abîmé : on repart d'un état neuf, la veille continue
+        etat = {}
+    if not isinstance(etat, dict):
         etat = {}
     for cle, defaut in (("briefing", {}), ("notes", {}), ("reperes", {}), ("alertes", {}), ("pause_jusqua", 0)):
         etat.setdefault(cle, defaut)
@@ -539,7 +541,10 @@ def boucle():
                 derniere_erreur = time.time()
                 alerte(f"⚠️ Veille marchés : erreur ({type(e).__name__}: {str(e)[:150]}). Elle continue ; "
                        "détail : bots marches-journal", important=False)
-        sauver_etat(etat)
+        try:
+            sauver_etat(etat)
+        except Exception:                                  # disque plein... : la veille continue quand même
+            log("Sauvegarde de l'état impossible : " + traceback.format_exc()[-800:])
         time.sleep(60)
 
 

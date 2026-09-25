@@ -1,9 +1,12 @@
 """CHIEN DE GARDE. Lance le bot avec : python lanceur.py   (au lieu de python main.py)
-- Relance le bot s'il plante (attente croissante : 10 s, 20 s, 40 s... jusqu'à 5 min).
+- Relance le bot s'il plante, SANS JAMAIS ABANDONNER (attente croissante : 10 s, 20 s, 40 s... plafonnée à 5 min).
 - Relance le bot s'il ne donne plus signe de vie pendant 15 min (bot figé).
-- S'arrête et prévient après 5 plantages en 1 h (mieux vaut un bot arrêté qu'un bot qui boucle).
-- Ctrl+C : arrêt propre du bot et du chien de garde. Les stops restent actifs chez Binance."""
+- Tempête de plantages : il continue de relancer et prévient au plus une fois par heure (avec la dernière erreur).
+- Un autre bot tient déjà le verrou (code 3) : il attend et réessaie, il ne s'arrête pas.
+- Seul un arrêt demandé l'arrête : Ctrl+C ou « bots arreter » (SIGINT/SIGTERM de systemd).
+  Les stops restent actifs chez Binance."""
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -12,47 +15,97 @@ from alertes import alerte, log
 from securite import age_battement, FICHIER_BATTEMENT
 
 CODE_VERROU = 3          # main.py renvoie 3 si un autre bot tourne déjà
+ATTENTE_MAX_S = 300
+ALERTE_TEMPETE_S = 3600
+
+
+def _prevenir(msg, important=True):
+    """Telegram ne doit JAMAIS faire tomber le chien de garde."""
+    try:
+        alerte(msg, important=important)
+    except Exception as e:
+        try:
+            log(f"{msg} (Telegram indisponible : {e})")
+        except Exception:
+            pass
+
+
+def attente_relance(n_plantages):
+    return min(ATTENTE_MAX_S, 10 * 2 ** max(0, n_plantages - 1))
+
+
+def _terminer(proc):
+    try:
+        proc.terminate()
+        proc.wait(timeout=60)
+    except Exception:
+        try:
+            proc.kill()
+            proc.wait(timeout=10)
+        except Exception:
+            pass
 
 
 def main():
     plantages = []
-    alerte("🐕 Surveillance démarrée : si le bot plante, il sera relancé automatiquement.")
+    derniere_alerte_tempete = 0.0
+    _prevenir("🐕 Surveillance démarrée : si le bot plante ou se fige, il est relancé automatiquement, sans limite.")
     while True:
-        if os.path.exists(FICHIER_BATTEMENT):
-            os.remove(FICHIER_BATTEMENT)
-        proc = subprocess.Popen([sys.executable, "main.py"])
+        try:
+            if os.path.exists(FICHIER_BATTEMENT):
+                os.remove(FICHIER_BATTEMENT)
+        except OSError:
+            pass
+        try:
+            proc = subprocess.Popen([sys.executable, "main.py"])
+        except Exception as e:                    # disque plein, mémoire... : on réessaie plus tard
+            log(f"Lancement du bot impossible : {e}")
+            time.sleep(60)
+            continue
         debut = time.time()
         try:
             while proc.poll() is None:
                 time.sleep(30)
                 age = age_battement()
                 if time.time() - debut > config.BATTEMENT_MAX_S and (age is None or age > config.BATTEMENT_MAX_S):
-                    alerte(f"🥶 Le bot ne répondait plus depuis {config.BATTEMENT_MAX_S // 60} min : je le redémarre.")
-                    proc.kill()
-                    proc.wait()
+                    _prevenir(f"🥶 Le bot ne répondait plus depuis {config.BATTEMENT_MAX_S // 60} min : je le redémarre.")
+                    try:
+                        proc.kill()
+                        proc.wait(timeout=30)
+                    except Exception:
+                        pass
                     break
         except KeyboardInterrupt:
-            proc.terminate()
-            proc.wait()
+            _terminer(proc)
             log("Arrêt demandé : bot et chien de garde arrêtés. Les stops restent actifs chez Binance.")
             return
         code = proc.returncode
-        if code == 0:
-            log("Le bot s'est arrêté normalement.")
-            return
         if code == CODE_VERROU:
-            log("Un autre bot tourne déjà : le chien de garde s'arrête.")
-            return
-        plantages = [t for t in plantages if time.time() - t < 3600] + [time.time()]
+            log("Un autre bot tient le verrou : nouvel essai dans 60 s.")
+            time.sleep(60)
+            continue
+        maintenant = time.time()
+        plantages = [t for t in plantages if maintenant - t < 3600] + [maintenant]
+        attente = attente_relance(len(plantages))
         if len(plantages) > config.PLANTAGES_MAX_H:
-            alerte(f"🛑 {len(plantages)} plantages en 1 h : j'arrête de relancer le bot. Tape « bots etat » dans Termius et envoie une capture à Claude.")
-            return
-        attente = min(300, 10 * 2 ** (len(plantages) - 1))
-        alerte(f"♻️ Le bot s'est arrêté tout seul (code {code}) : je le relance dans {attente} s.")
+            if maintenant - derniere_alerte_tempete >= ALERTE_TEMPETE_S:
+                derniere_alerte_tempete = maintenant
+                _prevenir(f"🌪 {len(plantages)} arrêts du bot en 1 h (dernier code {code}). Je continue de le relancer "
+                          f"toutes les {attente // 60 or 1} min environ. Détail : « bots journal » dans Termius.")
+            else:
+                log(f"Bot arrêté (code {code}) : relance dans {attente} s.")
+        else:
+            _prevenir(f"♻️ Le bot s'est arrêté tout seul (code {code}) : je le relance dans {attente} s.",
+                      important=False)
         time.sleep(attente)
 
 
+def _sigterm(signum, frame):
+    raise KeyboardInterrupt
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, _sigterm)
     try:
         main()
     except KeyboardInterrupt:

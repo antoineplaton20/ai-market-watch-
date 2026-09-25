@@ -66,6 +66,9 @@ Cette comparaison est un simulateur de recherche approximatif, **pas une reprodu
 
 ## Procédure si `reconciliation_required` apparaît
 
+**V17.6, démo et testnet** : le blocage est levé automatiquement en interrogeant Binance (voir `INCREVABLE.md`).
+La procédure ci-dessous reste celle de l'argent réel, ou si `V17_AUTO_RECONCILE=0`.
+
 1. Arrêter le service concerné et sauvegarder sa base. Ne pas supprimer le marqueur pour simplement relancer le bot.
 2. Vérifier auprès de l'exchange l'ordre identifié par `intent_id` (identifiant client sans tirets), ses transactions, commissions et le solde libre **et bloqué**.
 3. Reconstituer le carnet et le cash d'après ces exécutions, sans les comptabiliser deux fois. Pour un transfert ou une opération manuelle, déterminer son traitement comptable séparément.

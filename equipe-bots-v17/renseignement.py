@@ -384,7 +384,11 @@ class Armee:
                "ralentir. État : /renseignement", important=False)
         with ThreadPoolExecutor(max_workers=THREADS, thread_name_prefix="bot") as pool:
             while True:                                                 # perpétuel : jour et nuit, sans fin
-                self.cycle(pool)
+                try:
+                    self.cycle(pool)
+                except Exception:                                       # base verrouillée, disque plein... :
+                    log("Erreur de cycle : " + traceback.format_exc()[-1500:])   # l'armée continue
+                    time.sleep(30)
                 time.sleep(5)
 
     def cycle(self, pool):
