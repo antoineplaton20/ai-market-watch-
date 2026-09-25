@@ -1,0 +1,23 @@
+platform:
+  manager: orchestration_ceo_orchestrator
+  approval_mode: supervised
+  departments:
+    - intelligence
+    - research
+    - data
+    - software
+    - qa
+    - security
+    - orchestration
+    - tools
+    - memory
+    - evaluation
+    - product
+    - infra
+  inherited_domains:
+    - finance_crypto_v14
+
+finance_crypto_v14:
+  manager: equipe_leader_v14
+  role: inherited_domain
+  note: "Le moteur V14.1 reste conservé et devient un département spécialisé."

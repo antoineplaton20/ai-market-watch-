@@ -1,0 +1,23 @@
+model:
+  local: ollama
+  remote: pluggable
+orchestration:
+  graph: langgraph_or_equivalent
+  teams: crewai_or_equivalent
+  multi_agent: autogen_ag2_or_equivalent
+optimization:
+  prompt_pipeline: dspy
+sandbox:
+  execution: e2b_or_equivalent
+connectors:
+  external_tools: composio_or_native_adapters
+memory:
+  private_knowledge: rag_store
+  agent_memory: mem0_or_equivalent
+observability:
+  tracing: agentops
+voice:
+  input: deepgram_or_equivalent
+  output: elevenlabs_or_equivalent
+product:
+  web_app: vercel_ai_sdk_or_equivalent

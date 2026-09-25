@@ -1,0 +1,1 @@
+Version V12.1 — scanner universel, registre instruments et corrélation BRANCHÉS dans le bot ; protections V11.

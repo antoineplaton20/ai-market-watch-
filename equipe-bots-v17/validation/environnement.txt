@@ -1,0 +1,12 @@
+Python 3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]
+
+Versions observées pendant les tests (pas un verrou de déploiement) :
+pytest==8.3.5
+ccxt==4.5.6
+pandas==3.0.6
+numpy==2.5.3
+requests==2.34.2
+python-dotenv==1.1.0
+fastapi==0.115.12
+yfinance==0.2.54
+pypdf==6.10.0

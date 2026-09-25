@@ -1,0 +1,26 @@
+# HORS PLATEFORME : sur le serveur Hetzner, la v17 tourne en service systemd (bots v17-demarrer), pas en Docker.
+# Ce fichier sert à un essai sur un autre ordinateur. Docker contourne le pare-feu ufw : le port de l'API
+# n'est donc publié que sur 127.0.0.1.
+services:
+  v17-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.v17
+    env_file: .env
+    command: python -m uvicorn v17_ops.api.app:app --host 0.0.0.0 --port 8080   # dans le conteneur uniquement
+    ports: ["127.0.0.1:8080:8080"]
+    volumes: ["./runtime:/app/runtime"]
+    restart: unless-stopped
+  v17-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.v17
+    env_file: .env
+    command: python -m v17_ops
+    volumes: ["./runtime:/app/runtime"]
+    restart: unless-stopped
+    healthcheck:
+      disable: true            # le moteur n'a pas de serveur HTTP : le contrôle de santé est celui de l'API
+    depends_on:
+      v17-api:
+        condition: service_healthy

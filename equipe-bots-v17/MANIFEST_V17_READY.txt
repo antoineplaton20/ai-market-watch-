@@ -1,0 +1,11 @@
+V17.1 OPS — platform ready
+
+Plateforme cible : serveur Ubuntu 24.04 (Python 3.12), services systemd, télécommande « bots », Telegram.
+Point d'entrée moteur : python -m v17_ops          (service equipe-bots-v17)
+API (lecture seule)   : python -m uvicorn v17_ops.api.app:app --host 127.0.0.1   (service equipe-bots-v17-api)
+Mode par défaut       : paper (portefeuille fictif sur vrais prix Binance, aucun ordre)
+Argent réel           : verrouillé (V17_MODE=live + LIVE_TRADING_ENABLED=1 + clés propres à la v17)
+Retraits              : refusés par la policy
+
+Mise à jour : bots mettre-a-jour /root/equipe-bots-v17.zip  puis  bots v17-demarrer
+Base de données runtime non incluse (créée au premier démarrage).

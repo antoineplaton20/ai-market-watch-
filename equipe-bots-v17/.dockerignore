@@ -1,0 +1,14 @@
+# Jamais de clés ni de données dans une image Docker
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+.pytest_cache
+*.db
+*.db-*
+*.log
+*.json.tmp
+runtime/*.db*
+sauvegardes
+archives
