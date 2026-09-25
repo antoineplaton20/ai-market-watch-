@@ -1,0 +1,17 @@
+[
+  "trading_army/strategy_lab.py",
+  "backtest.py",
+  "v17_ops/strategies/ensemble.py",
+  "v17_ops/workers/engine.py",
+  "v17_ops/core/config.py",
+  "v17_ops/core/portfolio.py",
+  "v17_ops/core/store.py",
+  "v17_ops/core/risk.py",
+  "v17_ops/adapters/market.py",
+  "v17_ops/adapters/ccxt_adapter.py",
+  "tests_v17/test_plateforme.py",
+  "tests_v17/outils_v17.py",
+  "tests_v17/conftest.py",
+  "V17_OPS_README.md",
+  "README_V17_READY.md"
+]

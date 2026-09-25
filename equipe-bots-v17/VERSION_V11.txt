@@ -1,0 +1,2 @@
+equipe-bots-v11
+multi-timeframe + cost engine + opportunity gate + market data lake

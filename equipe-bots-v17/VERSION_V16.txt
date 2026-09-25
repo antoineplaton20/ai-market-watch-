@@ -1,0 +1,2 @@
+V16.0 — TRADING INTELLIGENCE + BOT ARMY
+Mode par défaut: paper/demo. Aucun retrait. Aucun ordre live sans configuration explicite et garde-fous.

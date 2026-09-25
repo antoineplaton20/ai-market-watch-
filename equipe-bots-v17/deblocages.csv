@@ -1,0 +1,6 @@
+# Déblocages de jetons à venir, tenus à la main (aucune source gratuite fiable n'existe).
+# Où trouver l'info : annonces officielles des projets, pages "tokenomics", calendriers publics.
+# Format : symbole;date AAAA-MM-JJ;pourcentage de l'offre totale débloqué
+# Exemple (à remplacer par de vraies données, cette ligne est ignorée car elle commence par #) :
+# ARB;2026-10-16;2.3
+symbole;date;pourcentage

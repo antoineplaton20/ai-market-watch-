@@ -1,0 +1,5 @@
+Equipe Bots V15 — Bot Factory / Multi-Agent Platform
+Base: V14.1 conservée
+Objectif: transformer l'équipe existante en plateforme de fabrication, d'orchestration, d'évaluation et de supervision de centaines de bots spécialisés.
+
+V15 ne remplace pas le moteur de trading V14.1 : il l'encapsule comme un domaine/équipe parmi d'autres.
