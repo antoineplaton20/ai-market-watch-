@@ -269,7 +269,7 @@ def bot_fond(chef):
     g = donnees.charger("GC", "1d")
     if len(g["c"]) < 300:
         return "COMEX insuffisant"
-    mois = np.array([dt.datetime.utcfromtimestamp(t / 1000).strftime("%Y-%m") for t in g["ts"]])
+    mois = np.array([dt.datetime.fromtimestamp(t / 1000, dt.timezone.utc).strftime("%Y-%m") for t in g["ts"]])
     fin = np.r_[mois[1:] != mois[:-1], True]
     fins = g["c"][fin][:-1]                                   # mois terminés seulement
     tendance = bool(fins[-1] > fins[-10:].mean()) if len(fins) >= 10 else None
@@ -467,7 +467,7 @@ def rapport_bilan():
         return "Bilan historique pas encore calculé."
     lignes = ["📜 Bilan sur tout l'historique (sans regarder le futur, frais compris)"]
     for tf, u in bh["unites"].items():
-        d0 = dt.datetime.utcfromtimestamp(u["debut"] / 1000).strftime("%m/%Y")
+        d0 = dt.datetime.fromtimestamp(u["debut"] / 1000, dt.timezone.utc).strftime("%m/%Y")
         lignes.append(f"— {tf} ({d0} → aujourd'hui, garder l'or : ×{u['garder_or_x']:.2f}) : {u['decisions']} décisions")
         c = u["competences_pct"]["consensus"]
         lignes.append(f"  consensus : {c[0]:+.2f} % puis {c[1]:+.2f} % de mieux que le naïf (1re / 2e moitié)")
