@@ -3,18 +3,32 @@
 DOSSIER=/home/bots/armee-or
 PY="$DOSSIER/.venv/bin/python"
 en_bots() { runuser -u bots -- bash -c "cd '$DOSSIER' && $*"; }
+SERVICES="armee-or-flux armee-or-chef"
+[ -f /etc/systemd/system/armee-or-mt5.service ] && SERVICES="armee-or-mt5 $SERVICES"
 [ "$(id -u)" -eq 0 ] || { echo "Lance les commandes « or » en root (c'est le cas par défaut)."; exit 1; }
 case "${1:-aide}" in
-  etat|rapport) en_bots "$PY -m armee_or etat"; echo; for n in flux chef; do systemctl is-active --quiet armee-or-$n && echo "● armee-or-$n en marche" || echo "● armee-or-$n ARRÊTÉ"; done ;;
+  etat|rapport) en_bots "$PY -m armee_or etat"; echo; for n in $(echo $SERVICES | sed 's/armee-or-//g'); do systemctl is-active --quiet armee-or-$n && echo "● armee-or-$n en marche" || echo "● armee-or-$n ARRÊTÉ"; done ;;
   levier) en_bots "$PY -m armee_or levier" ;;
   bilan) echo "Calcul sur tout l'historique (quelques secondes)..."; en_bots "$PY -m armee_or bilan" ;;
   bibliotheque) en_bots "$PY -m armee_or bibliotheque" ;;
   pause|reprise) en_bots "$PY -m armee_or commande $1" ;;
   test) en_bots "$PY -m armee_or test" ;;
   journal) echo "Journal en direct (Ctrl+C pour quitter)"; tail -n 60 -f "$DOSSIER/runtime/or.log" ;;
-  demarrer) systemctl enable --now armee-or-flux armee-or-chef && echo "Armée de l'or démarrée." ;;
-  arreter) systemctl disable --now armee-or-chef armee-or-flux && echo "Armée de l'or arrêtée (tes autres bots continuent)." ;;
-  redemarrer) systemctl restart armee-or-flux armee-or-chef && echo "Armée de l'or redémarrée." ;;
+  demarrer) systemctl enable --now $SERVICES && echo "Armée de l'or démarrée." ;;
+  arreter) systemctl disable --now $SERVICES && echo "Armée de l'or arrêtée (tes autres bots continuent ; positions MT5 laissées telles quelles, stops en place)." ;;
+  redemarrer) systemctl restart $SERVICES && echo "Armée de l'or redémarrée." ;;
+  mt5)
+    case "${2:-etat}" in
+      etat) en_bots "$PY -m armee_or mt5"; systemctl is-active --quiet armee-or-mt5 && echo "● armee-or-mt5 en marche" || echo "● armee-or-mt5 ARRÊTÉ (or mt5 journal)" ;;
+      fermer) en_bots "$PY -m armee_or commande mt5_fermer" ;;
+      reprendre) en_bots "$PY -m armee_or commande mt5_reprendre" ;;
+      profil) [ -n "${3:-}" ] || { echo "Usage : or mt5 profil x1|x3|x5|x10|x20|x50|pro"; exit 1; }; en_bots "$PY -m armee_or commande mt5_profil $3" ;;
+      entrainement) [[ "${3:-}" =~ ^(on|off)$ ]] || { echo "Usage : or mt5 entrainement on|off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_entrainement $3" ;;
+      journal) journalctl -u armee-or-mt5 -n 80 -f ;;
+      compte) sed -i '/^# MetaTrader 5/d;/^OR_MT5_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_mt5.sh" && systemctl restart armee-or-flux armee-or-chef ;;
+      installer) bash "$DOSSIER/installer_mt5.sh" && systemctl restart armee-or-flux armee-or-chef ;;
+      *) echo "or mt5 [etat|fermer|reprendre|profil X|entrainement on|off|journal|compte|installer]" ;;
+    esac ;;
   config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;
   mettre-a-jour)
     [ -f "${2:-}" ] || { echo "Usage : or mettre-a-jour /root/armee-or-vX.zip"; exit 1; }
@@ -28,7 +42,12 @@ Armée de l'or (indépendante de tes autres bots) :
   or levier        fiches de levier x1 à x50 : marge, liquidation, perte au stop, risque historique
   or bilan         bilan sur tout l'historique (sans regarder le futur, frais compris)
   or bibliotheque  connaissances et études utilisées par l'armée
-  or pause | reprise   suspendre / reprendre les positions papier (l'analyse continue)
+  or pause | reprise   suspendre / reprendre les nouvelles positions (papier et MT5 ; l'analyse continue)
+  or mt5           compte MT5 démo : solde, positions des équipes, résultats
+  or mt5 fermer    ferme toutes les positions de l'armée et suspend ses ordres (or mt5 reprendre)
+  or mt5 profil x20        levier des décisions : x1 x3 x5 x10 x20 x50 ou pro (1 % risqué, par défaut)
+  or mt5 entrainement on|off   équipe d'entraînement au lot minimum
+  or mt5 journal | compte  journal du pont MT5 / changer de compte démo
   or journal       journal en direct
   or demarrer | arreter | redemarrer
   or test          contrôle complet

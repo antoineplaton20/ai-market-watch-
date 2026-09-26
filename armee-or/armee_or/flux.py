@@ -106,10 +106,39 @@ def secours_comex(session=None):
                                   "source": "COMEX via Yahoo (différé)"})
 
 
+class VigieMT5:
+    """Cours XAUUSD du courtier MT5 (démo), interrogé chaque seconde par le pont local."""
+
+    def __init__(self):
+        self.dernier_temps = None
+        self.dernier_changement = 0.0
+        self.dernier_message = 0.0
+
+    def lire(self, appel=None):
+        from . import mt5
+        t = (appel or mt5.appel)("tick", delai=10)
+        maintenant = time.time()
+        if t["time_msc"] != self.dernier_temps:
+            self.dernier_temps, self.dernier_changement = t["time_msc"], maintenant
+        self.dernier_message = maintenant
+        base.ecrire("direct:MT5", {"prix": (t["bid"] + t["ask"]) / 2, "bid": t["bid"], "ask": t["ask"],
+                                   "ts": self.dernier_changement, "retard_ms": (maintenant - self.dernier_changement) * 1000,
+                                   "source": f"MetaTrader 5 {config.MT5_SYMBOLE} (démo)"})
+
+    def tourner(self):
+        while True:
+            try:
+                self.lire()
+                time.sleep(1)
+            except Exception as ex:
+                _log.info("MT5 : cours indisponible (%s)", ex)
+                time.sleep(15)
+
+
 def prix_direct():
-    """Meilleur prix disponible : source principale, sinon l'autre, sinon COMEX différé."""
+    """Meilleur prix disponible : source principale, MT5, l'autre source Binance, sinon COMEX différé."""
     maintenant = time.time()
-    for s in (config.SOURCE_PRINCIPALE, *[x for x in config.SOURCES_DIRECT if x != config.SOURCE_PRINCIPALE], "GC"):
+    for s in (config.SOURCE_PRINCIPALE, "MT5", *[x for x in config.SOURCES_DIRECT if x != config.SOURCE_PRINCIPALE], "GC"):
         d = base.lire(f"direct:{s}")
         if d and maintenant - d.get("ts", 0) < (300 if s == "GC" else SILENCE_MAX_S):
             return {**d, "cle": s, "age_s": maintenant - d["ts"]}
@@ -121,6 +150,8 @@ def main():
     vigies = [Vigie(s) for s in config.SOURCES_DIRECT]
     for v in vigies:
         threading.Thread(target=v.tourner, daemon=True, name=f"vigie-{v.source}").start()
+    if config.MT5_ACTIF:
+        threading.Thread(target=VigieMT5().tourner, daemon=True, name="vigie-MT5").start()
     notifier("READY=1")
     while True:
         dormir(30)

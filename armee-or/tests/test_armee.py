@@ -301,5 +301,5 @@ def test_independance_des_autres_bots():
     inst = open(os.path.join(RACINE, "installer_or.sh"), encoding="utf-8").read()
     assert "/home/bots/armee-or" in inst and "armee-or-flux" in inst and "armee-or-chef" in inst
     assert "rm -rf /home/bots/equipe-bots" not in inst and "systemctl stop equipe" not in inst
-    for script in ("installer_or.sh", "or"):
+    for script in ("installer_or.sh", "installer_mt5.sh", "or"):
         assert subprocess.run(["bash", "-n", os.path.join(RACINE, script)]).returncode == 0

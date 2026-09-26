@@ -13,7 +13,7 @@ command -v python3 > /dev/null || { apt-get update -qq && apt-get install -y -qq
 python3 -c "import venv" 2> /dev/null || apt-get install -y -qq python3-venv
 id -u $COMPTE > /dev/null 2>&1 || useradd --create-home --shell /bin/bash $COMPTE
 
-etape "1/7 Copie du programme dans $DOSSIER"
+etape "1/8 Copie du programme dans $DOSSIER"
 mkdir -p "$DOSSIER"
 if [ "$SOURCE" != "$DOSSIER" ]; then
   # .env, base et journal existants conservés (mise à jour sans perte)
@@ -21,12 +21,12 @@ if [ "$SOURCE" != "$DOSSIER" ]; then
 fi
 mkdir -p "$DOSSIER/runtime"
 
-etape "2/7 Environnement Python dédié"
+etape "2/8 Environnement Python dédié"
 [ -x "$DOSSIER/.venv/bin/python" ] || python3 -m venv "$DOSSIER/.venv"
 "$DOSSIER/.venv/bin/pip" install -q --upgrade pip
 "$DOSSIER/.venv/bin/pip" install -q -r "$DOSSIER/requirements.txt"
 
-etape "3/7 Telegram"
+etape "3/8 Telegram"
 if [ -f "$DOSSIER/.env" ]; then
   echo "Réglages existants conservés ($DOSSIER/.env)."
 else
@@ -70,15 +70,25 @@ ENV
 fi
 chown -R $COMPTE:$COMPTE "$DOSSIER"; chmod 600 "$DOSSIER/.env"
 
-etape "4/7 Vérification automatique (tests, sans réseau ni argent)"
+etape "4/8 Vérification automatique (tests, sans réseau ni argent)"
 if ! runuser -u $COMPTE -- bash -c "cd '$DOSSIER' && .venv/bin/python -m pytest -q -p no:cacheprovider tests"; then
   echo -e "${R}✖ Des tests échouent : l'armée n'est PAS démarrée. Envoie une capture de l'écran.${N}"; exit 1
 fi
 
-etape "5/7 Historique de l'or dans la base (1833 → aujourd'hui)"
+etape "5/8 Historique de l'or dans la base (1833 → aujourd'hui)"
 runuser -u $COMPTE -- bash -c "cd '$DOSSIER' && .venv/bin/python -m armee_or importer"
 
-etape "6/7 Services (relance automatique sans fin, priorité modérée)"
+etape "6/8 MetaTrader 5 (compte DÉMO, ordres automatiques)"
+if grep -q '^OR_MT5_LOGIN=' "$DOSSIER/.env"; then
+  DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
+else
+  read -r -p "Brancher ton compte DÉMO MetaTrader 5 pour que l'armée s'entraîne avec de vrais ordres ? [O/n] " REP
+  if [[ ! "${REP:-O}" =~ ^[nN] ]]; then
+    DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
+  fi
+fi
+
+etape "7/8 Services (relance automatique sans fin, priorité modérée)"
 for NOM in flux chef; do
   MEM=$([ $NOM = chef ] && echo 900M || echo 300M)
   cat > /etc/systemd/system/armee-or-$NOM.service <<UNITE
@@ -112,11 +122,17 @@ systemctl daemon-reload
 systemctl enable armee-or-flux armee-or-chef > /dev/null 2>&1
 systemctl restart armee-or-flux armee-or-chef
 
-etape "7/7 Contrôle"
+etape "8/8 Contrôle"
 sleep 8
-for NOM in flux chef; do
+NOMS="flux chef"; [ -f /etc/systemd/system/armee-or-mt5.service ] && NOMS="mt5 flux chef"
+for NOM in $NOMS; do
   systemctl is-active --quiet armee-or-$NOM && echo -e "${V}● armee-or-$NOM en marche${N}" || echo -e "${R}● armee-or-$NOM arrêté${N} (or journal)"
 done
 echo -e "\n${V}✔ Armée de l'or installée.${N} Tes autres bots n'ont pas été touchés."
-echo "  Termius : or etat · or levier · or bilan · or journal · or pause · or reprise · or aide"
-echo "  Premier rapport Telegram dans 5 minutes. Tout est simulé sur papier : aucun ordre réel."
+echo "  Termius : or etat · or mt5 · or levier · or bilan · or journal · or pause · or reprise · or aide"
+if grep -q '^OR_MT5_ACTIF=1' "$DOSSIER/.env"; then
+  echo "  MT5 démo : ordres automatiques (profil « pro 1 % risqué », or mt5 profil x20 pour changer) + équipe d'entraînement."
+  echo "  Ouvre l'app MetaTrader 5 sur ton iPhone avec le même compte démo pour voir les positions en direct."
+else
+  echo "  Premier rapport Telegram dans 5 minutes. Tout est simulé sur papier : aucun ordre réel."
+fi

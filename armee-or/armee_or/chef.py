@@ -7,7 +7,8 @@
   qui battent le naïf (poids = compétence récente).
 - Décisions : seulement si l'avantage attendu dépasse nettement les coûts (strategie.py). Elles sont exécutées
   sur PAPIER, en parallèle pour chaque profil de levier, avec liquidations simulées.
-- Aucun ordre réel n'est jamais passé.
+- Si MetaTrader 5 est branché (compte DÉMO uniquement), l'exécutant passe aussi les décisions en vrais ordres de
+  démo, plus une équipe d'entraînement au lot minimum (executant.py). Aucun ordre sur un compte réel.
 """
 from __future__ import annotations
 
@@ -19,8 +20,8 @@ import traceback
 
 import numpy as np
 
-from . import base, bibliotheque, chandeliers, config, donnees, flux, indicateurs as I, levier as L, papier, \
-    pronostiqueurs as P, rythme, strategie as S, telegram
+from . import base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, levier as L, \
+    mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -349,6 +350,28 @@ def bot_commandes(chef):
             telegram.envoyer(rapport_bilan())
         elif c in ("/or_bibliotheque", "bibliotheque"):
             telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
+        elif c in ("/or_mt5", "mt5"):
+            telegram.envoyer("🤖 " + executant.rapport_mt5())
+        elif c in ("/or_mt5_fermer", "mt5_fermer"):
+            base.ecrire("mt5:pause", True)
+            try:
+                n = len(executant.fermer_tout("fermeture demandée"))
+                telegram.envoyer(f"🛑 MT5 : {n} position(s) de l'armée fermée(s), ordres suspendus (or mt5 reprendre).",
+                                 important=True)
+            except mt5.ErreurMT5 as ex:
+                telegram.envoyer(f"🛑 MT5 : ordres suspendus, mais fermeture impossible pour l'instant ({ex}).", True)
+        elif c in ("/or_mt5_reprendre", "mt5_reprendre"):
+            base.ecrire("mt5:pause", False)
+            telegram.envoyer("▶️ MT5 : ordres automatiques repris.")
+        elif c.startswith("mt5_profil ") or c.startswith("/or_mt5_profil "):
+            nom = mt5.nom_profil(c.split(" ", 1)[1])
+            if nom:
+                base.ecrire("mt5:profil", nom)
+            telegram.envoyer(f"⚖️ MT5 : profil des décisions = {nom}." if nom else
+                             "Profil inconnu (x1, x3, x5, x10, x20, x50 ou pro).")
+        elif c in ("mt5_entrainement on", "mt5_entrainement off"):
+            base.ecrire("mt5:entrainement", c.endswith("on"))
+            telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
         faites.append(c)
     return ("commandes : " + ", ".join(faites)) if faites else "aucune commande"
 
@@ -403,7 +426,11 @@ def rapport(chef=None):
         ko = [b.nom for b in chef.bots if b.echecs]
         lignes.append(f"Armée : {len(chef.bots) - len(ko)}/{len(chef.bots)} bots en forme"
                       + (f" · en difficulté : {', '.join(ko)}" if ko else "") + (" · ⏸ PAUSE" if chef.pause else ""))
-    lignes.append("Tout est simulé sur papier : aucun ordre réel.")
+    if config.MT5_ACTIF:
+        lignes.append(executant.rapport_mt5())
+        lignes.append("Papier : simulé. MT5 : ordres réels sur compte DÉMO uniquement.")
+    else:
+        lignes.append("Tout est simulé sur papier : aucun ordre réel.")
     return "\n".join(lignes)
 
 
@@ -452,6 +479,7 @@ class Chef:
             Bot("Pronostiqueurs + décision", "pronostic", 60, bot_pronostiqueurs),
             Bot("Stratège de fond", "strategie", 3600, bot_fond),
             Bot("Bilan historique", "archiviste", 7 * 86400, bot_bilan),
+            Bot("Exécutant MT5 (démo)", "execution", 20, executant.bot_mt5),
             Bot("Commandes", "chef", 10, bot_commandes),
             Bot("Rapporteur", "chef", config.RAPPORT_HEURES * 3600, bot_rapporteur),
         ]

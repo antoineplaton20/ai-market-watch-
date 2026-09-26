@@ -26,6 +26,8 @@ CREATE INDEX IF NOT EXISTS idx_rapports ON rapports(bot, ts);
 CREATE TABLE IF NOT EXISTS trades(id INTEGER PRIMARY KEY AUTOINCREMENT, profil TEXT, sens INTEGER, entree_ts INTEGER,
     prix_entree REAL, notionnel REAL, levier REAL, stop REAL, objectif REAL, liquidation REAL, sortie_ts INTEGER,
     prix_sortie REAL, motif TEXT, pnl REAL, frais REAL, financement REAL, capital_apres REAL);
+CREATE TABLE IF NOT EXISTS ordres_mt5(id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, equipe TEXT, action TEXT,
+    ticket INTEGER, sens INTEGER, volume REAL, prix REAL, sl REAL, ok INTEGER, message TEXT);
 CREATE TABLE IF NOT EXISTS decisions(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, p_consensus REAL, sens INTEGER,
     details TEXT);
 """

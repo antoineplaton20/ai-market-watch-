@@ -1,7 +1,7 @@
 """Messages Telegram de l'armée de l'or.
 
 - Bot Telegram DÉDIÉ (recommandé : @BotFather > /newbot) : l'armée envoie ses rapports ET reçoit ses commandes
-  (/or, /or_levier, /or_bilan, /or_pause, /or_reprise), sans jamais gêner le bot existant.
+  (/or, /or_levier, /or_bilan, /or_pause, /or_reprise, /or_mt5, /or_mt5_fermer), sans jamais gêner le bot existant.
 - Sans bot dédié : réutilisation du bot existant en ENVOI SEUL (deux lecteurs sur un même bot se voleraient
   les commandes) ; les commandes passent alors par Termius (« or etat », « or pause »...).
 Telegram en panne ne fait jamais tomber l'armée : le message est journalisé et l'armée continue.

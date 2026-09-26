@@ -5,7 +5,8 @@
   importer     importer l'historique livré dans la base
   etat         rapport actuel            levier      fiches de levier        bilan    bilan historique
   bibliotheque connaissances utilisées   test        contrôle complet sans réseau ni Telegram
-  commande X   transmettre « pause », « reprise » ou « rapport » au chef
+  mt5          état du compte MetaTrader 5 démo et des équipes
+  commande X   transmettre « pause », « reprise », « mt5_fermer », « mt5_profil x20 »… au chef
 """
 from __future__ import annotations
 
@@ -14,6 +15,10 @@ import sys
 from logging.handlers import RotatingFileHandler
 
 from . import config
+
+
+COMMANDES = ("pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
+             "mt5_entrainement")
 
 
 def _journal():
@@ -64,12 +69,16 @@ def main(argv=None):
         print(bibliotheque.texte())
     elif cmd == "test":
         return test()
-    elif cmd == "commande" and len(argv) > 1 and argv[1] in ("pause", "reprise", "rapport", "levier", "bilan"):
+    elif cmd == "mt5":
+        from . import executant
+        print(executant.rapport_mt5())
+    elif cmd == "commande" and len(argv) > 1 and argv[1].split(" ")[0] in COMMANDES:
+        texte = " ".join(argv[1:])
         fichier = config.RACINE / "runtime" / "commandes.txt"
         fichier.parent.mkdir(parents=True, exist_ok=True)
         with open(fichier, "a") as f:
-            f.write(argv[1] + "\n")
-        print(f"Commande « {argv[1]} » transmise au chef (appliquée dans les 10 secondes).")
+            f.write(texte + "\n")
+        print(f"Commande « {texte} » transmise au chef (appliquée dans les 10 secondes).")
     else:
         print(__doc__)
         return 1
