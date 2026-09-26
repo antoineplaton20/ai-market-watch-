@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# TÉLÉCOMMANDE DE L'ARMÉE DE L'OR (indépendante de « bots »). Tape « or » pour l'aide.
+DOSSIER=/home/bots/armee-or
+PY="$DOSSIER/.venv/bin/python"
+en_bots() { runuser -u bots -- bash -c "cd '$DOSSIER' && $*"; }
+[ "$(id -u)" -eq 0 ] || { echo "Lance les commandes « or » en root (c'est le cas par défaut)."; exit 1; }
+case "${1:-aide}" in
+  etat|rapport) en_bots "$PY -m armee_or etat"; echo; for n in flux chef; do systemctl is-active --quiet armee-or-$n && echo "● armee-or-$n en marche" || echo "● armee-or-$n ARRÊTÉ"; done ;;
+  levier) en_bots "$PY -m armee_or levier" ;;
+  bilan) echo "Calcul sur tout l'historique (quelques secondes)..."; en_bots "$PY -m armee_or bilan" ;;
+  bibliotheque) en_bots "$PY -m armee_or bibliotheque" ;;
+  pause|reprise) en_bots "$PY -m armee_or commande $1" ;;
+  test) en_bots "$PY -m armee_or test" ;;
+  journal) echo "Journal en direct (Ctrl+C pour quitter)"; tail -n 60 -f "$DOSSIER/runtime/or.log" ;;
+  demarrer) systemctl enable --now armee-or-flux armee-or-chef && echo "Armée de l'or démarrée." ;;
+  arreter) systemctl disable --now armee-or-chef armee-or-flux && echo "Armée de l'or arrêtée (tes autres bots continuent)." ;;
+  redemarrer) systemctl restart armee-or-flux armee-or-chef && echo "Armée de l'or redémarrée." ;;
+  config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;
+  mettre-a-jour)
+    [ -f "${2:-}" ] || { echo "Usage : or mettre-a-jour /root/armee-or-vX.zip"; exit 1; }
+    TMP=$(mktemp -d); unzip -q "$2" -d "$TMP" || { echo "Zip illisible."; exit 1; }
+    NOUVEAU=$(dirname "$(find "$TMP" -name installer_or.sh | head -n 1)")
+    [ -f "$NOUVEAU/installer_or.sh" ] || { echo "Ce zip ne contient pas l'armée de l'or."; exit 1; }
+    bash "$NOUVEAU/installer_or.sh"; rm -rf "$TMP" ;;
+  *) cat <<AIDE
+Armée de l'or (indépendante de tes autres bots) :
+  or etat          rapport : cours en direct, rythme, marchés liés, pronostics, comptes papier, santé des bots
+  or levier        fiches de levier x1 à x50 : marge, liquidation, perte au stop, risque historique
+  or bilan         bilan sur tout l'historique (sans regarder le futur, frais compris)
+  or bibliotheque  connaissances et études utilisées par l'armée
+  or pause | reprise   suspendre / reprendre les positions papier (l'analyse continue)
+  or journal       journal en direct
+  or demarrer | arreter | redemarrer
+  or test          contrôle complet
+  or mettre-a-jour /root/armee-or-vX.zip
+  or config        refaire le réglage Telegram
+AIDE
+  ;;
+esac

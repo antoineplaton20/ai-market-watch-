@@ -1,0 +1,4 @@
+numpy>=1.26
+requests>=2.31
+websocket-client>=1.7
+pytest>=8.0
