@@ -31,6 +31,7 @@ Dépannage sans Tailscale : Termius > Port Forwarding > Local, port 8080 vers `1
 |---|---|
 | Accueil | Alertes, moteur v17 (valeur, courbe, résultat du jour), bot principal (gain latent, risque, signe de vie), état de chaque service |
 | Positions | Graphique TradingView en direct (toucher une position l'affiche), boutons « Ouvrir dans TradingView » et « Liste pour TradingView » ; achats en cours du bot principal (stop, objectif, 🔒 sans perte, 🧪 essai) et de la v17, derniers ordres v17 |
+| Labo | Idée de stratégie en français → IA Claude → backtest sur l'historique Binance → 7 portes → Pine Script TradingView → test en direct papier (voir LABO.md) |
 | Journal | Dernières lignes des journaux : principal, v17, marchés, renseignement, TR (secrets masqués) |
 | Veille | Armée de renseignement (climat mondial, alertes), marchés de prédiction Polymarket (lecture seule) et veille marchés |
 | Commandes | Bot principal : arrêter / reprendre les achats, réarmer la sécurité, tout vendre (il faut écrire VENDRE). v17 : pause / reprise des achats. Réglages : actualisation, apparence, déconnexion |

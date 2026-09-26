@@ -1,6 +1,6 @@
 // Service worker de l'application : l'interface s'ouvre même hors connexion ; les données (/app/api/)
 // ne sont JAMAIS mises en cache par le navigateur (elles passent toujours par le réseau).
-const VERSION = "bots-app-v2";
+const VERSION = "bots-app-v3";
 const COQUILLE = ["/app/", "/app/manifest.webmanifest", "/app/icon-180.png", "/app/icon-192.png", "/app/icon-512.png"];
 
 self.addEventListener("install", (e) => {

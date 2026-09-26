@@ -160,7 +160,7 @@ service_v17_api() {   # API de supervision v17 : lecture seule, écoute UNIQUEME
   [ -d "$DOSSIER/v17_ops" ] || return 1
   cat > /etc/systemd/system/$SERVICE_V17_API.service << UNITE
 [Unit]
-Description=API de supervision V17 (lecture seule, 127.0.0.1)
+Description=API de l'application iPhone et de supervision V17 (127.0.0.1)
 After=network-online.target
 StartLimitIntervalSec=0
 
@@ -168,7 +168,7 @@ StartLimitIntervalSec=0
 User=bots
 WorkingDirectory=$DOSSIER
 ExecStart=$DOSSIER/.venv/bin/python -m uvicorn v17_ops.api.app:app --host 127.0.0.1 --port $(lire_env V17_API_PORT 8080)
-${RELANCE}MemoryMax=300M
+${RELANCE}MemoryMax=700M
 Environment=PYTHONUNBUFFERED=1
 
 [Install]
@@ -403,6 +403,17 @@ puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" 
     echo "Connexion du serveur à ton compte Tailscale : ouvre le lien affiché, sur ton téléphone ou ailleurs."
     tailscale up || { echo -e "${R}Connexion Tailscale non terminée.${N}"; exit 1; }
     exec "$0" app ;;
+  cle-anthropic)
+    # Clé de l'IA Claude (labo de stratégies, veille). Saisie masquée, jamais affichée ni envoyée ailleurs.
+    echo "Clé : console.anthropic.com > API Keys (payant à l'usage : quelques centimes par idée testée)."
+    read -r -s -p "Colle ta clé Anthropic (sk-ant-..., rien ne s'affiche pendant la saisie) : " CLE; echo
+    [[ "$CLE" =~ ^sk-ant-[A-Za-z0-9_-]{20,}$ ]] || { echo -e "${R}Clé non reconnue : rien n'a changé.${N}"; exit 1; }
+    regler_env ANTHROPIC_API_KEY "$CLE"; unset CLE
+    systemctl is-active --quiet $SERVICE_V17_API && systemctl restart $SERVICE_V17_API
+    echo -e "${V}✔ Clé enregistrée. Onglet Labo de l'application : « Tester avec l'IA » est actif.${N}"
+    echo "  (Les autres bots l'utiliseront à leur prochain redémarrage.)" ;;
+  labo-journal)
+    echo "Journal de l'API (application + labo) en direct (Ctrl+C pour quitter)"; journalctl -u $SERVICE_V17_API -f -n 50 ;;
   increvable)
     # Réécrit toutes les unités avec la relance sans fin et redémarre ce qui était en service.
     service_principal; systemctl restart $SERVICE
@@ -501,6 +512,9 @@ Application iPhone (tableau de bord + commandes, voir APPLI_IPHONE.md) :
   bots app             prépare l'application et affiche l'adresse et le code d'accès
   bots app-tailscale   installe Tailscale : accès HTTPS privé depuis l'iPhone, partout
   bots app-nouveau-code   change le code d'accès (l'ancien ne marche plus)
+Labo de stratégies (onglet Labo de l'application, voir LABO.md) :
+  bots cle-anthropic   enregistrer la clé de l'IA Claude (saisie masquée)
+  bots labo-journal    journal de l'application et du labo
 Veille Trade Republic (signaux manuels) :
   bots tr-test         test en direct : liste officielle TR + Yahoo Finance
   bots tr-univers      relire la liste officielle maintenant (ou : bots tr-univers /root/liste.pdf)

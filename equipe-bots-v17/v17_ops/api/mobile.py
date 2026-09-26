@@ -306,3 +306,60 @@ def api_action(corps: dict, authorization: str | None = Header(default=None)):
 def api_verifier(authorization: str | None = Header(default=None)):
     verifier_code(authorization)
     return Response(status_code=204)
+
+
+# ------------------------------------------------------------------ labo de stratégies
+def _labo():
+    from labo import registre, service, strategie
+    return registre, service, strategie
+
+
+def _refus(fonction, *args, **kwargs):
+    from labo.service import LaboRefus
+    try:
+        return fonction(*args, **kwargs)
+    except LaboRefus as ex:
+        raise HTTPException(409, str(ex))
+
+
+@router.get("/app/api/labo")
+def api_labo(authorization: str | None = Header(default=None)):
+    verifier_code(authorization)
+    R, S, ST = _labo()
+    from labo import donnees
+    debut, fin = donnees.periode()
+    return {"essais": R.essais(20), "compte": R.compte(), "suivis": [S.bilan_suivi(x) for x in R.suivis()],
+            "exemples": [{"cle": k, "nom": v["nom"], "unite": v["unite"], "explication": v["explication"]}
+                         for k, v in ST.EXEMPLES.items()],
+            "ia": bool(os.getenv("ANTHROPIC_API_KEY", "").strip()), "historique": {"debut": debut, "fin": fin},
+            "en_cours": any(e["statut"] == "en_cours" for e in R.essais(5))}
+
+
+@router.post("/app/api/labo/essai")
+def api_labo_essai(corps: dict, authorization: str | None = Header(default=None)):
+    verifier_code(authorization)
+    _, S, _ = _labo()
+    idee = str(corps.get("idee") or "")[:2000] or None
+    exemple = str(corps.get("exemple") or "") or None
+    return {"id": _refus(S.lancer, idee=idee, exemple=exemple)}
+
+
+@router.get("/app/api/labo/essai/{essai_id}")
+def api_labo_resultat(essai_id: int, authorization: str | None = Header(default=None)):
+    verifier_code(authorization)
+    R, _, _ = _labo()
+    e = R.essai(essai_id)
+    if not e:
+        raise HTTPException(404, "Essai introuvable.")
+    return e
+
+
+@router.post("/app/api/labo/suivi")
+def api_labo_suivi(corps: dict, authorization: str | None = Header(default=None)):
+    verifier_code(authorization)
+    _, S, _ = _labo()
+    try:
+        essai_id = int(corps.get("id"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "Identifiant d'essai manquant.")
+    return _refus(S.activer, essai_id, bool(corps.get("actif", True)), bool(corps.get("forcer", False)))

@@ -63,14 +63,14 @@ header h1 { font-size: 22px; font-weight: 700; margin: 0; flex: 1; letter-spacin
 @keyframes tourne { to { transform: rotate(360deg); } }
 main { padding: 12px 16px calc(env(safe-area-inset-bottom) + 84px); max-width: 720px; margin: 0 auto; }
 nav {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(6, 1fr);
   background: color-mix(in srgb, var(--carte) 92%, transparent); border-top: 1px solid var(--trait);
   backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px);
   padding: 6px 4px calc(env(safe-area-inset-bottom) + 4px);
 }
 nav button {
   border: 0; background: none; padding: 4px 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  font-size: 10.5px; color: var(--doux); cursor: pointer;
+  font-size: 10px; color: var(--doux); cursor: pointer;
 }
 nav button svg { width: 24px; height: 24px; stroke: currentColor; }
 nav button[aria-selected="true"] { color: var(--accent); }
@@ -133,6 +133,17 @@ pre.journal .e { color: var(--rouge); } pre.journal .w { color: var(--ambre); }
 #connexion img { width: 88px; height: 88px; border-radius: 22px; }
 #connexion h1 { font-size: 26px; margin: 18px 0 6px; }
 #connexion p { color: var(--doux); margin: 0 0 22px; }
+textarea { width: 100%; font: inherit; font-size: 16px; padding: 12px 13px; border-radius: 12px; resize: vertical;
+  border: 1px solid var(--trait); background: var(--carte-2); color: var(--texte); min-height: 96px; }
+.verdict { border-radius: 12px; padding: 12px 14px; font-weight: 650; margin-bottom: 10px; }
+.verdict.ok { background: var(--vert-fond); color: var(--vert); } .verdict.ko { background: var(--rouge-fond); color: var(--rouge); }
+.porte { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--trait); font-size: 14px; }
+.porte:first-of-type { border-top: 0; }
+.porte small { display: block; color: var(--doux); font-size: 12.5px; }
+.attente { display: flex; gap: 10px; align-items: center; color: var(--doux); font-size: 14px; }
+.roue { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--trait); border-top-color: var(--accent);
+  animation: tourne .9s linear infinite; flex-shrink: 0; }
+.principal:disabled { opacity: .5; }
 input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 17px; padding: 13px 14px;
   border-radius: 12px; border: 1px solid var(--trait); background: var(--carte); color: var(--texte); }
 .principal { width: 100%; margin-top: 12px; border: 0; border-radius: 12px; padding: 14px; font-weight: 650;
@@ -187,6 +198,8 @@ input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil</button>
     <button role="tab" data-onglet="positions" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg>Positions</button>
+    <button role="tab" data-onglet="labo" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6"/><path d="M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7 15h10"/></svg>Labo</button>
     <button role="tab" data-onglet="journal" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>Journal</button>
     <button role="tab" data-onglet="veille" aria-selected="false">
@@ -201,7 +214,7 @@ input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 
 "use strict";
 // ================================================================ état
 const DEMO = new URLSearchParams(location.search).has("demo");
-const TITRES = {accueil: "Accueil", positions: "Positions", journal: "Journal", veille: "Veille", commandes: "Commandes"};
+const TITRES = {accueil: "Accueil", positions: "Positions", labo: "Labo", journal: "Journal", veille: "Veille", commandes: "Commandes"};
 const JOURNAUX = [["principal", "Principal"], ["v17", "v17"], ["marches", "Marchés"], ["renseignement", "Rens."], ["tr", "TR"]];
 const SERVICES = [["principal", "Bot principal"], ["v17", "Moteur v17"], ["tr", "Veille Trade Republic"],
                   ["marches", "Veille marchés"], ["renseignement", "Armée de renseignement"]];
@@ -317,8 +330,8 @@ function afficher() {
   majGraphique();
   const zone = document.getElementById("contenu");
   zone.replaceChildren();
-  if (!donnees && onglet !== "commandes") { zone.append(h("div", {class: "vide"}, "Chargement…")); return; }
-  ({accueil: ecranAccueil, positions: ecranPositions, journal: ecranJournal, veille: ecranVeille, commandes: ecranCommandes})[onglet](zone);
+  if (!donnees && onglet !== "commandes" && onglet !== "labo") { zone.append(h("div", {class: "vide"}, "Chargement…")); return; }
+  ({accueil: ecranAccueil, positions: ecranPositions, labo: ecranLabo, journal: ecranJournal, veille: ecranVeille, commandes: ecranCommandes})[onglet](zone);
 }
 
 function etatService(v) {
@@ -580,6 +593,162 @@ function ecranCommandes(zone) {
       h("span", {class: "ic", "aria-hidden": "true"}, "🔑"), h("span", {}, "Se déconnecter", h("small", {}, "Le code sera redemandé.")))));
 }
 
+
+// ================================================================ Labo de stratégies
+let labo = null, brouillon = "", essaiVu = null, essaiSuivi = null;
+const dateCourte = (s) => new Date(s * 1000).toLocaleDateString("fr-FR", {month: "short", year: "numeric"});
+
+async function copierTexte(texte, nomFichier) {
+  try {
+    await navigator.clipboard.writeText(texte);
+    toast("Pine Script copié. TradingView (site web) > Éditeur Pine > colle > « Ajouter au graphique ».");
+  } catch (e) {
+    try {
+      const f = new File([texte], nomFichier, {type: "text/plain"});
+      if (navigator.canShare && navigator.canShare({files: [f]})) { await navigator.share({files: [f]}); return; }
+    } catch (e2) { if (e2 && e2.name === "AbortError") return; }
+    prompt("Copie ce Pine Script :", texte);
+  }
+}
+
+async function chargerLabo() {
+  try { labo = await appel("/app/api/labo"); } catch (e) {
+    if (e.acces) return deconnecter(e.message);
+    toast("Labo indisponible : " + e.message);
+    labo = labo || {essais: [], exemples: [], suivis: [], compte: {testes: 0, valides: 0}, ia: false};   // pas de boucle
+  }
+  if (onglet === "labo") afficher();
+}
+
+async function lancerEssai(corps) {
+  try {
+    const r = await appel("/app/api/labo/essai", {method: "POST", body: JSON.stringify(corps)});
+    essaiSuivi = r.id; essaiVu = null; brouillon = corps.idee ? "" : brouillon;
+    afficher(); suivreEssai();
+  } catch (e) { if (e.acces) return deconnecter(e.message); toast(e.message); }
+}
+
+async function suivreEssai() {
+  const id = essaiSuivi;
+  while (id && essaiSuivi === id) {
+    await new Promise((ok) => setTimeout(ok, 2000));
+    try {
+      const e = await appel("/app/api/labo/essai/" + id);
+      if (e.statut !== "en_cours") { essaiSuivi = null; essaiVu = e; await chargerLabo(); return; }
+    } catch (e) { if (e.acces) return deconnecter(e.message); }
+  }
+}
+
+async function voirEssai(id) {
+  try { essaiVu = await appel("/app/api/labo/essai/" + id); afficher(); window.scrollTo({top: 0, behavior: "smooth"}); }
+  catch (e) { if (e.acces) return deconnecter(e.message); toast(e.message); }
+}
+
+async function suivreEnDirect(id, actif, forcer) {
+  try {
+    const r = await appel("/app/api/labo/suivi", {method: "POST", body: JSON.stringify({id, actif, forcer: !!forcer})});
+    toast(r.message); await chargerLabo();
+  } catch (e) { if (e.acces) return deconnecter(e.message); toast(e.message); }
+}
+
+function carteResultat(e) {
+  if (e.statut === "erreur") {
+    return carte("Essai n° " + e.id, puce("échec", "ko"), h("div", {class: "verdict ko"}, e.erreur || "Erreur inconnue"),
+      e.idee ? h("div", {class: "sous"}, "Idée : " + e.idee) : null,
+      h("div", {class: "boutons"}, h("button", {type: "button", onclick: () => { essaiVu = null; afficher(); }}, "Fermer")));
+  }
+  const r = e.resultat || {}, g = r.global || {}, s = r.stress || {};
+  const c = carte("Essai n° " + e.id + " · " + (e.spec || {}).nom, puce(r.valide ? "7/7 portes" : `${(r.portes || []).filter((p) => p.ok).length}/7 portes`, r.valide ? "ok" : "ko"),
+    h("div", {class: "verdict " + (r.valide ? "ok" : "ko")}, r.valide
+      ? "✅ Candidate : elle a passé les 7 portes. Prochaine étape : le test en direct sur papier, pendant plusieurs semaines."
+      : "❌ Rejetée : comme la plupart des idées. Rien n'est perdu, c'est le rôle du labo."),
+    (e.spec && e.spec.explication) ? h("div", {class: "texte"}, e.spec.explication) : null,
+    e.remarques ? h("div", {class: "sous", style: "margin-top:6px"}, "Adapté par l'IA : " + e.remarques) : null,
+    h("div", {class: "sous", style: "margin-top:8px"}, r.resume || ""),
+    h("div", {class: "stats"},
+      stat((g.gain_pct >= 0 ? "+" : "") + N0.format(g.gain_pct || 0) + " %", "résultat (1 % risqué / trade)", signe(g.gain_pct)),
+      stat(String(g.trades || 0), "trades"),
+      stat(N2.format(g.facteur_profit || 0), "facteur de profit"),
+      stat("−" + N0.format(g.baisse_max_pct || 0) + " %", "baisse maximale"),
+      stat(N0.format(g.taux_gain || 0) + " %", "trades gagnants"),
+      stat((s.gain_pct >= 0 ? "+" : "") + N0.format(s.gain_pct || 0) + " %", "avec coûts × 2", signe(s.gain_pct))),
+    courbe(r.courbe));
+  for (const p of r.portes || []) c.append(h("div", {class: "porte"}, h("span", {"aria-hidden": "true"}, p.ok ? "✅" : "❌"), h("div", {}, p.nom, h("small", {}, p.detail))));
+  for (const [sym, st] of Object.entries(r.par_actif || {})) {
+    c.append(ligne(h("b", {}, sym.replace("USDT", "")), h("span", {class: "num " + signe(st.gain_pct)}, `${st.trades} trades · ${st.gain_pct >= 0 ? "+" : ""}${N0.format(st.gain_pct)} %`)));
+  }
+  if (r.historique) c.append(h("div", {class: "sous", style: "margin-top:8px"},
+    `Historique Binance ${dateCourte(r.historique.debut)} → ${dateCourte(r.historique.fin)} · ${r.hypotheses || ""}`));
+  const suivie = (labo && labo.suivis || []).find((x) => x.essai_id === e.id && x.actif);
+  c.append(h("div", {class: "boutons"},
+    h("button", {type: "button", onclick: () => copierTexte(r.pine || "", "strategie.pine")}, "Copier le Pine Script"),
+    suivie ? h("button", {type: "button", onclick: () => suivreEnDirect(e.id, false)}, "Arrêter le direct")
+      : h("button", {type: "button", onclick: () => {
+          if (r.valide) return suivreEnDirect(e.id, true);
+          if (confirm("Cette stratégie a échoué au backtest. La suivre quand même en direct (papier, sans ordre) ?")) suivreEnDirect(e.id, true, true);
+        }}, r.valide ? "Suivre en direct" : "Suivre quand même")));
+  c.append(h("button", {class: "lien", type: "button", onclick: () => { essaiVu = null; afficher(); }}, "Fermer ce résultat"));
+  return c;
+}
+
+function ecranLabo(zone) {
+  if (!labo) { zone.append(h("div", {class: "vide"}, "Chargement du labo…")); chargerLabo(); return; }
+  if (essaiVu) zone.append(carteResultat(essaiVu));
+  if (essaiSuivi) {
+    zone.append(carte("Test en cours", null, h("div", {class: "attente"}, h("span", {class: "roue"}),
+      h("span", {}, "L'IA écrit la stratégie, puis le labo la teste sur l'historique Binance vérifié (BTC, ETH, SOL). 10 à 60 secondes."))));
+  }
+  const zoneTexte = h("textarea", {placeholder: "Ex. : acheter quand le prix est au-dessus de la moyenne 200, que le RSI dépasse 50 et que le volume est fort ; stop sous la volatilité, objectif 2 fois le risque.",
+    "aria-label": "Idée de stratégie", maxlength: "2000", oninput: (ev) => { brouillon = ev.target.value; }});
+  zoneTexte.value = brouillon;
+  zone.append(carte("Nouvelle idée", labo.ia ? puce("IA Claude", "ok") : puce("IA non configurée", "att"),
+    h("div", {class: "sous", style: "margin-bottom:8px"}, "Décris une stratégie avec tes mots. L'IA la traduit en 1 tendance + 2 confirmations + 1 filtre, stop ATR et objectif en R, puis le labo la juge sur 7 portes."),
+    zoneTexte,
+    h("button", {class: "principal", type: "button", disabled: !labo.ia || !!essaiSuivi || labo.en_cours, onclick: () => {
+      const idee = (brouillon || "").trim();
+      if (idee.length < 10) return toast("Décris ton idée en une ou deux phrases.");
+      lancerEssai({idee});
+    }}, "Tester avec l'IA"),
+    labo.ia ? null : h("div", {class: "sous", style: "margin-top:8px"}, "Ajoute ta clé Anthropic sur le serveur (bots config) pour activer l'IA. Les exemples ci-dessous marchent sans.")));
+
+  const ex = carte("Exemples prêts à tester", null);
+  for (const x of labo.exemples || []) {
+    ex.append(h("button", {class: "action", type: "button", disabled: !!essaiSuivi, onclick: () => lancerEssai({exemple: x.cle})},
+      h("span", {class: "ic", "aria-hidden": "true"}, "🧪"), h("span", {}, x.nom + " · " + x.unite, h("small", {}, x.explication))));
+  }
+  zone.append(ex);
+
+  if ((labo.suivis || []).length) {
+    const cs = carte("Test en direct (papier)", puce("signaux Telegram [labo]"));
+    for (const x of labo.suivis) {
+      const st = x.stats || {};
+      cs.append(ligne(h("div", {}, h("b", {}, x.nom || ("Essai " + x.essai_id)),
+          h("div", {class: "sous"}, `depuis le ${new Date(x.depuis * 1000).toLocaleDateString("fr-FR")} · ${st.trades || 0} trades fictifs · ${(x.positions || []).length} en cours`
+            + (x.erreur ? " · ⚠ " + x.erreur : ""))),
+        h("div", {class: "num"}, h("div", {class: signe(st.gain_pct)}, (st.gain_pct >= 0 ? "+" : "") + N2.format(st.gain_pct || 0) + " %"),
+          h("button", {class: "lien", style: "margin:4px 0 0;padding:0", type: "button", onclick: () => suivreEnDirect(x.essai_id, !x.actif, true)}, x.actif ? "Arrêter" : "Reprendre"))));
+    }
+    cs.append(h("div", {class: "sous", style: "margin-top:8px"}, "Aucun ordre n'est passé : ces trades sont fictifs, calculés sur les vrais prix Binance. Juge une stratégie après plusieurs semaines, pas quelques jours."));
+    zone.append(cs);
+  }
+
+  const hist = carte("Essais", puce(`${labo.compte.testes} testés · ${labo.compte.valides} candidats`));
+  if (!(labo.essais || []).length) hist.append(h("div", {class: "vide"}, "Aucun essai pour l'instant : lance un exemple ou décris une idée."));
+  for (const e of labo.essais || []) {
+    const etat = e.statut === "en_cours" ? puce("en cours", "att") : e.statut === "erreur" ? puce("erreur", "ko") : e.valide ? puce("✅ candidate", "ok") : puce("❌ rejetée", "ko");
+    hist.append(cliquableEssai(e.id, ligne(h("div", {}, h("b", {}, (e.spec && e.spec.nom) || e.idee || ("Essai " + e.id)),
+      h("div", {class: "sous"}, heure(e.ts) + (e.source === "ia" ? " · IA" : " · exemple"))), etat)));
+  }
+  hist.append(h("div", {class: "sous", style: "margin-top:8px"}, "Plus on teste d'idées, plus une réussite peut venir du hasard : c'est pourquoi chaque essai est gardé, et pourquoi le test en direct compte plus que le backtest."));
+  zone.append(hist);
+}
+
+function cliquableEssai(id, el) {
+  el.classList.add("cliquable"); el.setAttribute("role", "button"); el.setAttribute("tabindex", "0");
+  el.addEventListener("click", () => voirEssai(id));
+  return el;
+}
+
 // ================================================================ connexion / navigation
 function deconnecter(message) {
   code = ""; stock.effacer("code"); stock.effacer("dernier"); donnees = null;
@@ -597,7 +766,7 @@ function entrer() {
 
 function planifier() {
   clearInterval(minuterie);
-  if (stock.lire("auto", "1") === "1") minuterie = setInterval(() => { if (!document.hidden && onglet !== "journal") charger(true); }, 20000);
+  if (stock.lire("auto", "1") === "1") minuterie = setInterval(() => { if (!document.hidden && onglet !== "journal" && onglet !== "labo") charger(true); }, 20000);
 }
 
 function appliquerTheme() {
@@ -618,13 +787,43 @@ document.getElementById("form-code").addEventListener("submit", async (e) => {
 document.getElementById("voir-demo").addEventListener("click", () => { location.href = "/app/?demo=1"; });
 document.querySelectorAll("nav button").forEach((b) => b.addEventListener("click", () => {
   onglet = b.dataset.onglet; afficher(); window.scrollTo(0, 0);
+  if (onglet === "labo") chargerLabo();
 }));
-document.getElementById("rafraichir").addEventListener("click", () => (onglet === "journal" ? afficher() : charger()));
+document.getElementById("rafraichir").addEventListener("click", () => (onglet === "journal" ? afficher() : onglet === "labo" ? chargerLabo() : charger()));
 document.addEventListener("visibilitychange", () => { if (!document.hidden && (code || DEMO)) charger(true); });
 
 // ================================================================ démonstration (?demo=1)
+function demoLabo(chemin, t) {
+  const spec = {nom: "Cassure de 20 bougies", unite: "4h", explication: "Acheter la cassure du plus haut de 20 bougies, confirmée par un MACD positif et une tendance forte (ADX > 25), avec un volume supérieur à 1,2 fois la moyenne."};
+  const portes = [["Assez de trades", true, "151 trades (minimum 30)"], ["Rentable après frais", true, "facteur de profit 1.24 (minimum 1.2)"],
+    ["Résiste à des coûts doublés", true, "+10.5 % avec frais et glissement × 2"], ["Gagnante sur plusieurs cryptos", true, "2 sur 3 (minimum 2)"],
+    ["Stable dans le temps", true, "3 périodes gagnantes sur 5 (minimum 3)"], ["Baisse maximale supportable", false, "30.0 % (maximum 20 %)"],
+    ["Pas un coup de chance (Monte-Carlo)", false, "86 % de chances de finir gagnant (min. 90 %), pire baisse probable 27 % (max. 30 %)"]]
+    .map(([nom, ok, detail]) => ({nom, ok, detail}));
+  const courbe = []; let v = 0;
+  for (let i = 0; i < 60; i++) { v += Math.sin(i / 5) * 3 + 0.5; courbe.push([t - (60 - i) * 86400 * 15, +v.toFixed(1)]); }
+  const essai = {id: 3, ts: t - 600, statut: "fini", source: "exemple", valide: false, spec, remarques: "",
+    resultat: {valide: false, portes, resume: "Tendance : clôture au-dessus du plus haut des N bougies précédentes (periode 20) · …",
+      global: {trades: 151, gain_pct: 27.0, facteur_profit: 1.24, baisse_max_pct: 30.0, taux_gain: 32, R_moyen: 0.18},
+      stress: {gain_pct: 10.5}, par_actif: {BTCUSDT: {trades: 49, gain_pct: 12.1}, ETHUSDT: {trades: 52, gain_pct: 19.8}, SOLUSDT: {trades: 50, gain_pct: -4.2}},
+      courbe, historique: {debut: 1704067200, fin: 1788220800}, hypotheses: "1 % du capital risqué par trade, frais 0,1 % + glissement 0,05 % par côté.",
+      pine: "//@version=6\n// Démonstration"}};
+  if (chemin.startsWith("/app/api/labo/essai/")) return essai;
+  if (chemin.startsWith("/app/api/labo/essai")) return {id: 3};
+  if (chemin.startsWith("/app/api/labo/suivi")) return {ok: true, message: "Démonstration : aucun suivi lancé."};
+  return {ia: true, en_cours: false, compte: {testes: 3, valides: 0}, historique: {debut: "2024-01", fin: "2026-08"},
+    exemples: [{cle: "tendance_classique", nom: "Tendance classique EMA 200", unite: "1h", explication: "Prix au-dessus de l'EMA 200, RSI > 50, ADX > 20, volume fort."},
+      {cle: "cassure", nom: "Cassure de 20 bougies", unite: "4h", explication: spec.explication}],
+    essais: [{id: 3, ts: t - 600, statut: "fini", source: "exemple", valide: false, spec},
+      {id: 2, ts: t - 7200, statut: "fini", source: "ia", valide: false, spec: {nom: "Repli RSI dans la tendance"}},
+      {id: 1, ts: t - 9000, statut: "erreur", source: "ia", valide: false, idee: "…"}],
+    suivis: [{essai_id: 3, nom: spec.nom, actif: true, depuis: t - 86400 * 6, positions: [{symbole: "ETH/USDT"}],
+      stats: {trades: 4, gain_pct: 1.35}, erreur: null}]};
+}
+
 function demo(chemin, options) {
   const t = Date.now() / 1000;
+  if (chemin.startsWith("/app/api/labo")) return Promise.resolve(demoLabo(chemin, t));
   if (chemin.startsWith("/app/api/action")) return Promise.resolve({ok: true, message: "Démonstration : aucune commande envoyée."});
   if (chemin.startsWith("/app/api/verifier")) return Promise.resolve(null);
   if (chemin.startsWith("/app/api/journal")) {

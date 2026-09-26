@@ -1,3 +1,4 @@
+Version V17.10 — LABO DE STRATÉGIES : idée en français -> IA Claude -> backtest Binance 2024-2026 -> 7 portes -> Pine Script TradingView -> test en direct papier avec signaux Telegram. Onglet Labo de l'application. Voir LABO.md.
 Version V17.9 — TradingView (graphiques + liste de suivi) et Polymarket (lecture seule) dans l'application iPhone ; bots app affiche le lien d'activation Tailscale. Voir LIENS_PLATEFORMES.md.
 Version V17.8 — Budget de risque persistant, rapprochement prudent, validation chronologique hors ligne ; application iPhone conservée. Voir V17_8_TERMIUS.md.
 Version V17.7 — APPLICATION iPHONE : tableau de bord de tous les bots + commandes (bots app, voir APPLI_IPHONE.md).

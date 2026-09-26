@@ -3,6 +3,8 @@ Les routes historiques (/state, /orders...) sont en lecture seule. L'application
 exige le code V17_APP_TOKEN ; depuis le téléphone : Tailscale (HTTPS privé) ou redirection de port Termius."""
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException
 
 from .. import rapport
@@ -10,7 +12,18 @@ from . import mobile
 from ..core.config import settings
 from ..core.store import OpsStore
 
-app = FastAPI(title='Trading Army V17 OPS', version='17.1.0')
+
+@asynccontextmanager
+async def _cycle_de_vie(_app):
+    try:                                   # test en direct du labo (papier) : ne doit jamais empêcher l'API de démarrer
+        from labo.service import demarrer_suivi
+        demarrer_suivi()
+    except Exception:
+        pass
+    yield
+
+
+app = FastAPI(title='Trading Army V17 OPS', version='17.1.0', lifespan=_cycle_de_vie)
 store = OpsStore(settings.ops_db)
 app.include_router(mobile.router)
 
