@@ -363,15 +363,25 @@ def bot_commandes(chef):
         elif c in ("/or_mt5_reprendre", "mt5_reprendre"):
             base.ecrire("mt5:pause", False)
             telegram.envoyer("▶️ MT5 : ordres automatiques repris.")
-        elif c.startswith("mt5_profil ") or c.startswith("/or_mt5_profil "):
-            nom = mt5.nom_profil(c.split(" ", 1)[1])
+        elif c in ("/or_mt5_profil", "mt5_profil"):
+            telegram.envoyer(f"⚖️ Profil actuel : {executant.profil_actif()}. Touche pour changer :\n"
+                             "/or_profil_pro (1 % du capital risqué, recommandé)\n/or_profil_x1  /or_profil_x3  "
+                             "/or_profil_x5\n/or_profil_x10  /or_profil_x20 (max. UE)  /or_profil_x50 (max. Binance)\n"
+                             "Sur l'historique : ruine fréquente à partir de x10.")
+        elif c.startswith(("mt5_profil ", "/or_mt5_profil ", "/or_profil_")):
+            nom = mt5.nom_profil(c.replace("/or_profil_", " ").split(" ", 1)[1])
             if nom:
                 base.ecrire("mt5:profil", nom)
             telegram.envoyer(f"⚖️ MT5 : profil des décisions = {nom}." if nom else
                              "Profil inconnu (x1, x3, x5, x10, x20, x50 ou pro).")
-        elif c in ("mt5_entrainement on", "mt5_entrainement off"):
+        elif c == "/or_entrainement":
+            telegram.envoyer(f"🏋️ Entraînement {'actif' if executant.entrainement_actif() else 'arrêté'}. Touche : "
+                             "/or_entrainement_on  ou  /or_entrainement_off")
+        elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c in ("/or_aide", "/start", "aide"):
+            telegram.envoyer("🟡 Commandes (touche-les) :\n" + "\n".join(f"/{n} — {d}" for n, d in telegram.MENU))
         faites.append(c)
     return ("commandes : " + ", ".join(faites)) if faites else "aucune commande"
 
@@ -503,6 +513,7 @@ def premier_demarrage():
 def main():
     from .systemd import dormir, notifier
     premier_demarrage()
+    telegram.installer_menu()
     chef = Chef()
     notifier("READY=1")
     telegram.envoyer(f"🎼 Chef d'orchestre en poste : {len(chef.bots)} bots de l'armée de l'or au travail. "

@@ -45,6 +45,27 @@ def alerte_rare(cle, texte, fenetre_s=3600, important=False):
     return envoyer(texte, important)
 
 
+MENU = [("or", "Rapport complet"), ("or_mt5", "Compte MT5 démo et équipes"),
+        ("or_mt5_fermer", "Fermer les positions de l'armée et suspendre"), ("or_mt5_reprendre", "Reprendre les ordres MT5"),
+        ("or_mt5_profil", "Choisir le levier des décisions"), ("or_entrainement", "Équipe d'entraînement on/off"),
+        ("or_levier", "Fiches de levier x1 à x50"), ("or_bilan", "Bilan historique"), ("or_pause", "Pause des nouvelles positions"),
+        ("or_reprise", "Reprise des positions"), ("or_bibliotheque", "Connaissances utilisées"), ("or_aide", "Toutes les commandes")]
+
+
+def installer_menu(session=None):
+    """Menu « / » du bot dédié : tout se pilote d'un doigt depuis le téléphone."""
+    if not (config.TELEGRAM_COMMANDES and config.TELEGRAM_JETON):
+        return False
+    try:
+        import requests
+        (session or requests).post(f"https://api.telegram.org/bot{config.TELEGRAM_JETON}/setMyCommands",
+                                   json={"commands": [{"command": c, "description": d} for c, d in MENU]}, timeout=15)
+        return True
+    except Exception as ex:
+        _log.warning("menu Telegram non installé : %s", ex)
+        return False
+
+
 def commandes(session=None):
     """Commandes reçues sur le bot DÉDIÉ uniquement (jamais sur le bot partagé)."""
     if not (config.TELEGRAM_COMMANDES and config.TELEGRAM_JETON and config.TELEGRAM_CHAT):

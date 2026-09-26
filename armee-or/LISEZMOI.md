@@ -1,4 +1,4 @@
-# Armée de l'or — v2 (avec MetaTrader 5 démo)
+# Armée de l'or — v2.1 (avec MetaTrader 5 démo, pilotable depuis l'iPhone)
 
 Des bots dédiés **uniquement à l'or**. Ils tournent **à côté** de l'équipe V17.9, sans jamais la toucher :
 
@@ -15,10 +15,10 @@ Les comptes de levier x1 → x50 restent **simulés sur papier**. Si tu branches
 
 ## Installation (Termius, en root)
 
-1. Envoie `armee-or-v2.zip` dans `/root` (SFTP de Termius).
+1. Envoie `armee-or-v2.1.zip` dans `/root` (SFTP de Termius).
 2. Lance :
    ```
-   unzip -o /root/armee-or-v2.zip -d /root/
+   unzip -o /root/armee-or-v2.1.zip -d /root/
    bash /root/armee-or/installer_or.sh
    ```
 3. Choisis le Telegram :
@@ -33,6 +33,13 @@ Les comptes de levier x1 → x50 restent **simulés sur papier**. Si tu branches
    - importe l'historique livré (environ 5 s) ;
    - installe Wine, un écran virtuel, le terminal MT5 et Python pour Windows avec la bibliothèque officielle MetaTrader5 (10 à 20 minutes la première fois) ;
    - démarre les services.
+
+## Tout depuis l'iPhone
+
+- **Installer** : enregistre le zip dans l'app Fichiers. Dans Termius, ouvre ton serveur, puis SFTP : envoie le zip dans `/root`. Colle ensuite les deux commandes d'installation dans le terminal.
+- **Piloter** : dans ton bot Telegram dédié, touche le bouton **Menu** (ou tape `/`). Toutes les commandes y sont, et les réponses contiennent des commandes à toucher, par exemple `/or_profil_x20` ou `/or_entrainement_off`.
+- **Voir les positions** : dans l'app **MetaTrader 5** pour iPhone, connectée au même compte démo.
+- **Termius** ne sert qu'en secours (`or etat`, `or mt5 journal`).
 
 ## Commandes Termius
 
@@ -102,7 +109,7 @@ Ubuntu ne peut pas lancer MT5 directement. Le service `armee-or-mt5` fait tourne
 - Si le pont perd la connexion au serveur MT5 pendant 10 minutes, il se relance avec le terminal. Le chef signale le problème sur Telegram.
 
 Ce qui a été vérifié avant livraison :
-- les 45 tests passent, dont 18 sur MT5 avec un faux terminal ;
+- les 46 tests passent, dont 19 sur MT5 avec un faux terminal ;
 - Wine 11 s'installe sur Ubuntu 24.04 ;
 - la vraie bibliothèque MetaTrader5 (5.0.6180) tourne sous Wine et expose exactement les fonctions et constantes utilisées ;
 - le vrai pont sous Wine répond au client Linux.

@@ -294,3 +294,15 @@ def test_le_pont_reste_autonome_et_ne_contient_aucun_identifiant():
     for fichier in ("installer_mt5.sh", "installer_or.sh", "or"):
         contenu = open(os.path.join(racine, fichier), encoding="utf-8").read()
         assert not re.search(r"OR_MT5_(LOGIN|MOT_DE_PASSE)=\d|MOT_DE_PASSE=[^$\n]", contenu), fichier
+
+
+def test_pilotage_au_doigt_depuis_telegram(faux, monkeypatch):
+    envoyes = []
+    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, important=False: envoyes.append(t) or True)
+    monkeypatch.setattr(chef.telegram, "commandes",
+                        lambda: ["/or_mt5_profil", "/or_profil_x20", "/or_entrainement", "/or_entrainement_off", "/or_aide"])
+    chef.bot_commandes(_chef())
+    assert "/or_profil_x20" in envoyes[0] and executant.profil_actif() == "x20 (max. UE)"
+    assert executant.entrainement_actif() is False and "/or_mt5_fermer" in envoyes[-1]
+    from armee_or import telegram
+    assert all(len(n) <= 32 and n.islower() and " " not in n for n, _ in telegram.MENU)
