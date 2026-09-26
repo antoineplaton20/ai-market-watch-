@@ -1,0 +1,3321 @@
+{
+  "created_at": "2026-09-26T09:01:11.497528+00:00",
+  "candidates": [
+    "v177",
+    "trend200",
+    "cooldown8",
+    "cash"
+  ],
+  "live_authorized": false,
+  "method": "six-month train / three-month test, fixed candidate set, cash allowed, doubled cost gate",
+  "limitations": [
+    "surviving asset selection",
+    "OHLC execution approximation",
+    "existing observed history, not a pristine holdout",
+    "no leverage/funding/liquidation model",
+    "does not replay all live-engine risk logic",
+    "per-window cash reset and warmup"
+  ],
+  "symbols": {
+    "BTCUSDT": {
+      "windows": [
+        {
+          "train_months": [
+            "2024-01",
+            "2024-02",
+            "2024-03",
+            "2024-04",
+            "2024-05",
+            "2024-06"
+          ],
+          "test_months": [
+            "2024-07",
+            "2024-08",
+            "2024-09"
+          ],
+          "chosen": "trend200",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 7.9907,
+                "return_pct": 0.7991,
+                "max_close_drawdown_pct": 2.4601,
+                "round_trips": 32,
+                "orders": 64,
+                "win_rate": 0.40625,
+                "profit_factor": 1.1570167645089326,
+                "ending_equity": 1007.9907441517844
+              },
+              "stress": {
+                "pnl_usdt": -1.007,
+                "return_pct": -0.1007,
+                "max_close_drawdown_pct": 2.9811,
+                "round_trips": 32,
+                "orders": 64,
+                "win_rate": 0.40625,
+                "profit_factor": 0.9819831345131032,
+                "ending_equity": 998.992954596897
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 22.4235,
+                "return_pct": 2.2423,
+                "max_close_drawdown_pct": 1.2474,
+                "round_trips": 20,
+                "orders": 40,
+                "win_rate": 0.45,
+                "profit_factor": 1.8786937344911196,
+                "ending_equity": 1022.4234535993373
+              },
+              "stress": {
+                "pnl_usdt": 16.7193,
+                "return_pct": 1.6719,
+                "max_close_drawdown_pct": 1.475,
+                "round_trips": 20,
+                "orders": 40,
+                "win_rate": 0.45,
+                "profit_factor": 1.587729189663104,
+                "ending_equity": 1016.7192792696824
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 7.9907,
+                "return_pct": 0.7991,
+                "max_close_drawdown_pct": 2.4601,
+                "round_trips": 32,
+                "orders": 64,
+                "win_rate": 0.40625,
+                "profit_factor": 1.1570167645089326,
+                "ending_equity": 1007.9907441517844
+              },
+              "stress": {
+                "pnl_usdt": -1.007,
+                "return_pct": -0.1007,
+                "max_close_drawdown_pct": 2.9811,
+                "round_trips": 32,
+                "orders": 64,
+                "win_rate": 0.40625,
+                "profit_factor": 0.9819831345131032,
+                "ending_equity": 998.992954596897
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 4.7608,
+            "return_pct": 0.4761,
+            "max_close_drawdown_pct": 1.4751,
+            "round_trips": 8,
+            "orders": 16,
+            "win_rate": 0.375,
+            "profit_factor": 1.2932356453413247,
+            "ending_equity": 1004.760789530295
+          },
+          "selected_stress": {
+            "pnl_usdt": 2.5918,
+            "return_pct": 0.2592,
+            "max_close_drawdown_pct": 1.5564,
+            "round_trips": 8,
+            "orders": 16,
+            "win_rate": 0.375,
+            "profit_factor": 1.1483454956242014,
+            "ending_equity": 1002.5918159577205
+          },
+          "baseline_base": {
+            "pnl_usdt": -9.0861,
+            "return_pct": -0.9086,
+            "max_close_drawdown_pct": 2.9818,
+            "round_trips": 16,
+            "orders": 32,
+            "win_rate": 0.3125,
+            "profit_factor": 0.730725746049516,
+            "ending_equity": 990.9139245015856
+          }
+        },
+        {
+          "train_months": [
+            "2024-04",
+            "2024-05",
+            "2024-06",
+            "2024-07",
+            "2024-08",
+            "2024-09"
+          ],
+          "test_months": [
+            "2024-10",
+            "2024-11",
+            "2024-12"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -19.1154,
+                "return_pct": -1.9115,
+                "max_close_drawdown_pct": 4.4056,
+                "round_trips": 29,
+                "orders": 58,
+                "win_rate": 0.3103448275862069,
+                "profit_factor": 0.6698801990064116,
+                "ending_equity": 980.8846243664705
+              },
+              "stress": {
+                "pnl_usdt": -27.1228,
+                "return_pct": -2.7123,
+                "max_close_drawdown_pct": 4.9746,
+                "round_trips": 29,
+                "orders": 58,
+                "win_rate": 0.27586206896551724,
+                "profit_factor": 0.570928028752835,
+                "ending_equity": 972.8772196033585
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -1.7535,
+                "return_pct": -0.1753,
+                "max_close_drawdown_pct": 2.5928,
+                "round_trips": 17,
+                "orders": 34,
+                "win_rate": 0.29411764705882354,
+                "profit_factor": 0.9446864954454878,
+                "ending_equity": 998.2465239050766
+              },
+              "stress": {
+                "pnl_usdt": -6.4233,
+                "return_pct": -0.6423,
+                "max_close_drawdown_pct": 2.885,
+                "round_trips": 17,
+                "orders": 34,
+                "win_rate": 0.29411764705882354,
+                "profit_factor": 0.8155458362139425,
+                "ending_equity": 993.5766929810694
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -13.6923,
+                "return_pct": -1.3692,
+                "max_close_drawdown_pct": 3.8687,
+                "round_trips": 28,
+                "orders": 56,
+                "win_rate": 0.32142857142857145,
+                "profit_factor": 0.7391016525434538,
+                "ending_equity": 986.3077267457732
+              },
+              "stress": {
+                "pnl_usdt": -21.5041,
+                "return_pct": -2.1504,
+                "max_close_drawdown_pct": 4.4171,
+                "round_trips": 28,
+                "orders": 56,
+                "win_rate": 0.2857142857142857,
+                "profit_factor": 0.6266261659058101,
+                "ending_equity": 978.4959242908435
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": 10.4209,
+            "return_pct": 1.0421,
+            "max_close_drawdown_pct": 1.7341,
+            "round_trips": 16,
+            "orders": 32,
+            "win_rate": 0.3125,
+            "profit_factor": 1.4091531334543066,
+            "ending_equity": 1010.4209229989165
+          }
+        },
+        {
+          "train_months": [
+            "2024-07",
+            "2024-08",
+            "2024-09",
+            "2024-10",
+            "2024-11",
+            "2024-12"
+          ],
+          "test_months": [
+            "2025-01",
+            "2025-02",
+            "2025-03"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 1.3348,
+                "return_pct": 0.1335,
+                "max_close_drawdown_pct": 2.9818,
+                "round_trips": 32,
+                "orders": 64,
+                "win_rate": 0.3125,
+                "profit_factor": 1.0225434067657264,
+                "ending_equity": 1001.3348475005021
+              },
+              "stress": {
+                "pnl_usdt": -7.6046,
+                "return_pct": -0.7605,
+                "max_close_drawdown_pct": 3.3621,
+                "round_trips": 32,
+                "orders": 64,
+                "win_rate": 0.28125,
+                "profit_factor": 0.8832209788927377,
+                "ending_equity": 992.3954013820115
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 20.8626,
+                "return_pct": 2.0863,
+                "max_close_drawdown_pct": 1.4751,
+                "round_trips": 19,
+                "orders": 38,
+                "win_rate": 0.3684210526315789,
+                "profit_factor": 1.6506479737537154,
+                "ending_equity": 1020.8626225210068
+              },
+              "stress": {
+                "pnl_usdt": 15.5096,
+                "return_pct": 1.551,
+                "max_close_drawdown_pct": 1.5564,
+                "round_trips": 19,
+                "orders": 38,
+                "win_rate": 0.3684210526315789,
+                "profit_factor": 1.4401780402537516,
+                "ending_equity": 1015.5095954312916
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 6.7579,
+                "return_pct": 0.6758,
+                "max_close_drawdown_pct": 2.4425,
+                "round_trips": 31,
+                "orders": 62,
+                "win_rate": 0.3225806451612903,
+                "profit_factor": 1.1256376222579059,
+                "ending_equity": 1006.7579498798048
+              },
+              "stress": {
+                "pnl_usdt": -1.9859,
+                "return_pct": -0.1986,
+                "max_close_drawdown_pct": 2.8032,
+                "round_trips": 31,
+                "orders": 62,
+                "win_rate": 0.2903225806451613,
+                "profit_factor": 0.9666241119010309,
+                "ending_equity": 998.0141060694965
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -6.5817,
+            "return_pct": -0.6582,
+            "max_close_drawdown_pct": 1.6252,
+            "round_trips": 16,
+            "orders": 32,
+            "win_rate": 0.25,
+            "profit_factor": 0.763828883402154,
+            "ending_equity": 993.4183332791798
+          }
+        },
+        {
+          "train_months": [
+            "2024-10",
+            "2024-11",
+            "2024-12",
+            "2025-01",
+            "2025-02",
+            "2025-03"
+          ],
+          "test_months": [
+            "2025-04",
+            "2025-05",
+            "2025-06"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 12.2525,
+                "return_pct": 1.2252,
+                "max_close_drawdown_pct": 1.7341,
+                "round_trips": 31,
+                "orders": 62,
+                "win_rate": 0.3225806451612903,
+                "profit_factor": 1.2501512661879852,
+                "ending_equity": 1012.2524939112894
+              },
+              "stress": {
+                "pnl_usdt": 3.452,
+                "return_pct": 0.3452,
+                "max_close_drawdown_pct": 2.121,
+                "round_trips": 31,
+                "orders": 62,
+                "win_rate": 0.3225806451612903,
+                "profit_factor": 1.0631267862855203,
+                "ending_equity": 1003.4520495649642
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 0.5075,
+                "return_pct": 0.0507,
+                "max_close_drawdown_pct": 2.8664,
+                "round_trips": 20,
+                "orders": 40,
+                "win_rate": 0.3,
+                "profit_factor": 1.0136611552981056,
+                "ending_equity": 1000.5074918330674
+              },
+              "stress": {
+                "pnl_usdt": -5.0671,
+                "return_pct": -0.5067,
+                "max_close_drawdown_pct": 3.2816,
+                "round_trips": 20,
+                "orders": 40,
+                "win_rate": 0.3,
+                "profit_factor": 0.8760009676800339,
+                "ending_equity": 994.9329170852568
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 12.2525,
+                "return_pct": 1.2252,
+                "max_close_drawdown_pct": 1.7341,
+                "round_trips": 31,
+                "orders": 62,
+                "win_rate": 0.3225806451612903,
+                "profit_factor": 1.2501512661879852,
+                "ending_equity": 1012.2524939112894
+              },
+              "stress": {
+                "pnl_usdt": 3.452,
+                "return_pct": 0.3452,
+                "max_close_drawdown_pct": 2.121,
+                "round_trips": 31,
+                "orders": 62,
+                "win_rate": 0.3225806451612903,
+                "profit_factor": 1.0631267862855203,
+                "ending_equity": 1003.4520495649642
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": 30.2662,
+            "return_pct": 3.0266,
+            "max_close_drawdown_pct": 0.9738,
+            "round_trips": 7,
+            "orders": 14,
+            "win_rate": 0.5714285714285714,
+            "profit_factor": 8.097563459083512,
+            "ending_equity": 1030.2661638243862
+          }
+        },
+        {
+          "train_months": [
+            "2025-01",
+            "2025-02",
+            "2025-03",
+            "2025-04",
+            "2025-05",
+            "2025-06"
+          ],
+          "test_months": [
+            "2025-07",
+            "2025-08",
+            "2025-09"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 26.8489,
+                "return_pct": 2.6849,
+                "max_close_drawdown_pct": 1.8952,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.4090909090909091,
+                "profit_factor": 1.8835230425790532,
+                "ending_equity": 1026.8488754253372
+              },
+              "stress": {
+                "pnl_usdt": 20.5855,
+                "return_pct": 2.0586,
+                "max_close_drawdown_pct": 2.368,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.4090909090909091,
+                "profit_factor": 1.6079266579108007,
+                "ending_equity": 1020.5855137889919
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 10.1339,
+                "return_pct": 1.0134,
+                "max_close_drawdown_pct": 2.3845,
+                "round_trips": 14,
+                "orders": 28,
+                "win_rate": 0.35714285714285715,
+                "profit_factor": 1.4221636634461223,
+                "ending_equity": 1010.1339061085165
+              },
+              "stress": {
+                "pnl_usdt": 6.2025,
+                "return_pct": 0.6203,
+                "max_close_drawdown_pct": 2.6585,
+                "round_trips": 14,
+                "orders": 28,
+                "win_rate": 0.35714285714285715,
+                "profit_factor": 1.235099101228245,
+                "ending_equity": 1006.2025220755456
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 26.8489,
+                "return_pct": 2.6849,
+                "max_close_drawdown_pct": 1.8952,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.4090909090909091,
+                "profit_factor": 1.8835230425790532,
+                "ending_equity": 1026.8488754253372
+              },
+              "stress": {
+                "pnl_usdt": 20.5855,
+                "return_pct": 2.0586,
+                "max_close_drawdown_pct": 2.368,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.4090909090909091,
+                "profit_factor": 1.6079266579108007,
+                "ending_equity": 1020.5855137889919
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -3.0906,
+            "return_pct": -0.3091,
+            "max_close_drawdown_pct": 1.3717,
+            "round_trips": 5,
+            "orders": 10,
+            "win_rate": 0.4,
+            "profit_factor": 0.5300068811727927,
+            "ending_equity": 996.9094465834925
+          }
+        },
+        {
+          "train_months": [
+            "2025-04",
+            "2025-05",
+            "2025-06",
+            "2025-07",
+            "2025-08",
+            "2025-09"
+          ],
+          "test_months": [
+            "2025-10",
+            "2025-11",
+            "2025-12"
+          ],
+          "chosen": "v177",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 34.1158,
+                "return_pct": 3.4116,
+                "max_close_drawdown_pct": 1.3833,
+                "round_trips": 11,
+                "orders": 22,
+                "win_rate": 0.45454545454545453,
+                "profit_factor": 4.147199942209979,
+                "ending_equity": 1034.1157896828242
+              },
+              "stress": {
+                "pnl_usdt": 30.9047,
+                "return_pct": 3.0905,
+                "max_close_drawdown_pct": 1.4643,
+                "round_trips": 11,
+                "orders": 22,
+                "win_rate": 0.45454545454545453,
+                "profit_factor": 3.4760576236377747,
+                "ending_equity": 1030.9047017134196
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 29.5726,
+                "return_pct": 2.9573,
+                "max_close_drawdown_pct": 1.3665,
+                "round_trips": 8,
+                "orders": 16,
+                "win_rate": 0.5,
+                "profit_factor": 4.339004206275575,
+                "ending_equity": 1029.5725949748328
+              },
+              "stress": {
+                "pnl_usdt": 27.2213,
+                "return_pct": 2.7221,
+                "max_close_drawdown_pct": 1.446,
+                "round_trips": 8,
+                "orders": 16,
+                "win_rate": 0.5,
+                "profit_factor": 3.736220681974744,
+                "ending_equity": 1027.2213212849283
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 34.1158,
+                "return_pct": 3.4116,
+                "max_close_drawdown_pct": 1.3833,
+                "round_trips": 11,
+                "orders": 22,
+                "win_rate": 0.45454545454545453,
+                "profit_factor": 4.147199942209979,
+                "ending_equity": 1034.1157896828242
+              },
+              "stress": {
+                "pnl_usdt": 30.9047,
+                "return_pct": 3.0905,
+                "max_close_drawdown_pct": 1.4643,
+                "round_trips": 11,
+                "orders": 22,
+                "win_rate": 0.45454545454545453,
+                "profit_factor": 3.4760576236377747,
+                "ending_equity": 1030.9047017134196
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": -28.4532,
+            "return_pct": -2.8453,
+            "max_close_drawdown_pct": 3.6385,
+            "round_trips": 18,
+            "orders": 36,
+            "win_rate": 0.16666666666666666,
+            "profit_factor": 0.2642312660590986,
+            "ending_equity": 971.5468144392676
+          },
+          "selected_stress": {
+            "pnl_usdt": -33.4318,
+            "return_pct": -3.3432,
+            "max_close_drawdown_pct": 4.118,
+            "round_trips": 18,
+            "orders": 36,
+            "win_rate": 0.16666666666666666,
+            "profit_factor": 0.21766421601513142,
+            "ending_equity": 966.5682482921464
+          },
+          "baseline_base": {
+            "pnl_usdt": -28.4532,
+            "return_pct": -2.8453,
+            "max_close_drawdown_pct": 3.6385,
+            "round_trips": 18,
+            "orders": 36,
+            "win_rate": 0.16666666666666666,
+            "profit_factor": 0.2642312660590986,
+            "ending_equity": 971.5468144392676
+          }
+        },
+        {
+          "train_months": [
+            "2025-07",
+            "2025-08",
+            "2025-09",
+            "2025-10",
+            "2025-11",
+            "2025-12"
+          ],
+          "test_months": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -29.1968,
+                "return_pct": -2.9197,
+                "max_close_drawdown_pct": 3.7024,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.22727272727272727,
+                "profit_factor": 0.3535597048672318,
+                "ending_equity": 970.803188381112
+              },
+              "stress": {
+                "pnl_usdt": -35.2794,
+                "return_pct": -3.5279,
+                "max_close_drawdown_pct": 4.2915,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.22727272727272727,
+                "profit_factor": 0.2904657199947938,
+                "ending_equity": 964.7206465246264
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -9.1966,
+                "return_pct": -0.9197,
+                "max_close_drawdown_pct": 1.7185,
+                "round_trips": 11,
+                "orders": 22,
+                "win_rate": 0.36363636363636365,
+                "profit_factor": 0.5282987314231152,
+                "ending_equity": 990.8033828509024
+              },
+              "stress": {
+                "pnl_usdt": -12.3427,
+                "return_pct": -1.2343,
+                "max_close_drawdown_pct": 2.016,
+                "round_trips": 11,
+                "orders": 22,
+                "win_rate": 0.2727272727272727,
+                "profit_factor": 0.42667480479905784,
+                "ending_equity": 987.6572959923006
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -32.8145,
+                "return_pct": -3.2814,
+                "max_close_drawdown_pct": 4.0613,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.22727272727272727,
+                "profit_factor": 0.2734619697095318,
+                "ending_equity": 967.1855325788563
+              },
+              "stress": {
+                "pnl_usdt": -38.8916,
+                "return_pct": -3.8892,
+                "max_close_drawdown_pct": 4.6499,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.18181818181818182,
+                "profit_factor": 0.21943010646449085,
+                "ending_equity": 961.1084199206732
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -9.6918,
+            "return_pct": -0.9692,
+            "max_close_drawdown_pct": 1.3243,
+            "round_trips": 15,
+            "orders": 30,
+            "win_rate": 0.26666666666666666,
+            "profit_factor": 0.6372356990103377,
+            "ending_equity": 990.3081596463422
+          }
+        },
+        {
+          "train_months": [
+            "2025-10",
+            "2025-11",
+            "2025-12",
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "test_months": [
+            "2026-04",
+            "2026-05",
+            "2026-06"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -38.145,
+                "return_pct": -3.8145,
+                "max_close_drawdown_pct": 4.7796,
+                "round_trips": 33,
+                "orders": 66,
+                "win_rate": 0.21212121212121213,
+                "profit_factor": 0.4166357095366224,
+                "ending_equity": 961.8549740856098
+              },
+              "stress": {
+                "pnl_usdt": -47.374,
+                "return_pct": -4.7374,
+                "max_close_drawdown_pct": 5.5515,
+                "round_trips": 33,
+                "orders": 66,
+                "win_rate": 0.21212121212121213,
+                "profit_factor": 0.34632141085270446,
+                "ending_equity": 952.6259725798467
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -27.1486,
+                "return_pct": -2.7149,
+                "max_close_drawdown_pct": 3.0921,
+                "round_trips": 17,
+                "orders": 34,
+                "win_rate": 0.17647058823529413,
+                "profit_factor": 0.19758676674027897,
+                "ending_equity": 972.8513929050381
+              },
+              "stress": {
+                "pnl_usdt": -31.9737,
+                "return_pct": -3.1974,
+                "max_close_drawdown_pct": 3.459,
+                "round_trips": 17,
+                "orders": 34,
+                "win_rate": 0.11764705882352941,
+                "profit_factor": 0.15525568462003617,
+                "ending_equity": 968.0262553454075
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -41.7627,
+                "return_pct": -4.1763,
+                "max_close_drawdown_pct": 5.1384,
+                "round_trips": 33,
+                "orders": 66,
+                "win_rate": 0.21212121212121213,
+                "profit_factor": 0.3613097224745066,
+                "ending_equity": 958.237318283354
+              },
+              "stress": {
+                "pnl_usdt": -50.9863,
+                "return_pct": -5.0986,
+                "max_close_drawdown_pct": 5.9098,
+                "round_trips": 33,
+                "orders": 66,
+                "win_rate": 0.18181818181818182,
+                "profit_factor": 0.29747504632106353,
+                "ending_equity": 949.0137459758934
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -8.3231,
+            "return_pct": -0.8323,
+            "max_close_drawdown_pct": 1.9054,
+            "round_trips": 8,
+            "orders": 16,
+            "win_rate": 0.25,
+            "profit_factor": 0.48655192227120875,
+            "ending_equity": 991.6768858121216
+          }
+        }
+      ],
+      "unused_final_months": [
+        "2026-07",
+        "2026-08"
+      ],
+      "sum_window_pnl_usdt": -23.6924,
+      "baseline_sum_window_pnl_usdt": -24.539399999999997,
+      "cash_windows": 6,
+      "note": "Chaque fen\u00eatre repart \u00e0 1000 USDT ; somme de PnL de comptes r\u00e9initialis\u00e9s, pas un rendement compos\u00e9."
+    },
+    "ETHUSDT": {
+      "windows": [
+        {
+          "train_months": [
+            "2024-01",
+            "2024-02",
+            "2024-03",
+            "2024-04",
+            "2024-05",
+            "2024-06"
+          ],
+          "test_months": [
+            "2024-07",
+            "2024-08",
+            "2024-09"
+          ],
+          "chosen": "trend200",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 39.384,
+                "return_pct": 3.9384,
+                "max_close_drawdown_pct": 1.7586,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.47368421052631576,
+                "profit_factor": 1.7108568968999287,
+                "ending_equity": 1039.38401693347
+              },
+              "stress": {
+                "pnl_usdt": 28.4881,
+                "return_pct": 2.8488,
+                "max_close_drawdown_pct": 1.9003,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.4473684210526316,
+                "profit_factor": 1.466682665904478,
+                "ending_equity": 1028.4880579650014
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 46.4995,
+                "return_pct": 4.65,
+                "max_close_drawdown_pct": 1.336,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.5,
+                "profit_factor": 2.8520461226160987,
+                "ending_equity": 1046.4995191786727
+              },
+              "stress": {
+                "pnl_usdt": 37.6237,
+                "return_pct": 3.7624,
+                "max_close_drawdown_pct": 1.465,
+                "round_trips": 22,
+                "orders": 44,
+                "win_rate": 0.5,
+                "profit_factor": 2.230716446630759,
+                "ending_equity": 1037.6236680909878
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 39.384,
+                "return_pct": 3.9384,
+                "max_close_drawdown_pct": 1.7586,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.47368421052631576,
+                "profit_factor": 1.7108568968999287,
+                "ending_equity": 1039.38401693347
+              },
+              "stress": {
+                "pnl_usdt": 28.4881,
+                "return_pct": 2.8488,
+                "max_close_drawdown_pct": 1.9003,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.4473684210526316,
+                "profit_factor": 1.466682665904478,
+                "ending_equity": 1028.4880579650014
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0.7634,
+            "return_pct": 0.0763,
+            "max_close_drawdown_pct": 1.8248,
+            "round_trips": 10,
+            "orders": 20,
+            "win_rate": 0.3,
+            "profit_factor": 1.0524179173569501,
+            "ending_equity": 1000.763374566345
+          },
+          "selected_stress": {
+            "pnl_usdt": -2.1456,
+            "return_pct": -0.2146,
+            "max_close_drawdown_pct": 1.9651,
+            "round_trips": 10,
+            "orders": 20,
+            "win_rate": 0.3,
+            "profit_factor": 0.8703416143516192,
+            "ending_equity": 997.854435874552
+          },
+          "baseline_base": {
+            "pnl_usdt": -9.2265,
+            "return_pct": -0.9227,
+            "max_close_drawdown_pct": 2.5195,
+            "round_trips": 22,
+            "orders": 44,
+            "win_rate": 0.3181818181818182,
+            "profit_factor": 0.7585364674628385,
+            "ending_equity": 990.7734516605043
+          }
+        },
+        {
+          "train_months": [
+            "2024-04",
+            "2024-05",
+            "2024-06",
+            "2024-07",
+            "2024-08",
+            "2024-09"
+          ],
+          "test_months": [
+            "2024-10",
+            "2024-11",
+            "2024-12"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 9.514,
+                "return_pct": 0.9514,
+                "max_close_drawdown_pct": 3.4175,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.39473684210526316,
+                "profit_factor": 1.1512262671331523,
+                "ending_equity": 1009.514009888704
+              },
+              "stress": {
+                "pnl_usdt": -1.2404,
+                "return_pct": -0.124,
+                "max_close_drawdown_pct": 4.1635,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.34210526315789475,
+                "profit_factor": 0.9821529627569938,
+                "ending_equity": 998.759587538515
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 12.1444,
+                "return_pct": 1.2144,
+                "max_close_drawdown_pct": 2.4345,
+                "round_trips": 19,
+                "orders": 38,
+                "win_rate": 0.3684210526315789,
+                "profit_factor": 1.4113470070674696,
+                "ending_equity": 1012.1444000135801
+              },
+              "stress": {
+                "pnl_usdt": 3.2135,
+                "return_pct": 0.3213,
+                "max_close_drawdown_pct": 3.1084,
+                "round_trips": 20,
+                "orders": 40,
+                "win_rate": 0.35,
+                "profit_factor": 1.0885522437017987,
+                "ending_equity": 1003.2134507995637
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 9.514,
+                "return_pct": 0.9514,
+                "max_close_drawdown_pct": 3.4175,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.39473684210526316,
+                "profit_factor": 1.1512262671331523,
+                "ending_equity": 1009.514009888704
+              },
+              "stress": {
+                "pnl_usdt": -1.2404,
+                "return_pct": -0.124,
+                "max_close_drawdown_pct": 4.1635,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.34210526315789475,
+                "profit_factor": 0.9821529627569938,
+                "ending_equity": 998.759587538515
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -2.4148,
+            "return_pct": -0.2415,
+            "max_close_drawdown_pct": 2.1635,
+            "round_trips": 26,
+            "orders": 52,
+            "win_rate": 0.3076923076923077,
+            "profit_factor": 0.9468176023536803,
+            "ending_equity": 997.5851646855526
+          }
+        },
+        {
+          "train_months": [
+            "2024-07",
+            "2024-08",
+            "2024-09",
+            "2024-10",
+            "2024-11",
+            "2024-12"
+          ],
+          "test_months": [
+            "2025-01",
+            "2025-02",
+            "2025-03"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -12.6439,
+                "return_pct": -1.2644,
+                "max_close_drawdown_pct": 2.8059,
+                "round_trips": 48,
+                "orders": 96,
+                "win_rate": 0.3125,
+                "profit_factor": 0.8487893493597233,
+                "ending_equity": 987.3561276754997
+              },
+              "stress": {
+                "pnl_usdt": -26.2245,
+                "return_pct": -2.6224,
+                "max_close_drawdown_pct": 3.519,
+                "round_trips": 48,
+                "orders": 96,
+                "win_rate": 0.2708333333333333,
+                "profit_factor": 0.7174971415211578,
+                "ending_equity": 973.7755203152294
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -11.6485,
+                "return_pct": -1.1649,
+                "max_close_drawdown_pct": 3.2402,
+                "round_trips": 30,
+                "orders": 60,
+                "win_rate": 0.26666666666666666,
+                "profit_factor": 0.7805513585770926,
+                "ending_equity": 988.3514628961393
+              },
+              "stress": {
+                "pnl_usdt": -20.1127,
+                "return_pct": -2.0113,
+                "max_close_drawdown_pct": 3.635,
+                "round_trips": 30,
+                "orders": 60,
+                "win_rate": 0.2,
+                "profit_factor": 0.6614065182270866,
+                "ending_equity": 979.88733825619
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -12.6439,
+                "return_pct": -1.2644,
+                "max_close_drawdown_pct": 2.8059,
+                "round_trips": 48,
+                "orders": 96,
+                "win_rate": 0.3125,
+                "profit_factor": 0.8487893493597233,
+                "ending_equity": 987.3561276754997
+              },
+              "stress": {
+                "pnl_usdt": -26.2245,
+                "return_pct": -2.6224,
+                "max_close_drawdown_pct": 3.519,
+                "round_trips": 48,
+                "orders": 96,
+                "win_rate": 0.2708333333333333,
+                "profit_factor": 0.7174971415211578,
+                "ending_equity": 973.7755203152294
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -9.802,
+            "return_pct": -0.9802,
+            "max_close_drawdown_pct": 2.8898,
+            "round_trips": 29,
+            "orders": 58,
+            "win_rate": 0.3448275862068966,
+            "profit_factor": 0.7870057777892746,
+            "ending_equity": 990.198011369251
+          }
+        },
+        {
+          "train_months": [
+            "2024-10",
+            "2024-11",
+            "2024-12",
+            "2025-01",
+            "2025-02",
+            "2025-03"
+          ],
+          "test_months": [
+            "2025-04",
+            "2025-05",
+            "2025-06"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -6.359,
+                "return_pct": -0.6359,
+                "max_close_drawdown_pct": 2.88,
+                "round_trips": 54,
+                "orders": 108,
+                "win_rate": 0.35185185185185186,
+                "profit_factor": 0.9285143103346546,
+                "ending_equity": 993.6410276037769
+              },
+              "stress": {
+                "pnl_usdt": -21.6066,
+                "return_pct": -2.1607,
+                "max_close_drawdown_pct": 4.029,
+                "round_trips": 54,
+                "orders": 108,
+                "win_rate": 0.3148148148148148,
+                "profit_factor": 0.7811088756550386,
+                "ending_equity": 978.3933506179054
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -29.9883,
+                "return_pct": -2.9988,
+                "max_close_drawdown_pct": 5.442,
+                "round_trips": 34,
+                "orders": 68,
+                "win_rate": 0.2647058823529412,
+                "profit_factor": 0.5325447571692054,
+                "ending_equity": 970.0117143990437
+              },
+              "stress": {
+                "pnl_usdt": -39.4333,
+                "return_pct": -3.9433,
+                "max_close_drawdown_pct": 6.2062,
+                "round_trips": 34,
+                "orders": 68,
+                "win_rate": 0.20588235294117646,
+                "profit_factor": 0.44587566462990313,
+                "ending_equity": 960.566730631082
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -6.359,
+                "return_pct": -0.6359,
+                "max_close_drawdown_pct": 2.88,
+                "round_trips": 54,
+                "orders": 108,
+                "win_rate": 0.35185185185185186,
+                "profit_factor": 0.9285143103346546,
+                "ending_equity": 993.6410276037769
+              },
+              "stress": {
+                "pnl_usdt": -21.6066,
+                "return_pct": -2.1607,
+                "max_close_drawdown_pct": 4.029,
+                "round_trips": 54,
+                "orders": 108,
+                "win_rate": 0.3148148148148148,
+                "profit_factor": 0.7811088756550386,
+                "ending_equity": 978.3933506179054
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": 30.7058,
+            "return_pct": 3.0706,
+            "max_close_drawdown_pct": 1.8314,
+            "round_trips": 27,
+            "orders": 54,
+            "win_rate": 0.4074074074074074,
+            "profit_factor": 1.8150944424153805,
+            "ending_equity": 1030.705837291931
+          }
+        },
+        {
+          "train_months": [
+            "2025-01",
+            "2025-02",
+            "2025-03",
+            "2025-04",
+            "2025-05",
+            "2025-06"
+          ],
+          "test_months": [
+            "2025-07",
+            "2025-08",
+            "2025-09"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 24.5047,
+                "return_pct": 2.4505,
+                "max_close_drawdown_pct": 3.14,
+                "round_trips": 55,
+                "orders": 110,
+                "win_rate": 0.38181818181818183,
+                "profit_factor": 1.3059624222925192,
+                "ending_equity": 1024.5047180949568
+              },
+              "stress": {
+                "pnl_usdt": 8.2648,
+                "return_pct": 0.8265,
+                "max_close_drawdown_pct": 4.0155,
+                "round_trips": 55,
+                "orders": 110,
+                "win_rate": 0.34545454545454546,
+                "profit_factor": 1.0914467905991843,
+                "ending_equity": 1008.2648189757684
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -18.6307,
+                "return_pct": -1.8631,
+                "max_close_drawdown_pct": 4.0129,
+                "round_trips": 37,
+                "orders": 74,
+                "win_rate": 0.32432432432432434,
+                "profit_factor": 0.7277508720724469,
+                "ending_equity": 981.3693036091704
+              },
+              "stress": {
+                "pnl_usdt": -28.9941,
+                "return_pct": -2.8994,
+                "max_close_drawdown_pct": 4.6086,
+                "round_trips": 37,
+                "orders": 74,
+                "win_rate": 0.2972972972972973,
+                "profit_factor": 0.6153502387143586,
+                "ending_equity": 971.0059242596021
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 24.5047,
+                "return_pct": 2.4505,
+                "max_close_drawdown_pct": 3.14,
+                "round_trips": 55,
+                "orders": 110,
+                "win_rate": 0.38181818181818183,
+                "profit_factor": 1.3059624222925192,
+                "ending_equity": 1024.5047180949568
+              },
+              "stress": {
+                "pnl_usdt": 8.2648,
+                "return_pct": 0.8265,
+                "max_close_drawdown_pct": 4.0155,
+                "round_trips": 55,
+                "orders": 110,
+                "win_rate": 0.34545454545454546,
+                "profit_factor": 1.0914467905991843,
+                "ending_equity": 1008.2648189757684
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": 20.3462,
+            "return_pct": 2.0346,
+            "max_close_drawdown_pct": 2.879,
+            "round_trips": 25,
+            "orders": 50,
+            "win_rate": 0.28,
+            "profit_factor": 1.3917726034707731,
+            "ending_equity": 1020.3462400499739
+          }
+        },
+        {
+          "train_months": [
+            "2025-04",
+            "2025-05",
+            "2025-06",
+            "2025-07",
+            "2025-08",
+            "2025-09"
+          ],
+          "test_months": [
+            "2025-10",
+            "2025-11",
+            "2025-12"
+          ],
+          "chosen": "v177",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 53.298,
+                "return_pct": 5.3298,
+                "max_close_drawdown_pct": 2.7909,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.35294117647058826,
+                "profit_factor": 1.6103254719124245,
+                "ending_equity": 1053.2980089007408
+              },
+              "stress": {
+                "pnl_usdt": 38.2651,
+                "return_pct": 3.8265,
+                "max_close_drawdown_pct": 3.1563,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.3137254901960784,
+                "profit_factor": 1.394087584965125,
+                "ending_equity": 1038.2650537370228
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 22.621,
+                "return_pct": 2.2621,
+                "max_close_drawdown_pct": 2.267,
+                "round_trips": 41,
+                "orders": 82,
+                "win_rate": 0.34146341463414637,
+                "profit_factor": 1.2907853816489434,
+                "ending_equity": 1022.621013888486
+              },
+              "stress": {
+                "pnl_usdt": 11.0906,
+                "return_pct": 1.1091,
+                "max_close_drawdown_pct": 2.4653,
+                "round_trips": 41,
+                "orders": 82,
+                "win_rate": 0.2926829268292683,
+                "profit_factor": 1.1298167572917395,
+                "ending_equity": 1011.0906343127882
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 53.298,
+                "return_pct": 5.3298,
+                "max_close_drawdown_pct": 2.7909,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.35294117647058826,
+                "profit_factor": 1.6103254719124245,
+                "ending_equity": 1053.2980089007408
+              },
+              "stress": {
+                "pnl_usdt": 38.2651,
+                "return_pct": 3.8265,
+                "max_close_drawdown_pct": 3.1563,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.3137254901960784,
+                "profit_factor": 1.394087584965125,
+                "ending_equity": 1038.2650537370228
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": -6.5716,
+            "return_pct": -0.6572,
+            "max_close_drawdown_pct": 2.8155,
+            "round_trips": 27,
+            "orders": 54,
+            "win_rate": 0.2962962962962963,
+            "profit_factor": 0.8555425386029781,
+            "ending_equity": 993.4283548522963
+          },
+          "selected_stress": {
+            "pnl_usdt": -14.3355,
+            "return_pct": -1.4335,
+            "max_close_drawdown_pct": 3.2728,
+            "round_trips": 27,
+            "orders": 54,
+            "win_rate": 0.2962962962962963,
+            "profit_factor": 0.7177710004508386,
+            "ending_equity": 985.6645433521774
+          },
+          "baseline_base": {
+            "pnl_usdt": -6.5716,
+            "return_pct": -0.6572,
+            "max_close_drawdown_pct": 2.8155,
+            "round_trips": 27,
+            "orders": 54,
+            "win_rate": 0.2962962962962963,
+            "profit_factor": 0.8555425386029781,
+            "ending_equity": 993.4283548522963
+          }
+        },
+        {
+          "train_months": [
+            "2025-07",
+            "2025-08",
+            "2025-09",
+            "2025-10",
+            "2025-11",
+            "2025-12"
+          ],
+          "test_months": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 18.2718,
+                "return_pct": 1.8272,
+                "max_close_drawdown_pct": 2.879,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.27450980392156865,
+                "profit_factor": 1.1875459711494587,
+                "ending_equity": 1018.2717985151444
+              },
+              "stress": {
+                "pnl_usdt": 3.7918,
+                "return_pct": 0.3792,
+                "max_close_drawdown_pct": 3.6591,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.2549019607843137,
+                "profit_factor": 1.0352330433529953,
+                "ending_equity": 1003.7917983719235
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 17.4512,
+                "return_pct": 1.7451,
+                "max_close_drawdown_pct": 2.6408,
+                "round_trips": 29,
+                "orders": 58,
+                "win_rate": 0.3103448275862069,
+                "profit_factor": 1.3229127760677168,
+                "ending_equity": 1017.4511714623311
+              },
+              "stress": {
+                "pnl_usdt": 9.2438,
+                "return_pct": 0.9244,
+                "max_close_drawdown_pct": 3.1152,
+                "round_trips": 29,
+                "orders": 58,
+                "win_rate": 0.3103448275862069,
+                "profit_factor": 1.155517885553826,
+                "ending_equity": 1009.2438256489459
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 19.5145,
+                "return_pct": 1.9515,
+                "max_close_drawdown_pct": 2.879,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.27450980392156865,
+                "profit_factor": 1.2003017821645197,
+                "ending_equity": 1019.514542399942
+              },
+              "stress": {
+                "pnl_usdt": 5.0327,
+                "return_pct": 0.5033,
+                "max_close_drawdown_pct": 3.548,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.2549019607843137,
+                "profit_factor": 1.046763175905412,
+                "ending_equity": 1005.0326772083697
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -7.0191,
+            "return_pct": -0.7019,
+            "max_close_drawdown_pct": 2.84,
+            "round_trips": 24,
+            "orders": 48,
+            "win_rate": 0.375,
+            "profit_factor": 0.8125704451866803,
+            "ending_equity": 992.9809163149608
+          }
+        },
+        {
+          "train_months": [
+            "2025-10",
+            "2025-11",
+            "2025-12",
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "test_months": [
+            "2026-04",
+            "2026-05",
+            "2026-06"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -13.5907,
+                "return_pct": -1.3591,
+                "max_close_drawdown_pct": 4.4161,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.8361399744163914,
+                "ending_equity": 986.4092711672571
+              },
+              "stress": {
+                "pnl_usdt": -28.1196,
+                "return_pct": -2.812,
+                "max_close_drawdown_pct": 5.5325,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.6952075185593629,
+                "ending_equity": 971.8803795299094
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -21.9385,
+                "return_pct": -2.1939,
+                "max_close_drawdown_pct": 2.948,
+                "round_trips": 27,
+                "orders": 54,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.47324233922086756,
+                "ending_equity": 978.0614525893847
+              },
+              "stress": {
+                "pnl_usdt": -29.6309,
+                "return_pct": -2.9631,
+                "max_close_drawdown_pct": 3.5707,
+                "round_trips": 27,
+                "orders": 54,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.364238880665814,
+                "ending_equity": 970.369057570602
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -12.348,
+                "return_pct": -1.2348,
+                "max_close_drawdown_pct": 4.294,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.8511234272733269,
+                "ending_equity": 987.6520150520547
+              },
+              "stress": {
+                "pnl_usdt": -26.8787,
+                "return_pct": -2.6879,
+                "max_close_drawdown_pct": 5.4106,
+                "round_trips": 51,
+                "orders": 102,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.7086575770382786,
+                "ending_equity": 973.1212583663556
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -14.5858,
+            "return_pct": -1.4586,
+            "max_close_drawdown_pct": 2.8303,
+            "round_trips": 16,
+            "orders": 32,
+            "win_rate": 0.25,
+            "profit_factor": 0.5375056008928437,
+            "ending_equity": 985.4142086529765
+          }
+        }
+      ],
+      "unused_final_months": [
+        "2026-07",
+        "2026-08"
+      ],
+      "sum_window_pnl_usdt": -5.8082,
+      "baseline_sum_window_pnl_usdt": 1.4321999999999995,
+      "cash_windows": 6,
+      "note": "Chaque fen\u00eatre repart \u00e0 1000 USDT ; somme de PnL de comptes r\u00e9initialis\u00e9s, pas un rendement compos\u00e9."
+    },
+    "SOLUSDT": {
+      "windows": [
+        {
+          "train_months": [
+            "2024-01",
+            "2024-02",
+            "2024-03",
+            "2024-04",
+            "2024-05",
+            "2024-06"
+          ],
+          "test_months": [
+            "2024-07",
+            "2024-08",
+            "2024-09"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -24.1517,
+                "return_pct": -2.4152,
+                "max_close_drawdown_pct": 5.6606,
+                "round_trips": 100,
+                "orders": 200,
+                "win_rate": 0.33,
+                "profit_factor": 0.8683276277296481,
+                "ending_equity": 975.8483168191503
+              },
+              "stress": {
+                "pnl_usdt": -55.1643,
+                "return_pct": -5.5164,
+                "max_close_drawdown_pct": 8.46,
+                "round_trips": 101,
+                "orders": 202,
+                "win_rate": 0.31683168316831684,
+                "profit_factor": 0.7301372463385798,
+                "ending_equity": 944.8356816163273
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -20.0614,
+                "return_pct": -2.0061,
+                "max_close_drawdown_pct": 3.3818,
+                "round_trips": 55,
+                "orders": 110,
+                "win_rate": 0.34545454545454546,
+                "profit_factor": 0.8083807616831546,
+                "ending_equity": 979.9385704820595
+              },
+              "stress": {
+                "pnl_usdt": -35.3595,
+                "return_pct": -3.5359,
+                "max_close_drawdown_pct": 4.8194,
+                "round_trips": 55,
+                "orders": 110,
+                "win_rate": 0.3090909090909091,
+                "profit_factor": 0.690913635938363,
+                "ending_equity": 964.6405107345556
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -18.9116,
+                "return_pct": -1.8912,
+                "max_close_drawdown_pct": 5.7474,
+                "round_trips": 97,
+                "orders": 194,
+                "win_rate": 0.32989690721649484,
+                "profit_factor": 0.8933852295293752,
+                "ending_equity": 981.088356153304
+              },
+              "stress": {
+                "pnl_usdt": -49.1519,
+                "return_pct": -4.9152,
+                "max_close_drawdown_pct": 7.8659,
+                "round_trips": 98,
+                "orders": 196,
+                "win_rate": 0.3163265306122449,
+                "profit_factor": 0.7516401857732785,
+                "ending_equity": 950.8481444209806
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -4.5639,
+            "return_pct": -0.4564,
+            "max_close_drawdown_pct": 3.9573,
+            "round_trips": 41,
+            "orders": 82,
+            "win_rate": 0.24390243902439024,
+            "profit_factor": 0.9371927917645099,
+            "ending_equity": 995.4360623044164
+          }
+        },
+        {
+          "train_months": [
+            "2024-04",
+            "2024-05",
+            "2024-06",
+            "2024-07",
+            "2024-08",
+            "2024-09"
+          ],
+          "test_months": [
+            "2024-10",
+            "2024-11",
+            "2024-12"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -32.5351,
+                "return_pct": -3.2535,
+                "max_close_drawdown_pct": 5.2735,
+                "round_trips": 89,
+                "orders": 178,
+                "win_rate": 0.25842696629213485,
+                "profit_factor": 0.805935881821685,
+                "ending_equity": 967.464883473771
+              },
+              "stress": {
+                "pnl_usdt": -70.0625,
+                "return_pct": -7.0063,
+                "max_close_drawdown_pct": 8.7094,
+                "round_trips": 91,
+                "orders": 182,
+                "win_rate": 0.24175824175824176,
+                "profit_factor": 0.6355755685099578,
+                "ending_equity": 929.9374590670661
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -19.4778,
+                "return_pct": -1.9478,
+                "max_close_drawdown_pct": 3.059,
+                "round_trips": 44,
+                "orders": 88,
+                "win_rate": 0.3181818181818182,
+                "profit_factor": 0.7690415535610227,
+                "ending_equity": 980.5222370564225
+              },
+              "stress": {
+                "pnl_usdt": -31.9069,
+                "return_pct": -3.1907,
+                "max_close_drawdown_pct": 3.8831,
+                "round_trips": 44,
+                "orders": 88,
+                "win_rate": 0.3181818181818182,
+                "profit_factor": 0.6549110128779841,
+                "ending_equity": 968.0930624743268
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -33.7892,
+                "return_pct": -3.3789,
+                "max_close_drawdown_pct": 5.2902,
+                "round_trips": 88,
+                "orders": 176,
+                "win_rate": 0.25,
+                "profit_factor": 0.7990003951653469,
+                "ending_equity": 966.2107743564248
+              },
+              "stress": {
+                "pnl_usdt": -71.0387,
+                "return_pct": -7.1039,
+                "max_close_drawdown_pct": 8.8071,
+                "round_trips": 90,
+                "orders": 180,
+                "win_rate": 0.23333333333333334,
+                "profit_factor": 0.6314151435385004,
+                "ending_equity": 928.9613282597193
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -18.736,
+            "return_pct": -1.8736,
+            "max_close_drawdown_pct": 4.1293,
+            "round_trips": 39,
+            "orders": 78,
+            "win_rate": 0.3076923076923077,
+            "profit_factor": 0.722817925669388,
+            "ending_equity": 981.2640292143396
+          }
+        },
+        {
+          "train_months": [
+            "2024-07",
+            "2024-08",
+            "2024-09",
+            "2024-10",
+            "2024-11",
+            "2024-12"
+          ],
+          "test_months": [
+            "2025-01",
+            "2025-02",
+            "2025-03"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -23.2999,
+                "return_pct": -2.33,
+                "max_close_drawdown_pct": 4.1478,
+                "round_trips": 80,
+                "orders": 160,
+                "win_rate": 0.275,
+                "profit_factor": 0.8338809211481782,
+                "ending_equity": 976.7000915187559
+              },
+              "stress": {
+                "pnl_usdt": -55.2475,
+                "return_pct": -5.5247,
+                "max_close_drawdown_pct": 6.8987,
+                "round_trips": 81,
+                "orders": 162,
+                "win_rate": 0.2345679012345679,
+                "profit_factor": 0.6546596271610994,
+                "ending_equity": 944.7525470182834
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -23.7283,
+                "return_pct": -2.3728,
+                "max_close_drawdown_pct": 2.8906,
+                "round_trips": 44,
+                "orders": 88,
+                "win_rate": 0.2727272727272727,
+                "profit_factor": 0.7097938409871493,
+                "ending_equity": 976.2717393392866
+              },
+              "stress": {
+                "pnl_usdt": -36.1388,
+                "return_pct": -3.6139,
+                "max_close_drawdown_pct": 3.8993,
+                "round_trips": 44,
+                "orders": 88,
+                "win_rate": 0.2727272727272727,
+                "profit_factor": 0.6005947004537214,
+                "ending_equity": 963.8612131824207
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -23.2999,
+                "return_pct": -2.33,
+                "max_close_drawdown_pct": 4.1478,
+                "round_trips": 80,
+                "orders": 160,
+                "win_rate": 0.275,
+                "profit_factor": 0.8338809211481782,
+                "ending_equity": 976.7000915187559
+              },
+              "stress": {
+                "pnl_usdt": -55.2475,
+                "return_pct": -5.5247,
+                "max_close_drawdown_pct": 6.8987,
+                "round_trips": 81,
+                "orders": 162,
+                "win_rate": 0.2345679012345679,
+                "profit_factor": 0.6546596271610994,
+                "ending_equity": 944.7525470182834
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -18.4318,
+            "return_pct": -1.8432,
+            "max_close_drawdown_pct": 7.1909,
+            "round_trips": 50,
+            "orders": 100,
+            "win_rate": 0.22,
+            "profit_factor": 0.8138921359166194,
+            "ending_equity": 981.5681807794963
+          }
+        },
+        {
+          "train_months": [
+            "2024-10",
+            "2024-11",
+            "2024-12",
+            "2025-01",
+            "2025-02",
+            "2025-03"
+          ],
+          "test_months": [
+            "2025-04",
+            "2025-05",
+            "2025-06"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -37.1678,
+                "return_pct": -3.7168,
+                "max_close_drawdown_pct": 7.321,
+                "round_trips": 89,
+                "orders": 178,
+                "win_rate": 0.25842696629213485,
+                "profit_factor": 0.7769479649731886,
+                "ending_equity": 962.8322099938355
+              },
+              "stress": {
+                "pnl_usdt": -62.1597,
+                "return_pct": -6.216,
+                "max_close_drawdown_pct": 8.5905,
+                "round_trips": 89,
+                "orders": 178,
+                "win_rate": 0.2247191011235955,
+                "profit_factor": 0.6641209157019999,
+                "ending_equity": 937.8403304286098
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -13.9566,
+                "return_pct": -1.3957,
+                "max_close_drawdown_pct": 5.8901,
+                "round_trips": 47,
+                "orders": 94,
+                "win_rate": 0.2127659574468085,
+                "profit_factor": 0.848784017950376,
+                "ending_equity": 986.0433773633031
+              },
+              "stress": {
+                "pnl_usdt": -30.6324,
+                "return_pct": -3.0632,
+                "max_close_drawdown_pct": 6.8981,
+                "round_trips": 48,
+                "orders": 96,
+                "win_rate": 0.20833333333333334,
+                "profit_factor": 0.7106046539097846,
+                "ending_equity": 969.3676027266681
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -50.2209,
+                "return_pct": -5.0221,
+                "max_close_drawdown_pct": 8.5813,
+                "round_trips": 90,
+                "orders": 180,
+                "win_rate": 0.25555555555555554,
+                "profit_factor": 0.7112623291197531,
+                "ending_equity": 949.779086672597
+              },
+              "stress": {
+                "pnl_usdt": -75.3486,
+                "return_pct": -7.5349,
+                "max_close_drawdown_pct": 9.8795,
+                "round_trips": 90,
+                "orders": 180,
+                "win_rate": 0.2222222222222222,
+                "profit_factor": 0.6085988685360643,
+                "ending_equity": 924.6514101529808
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": 31.7455,
+            "return_pct": 3.1745,
+            "max_close_drawdown_pct": 1.3799,
+            "round_trips": 33,
+            "orders": 66,
+            "win_rate": 0.45454545454545453,
+            "profit_factor": 1.6223089493814928,
+            "ending_equity": 1031.7454795096749
+          }
+        },
+        {
+          "train_months": [
+            "2025-01",
+            "2025-02",
+            "2025-03",
+            "2025-04",
+            "2025-05",
+            "2025-06"
+          ],
+          "test_months": [
+            "2025-07",
+            "2025-08",
+            "2025-09"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 20.0599,
+                "return_pct": 2.006,
+                "max_close_drawdown_pct": 7.4085,
+                "round_trips": 81,
+                "orders": 162,
+                "win_rate": 0.32098765432098764,
+                "profit_factor": 1.139980560448636,
+                "ending_equity": 1020.0598558811619
+              },
+              "stress": {
+                "pnl_usdt": -2.711,
+                "return_pct": -0.2711,
+                "max_close_drawdown_pct": 8.6896,
+                "round_trips": 81,
+                "orders": 162,
+                "win_rate": 0.2962962962962963,
+                "profit_factor": 0.9828853145199289,
+                "ending_equity": 997.2889845118007
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 8.0631,
+                "return_pct": 0.8063,
+                "max_close_drawdown_pct": 6.3128,
+                "round_trips": 49,
+                "orders": 98,
+                "win_rate": 0.2857142857142857,
+                "profit_factor": 1.0843244135115624,
+                "ending_equity": 1008.0630779622886
+              },
+              "stress": {
+                "pnl_usdt": -8.9565,
+                "return_pct": -0.8957,
+                "max_close_drawdown_pct": 7.3759,
+                "round_trips": 50,
+                "orders": 100,
+                "win_rate": 0.28,
+                "profit_factor": 0.9172817800412175,
+                "ending_equity": 991.043484383494
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 7.0067,
+                "return_pct": 0.7007,
+                "max_close_drawdown_pct": 8.6464,
+                "round_trips": 82,
+                "orders": 164,
+                "win_rate": 0.3170731707317073,
+                "profit_factor": 1.0465240803627103,
+                "ending_equity": 1007.0067325599234
+              },
+              "stress": {
+                "pnl_usdt": -15.8999,
+                "return_pct": -1.59,
+                "max_close_drawdown_pct": 9.9421,
+                "round_trips": 82,
+                "orders": 164,
+                "win_rate": 0.2926829268292683,
+                "profit_factor": 0.904128982643018,
+                "ending_equity": 984.1000642361716
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": 4.2875,
+            "return_pct": 0.4287,
+            "max_close_drawdown_pct": 2.4864,
+            "round_trips": 33,
+            "orders": 66,
+            "win_rate": 0.36363636363636365,
+            "profit_factor": 1.0812356541092367,
+            "ending_equity": 1004.2874829468807
+          }
+        },
+        {
+          "train_months": [
+            "2025-04",
+            "2025-05",
+            "2025-06",
+            "2025-07",
+            "2025-08",
+            "2025-09"
+          ],
+          "test_months": [
+            "2025-10",
+            "2025-11",
+            "2025-12"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": 33.7643,
+                "return_pct": 3.3764,
+                "max_close_drawdown_pct": 2.4169,
+                "round_trips": 66,
+                "orders": 132,
+                "win_rate": 0.4090909090909091,
+                "profit_factor": 1.3253109017277995,
+                "ending_equity": 1033.764262494084
+              },
+              "stress": {
+                "pnl_usdt": 15.0927,
+                "return_pct": 1.5093,
+                "max_close_drawdown_pct": 2.8445,
+                "round_trips": 66,
+                "orders": 132,
+                "win_rate": 0.3787878787878788,
+                "profit_factor": 1.1317726484450064,
+                "ending_equity": 1015.0927408320454
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": 18.0726,
+                "return_pct": 1.8073,
+                "max_close_drawdown_pct": 1.8999,
+                "round_trips": 45,
+                "orders": 90,
+                "win_rate": 0.4222222222222222,
+                "profit_factor": 1.2503615337593441,
+                "ending_equity": 1018.0726334869835
+              },
+              "stress": {
+                "pnl_usdt": 5.444,
+                "return_pct": 0.5444,
+                "max_close_drawdown_pct": 2.3061,
+                "round_trips": 45,
+                "orders": 90,
+                "win_rate": 0.4222222222222222,
+                "profit_factor": 1.0689367423604537,
+                "ending_equity": 1005.4439881884294
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": 33.7643,
+                "return_pct": 3.3764,
+                "max_close_drawdown_pct": 2.4169,
+                "round_trips": 66,
+                "orders": 132,
+                "win_rate": 0.4090909090909091,
+                "profit_factor": 1.3253109017277995,
+                "ending_equity": 1033.764262494084
+              },
+              "stress": {
+                "pnl_usdt": 15.0927,
+                "return_pct": 1.5093,
+                "max_close_drawdown_pct": 2.8445,
+                "round_trips": 66,
+                "orders": 132,
+                "win_rate": 0.3787878787878788,
+                "profit_factor": 1.1317726484450064,
+                "ending_equity": 1015.0927408320454
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -20.9882,
+            "return_pct": -2.0988,
+            "max_close_drawdown_pct": 3.1785,
+            "round_trips": 37,
+            "orders": 74,
+            "win_rate": 0.32432432432432434,
+            "profit_factor": 0.6512327101805342,
+            "ending_equity": 979.0117924086182
+          }
+        },
+        {
+          "train_months": [
+            "2025-07",
+            "2025-08",
+            "2025-09",
+            "2025-10",
+            "2025-11",
+            "2025-12"
+          ],
+          "test_months": [
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -12.1186,
+                "return_pct": -1.2119,
+                "max_close_drawdown_pct": 3.6631,
+                "round_trips": 69,
+                "orders": 138,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.8927148564376004,
+                "ending_equity": 987.8814353112709
+              },
+              "stress": {
+                "pnl_usdt": -31.6709,
+                "return_pct": -3.1671,
+                "max_close_drawdown_pct": 5.0514,
+                "round_trips": 69,
+                "orders": 138,
+                "win_rate": 0.3188405797101449,
+                "profit_factor": 0.7479099733007512,
+                "ending_equity": 968.3290670470044
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -19.1281,
+                "return_pct": -1.9128,
+                "max_close_drawdown_pct": 3.3602,
+                "round_trips": 41,
+                "orders": 82,
+                "win_rate": 0.34146341463414637,
+                "profit_factor": 0.7202589679905111,
+                "ending_equity": 980.8719076370055
+              },
+              "stress": {
+                "pnl_usdt": -30.7409,
+                "return_pct": -3.0741,
+                "max_close_drawdown_pct": 4.2631,
+                "round_trips": 41,
+                "orders": 82,
+                "win_rate": 0.3170731707317073,
+                "profit_factor": 0.5949228370867838,
+                "ending_equity": 969.2591192571789
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -12.1186,
+                "return_pct": -1.2119,
+                "max_close_drawdown_pct": 3.6631,
+                "round_trips": 69,
+                "orders": 138,
+                "win_rate": 0.3333333333333333,
+                "profit_factor": 0.8927148564376004,
+                "ending_equity": 987.8814353112709
+              },
+              "stress": {
+                "pnl_usdt": -31.6709,
+                "return_pct": -3.1671,
+                "max_close_drawdown_pct": 5.0514,
+                "round_trips": 69,
+                "orders": 138,
+                "win_rate": 0.3188405797101449,
+                "profit_factor": 0.7479099733007512,
+                "ending_equity": 968.3290670470044
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -13.9451,
+            "return_pct": -1.3945,
+            "max_close_drawdown_pct": 3.2358,
+            "round_trips": 35,
+            "orders": 70,
+            "win_rate": 0.3142857142857143,
+            "profit_factor": 0.7645344029557203,
+            "ending_equity": 986.0549248805926
+          }
+        },
+        {
+          "train_months": [
+            "2025-10",
+            "2025-11",
+            "2025-12",
+            "2026-01",
+            "2026-02",
+            "2026-03"
+          ],
+          "test_months": [
+            "2026-04",
+            "2026-05",
+            "2026-06"
+          ],
+          "chosen": "cash",
+          "training_results": {
+            "v177": {
+              "base": {
+                "pnl_usdt": -34.9333,
+                "return_pct": -3.4933,
+                "max_close_drawdown_pct": 5.4819,
+                "round_trips": 72,
+                "orders": 144,
+                "win_rate": 0.3194444444444444,
+                "profit_factor": 0.7074305226536763,
+                "ending_equity": 965.0667172892108
+              },
+              "stress": {
+                "pnl_usdt": -55.2077,
+                "return_pct": -5.5208,
+                "max_close_drawdown_pct": 6.8986,
+                "round_trips": 72,
+                "orders": 144,
+                "win_rate": 0.3194444444444444,
+                "profit_factor": 0.583774640902344,
+                "ending_equity": 944.7923013372381
+              }
+            },
+            "trend200": {
+              "base": {
+                "pnl_usdt": -54.6077,
+                "return_pct": -5.4608,
+                "max_close_drawdown_pct": 5.9214,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.2894736842105263,
+                "profit_factor": 0.22835630534061013,
+                "ending_equity": 945.3923371376791
+              },
+              "stress": {
+                "pnl_usdt": -65.2175,
+                "return_pct": -6.5217,
+                "max_close_drawdown_pct": 6.9284,
+                "round_trips": 38,
+                "orders": 76,
+                "win_rate": 0.2631578947368421,
+                "profit_factor": 0.16630583829580087,
+                "ending_equity": 934.782500008929
+              }
+            },
+            "cooldown8": {
+              "base": {
+                "pnl_usdt": -34.9333,
+                "return_pct": -3.4933,
+                "max_close_drawdown_pct": 5.4819,
+                "round_trips": 72,
+                "orders": 144,
+                "win_rate": 0.3194444444444444,
+                "profit_factor": 0.7074305226536763,
+                "ending_equity": 965.0667172892108
+              },
+              "stress": {
+                "pnl_usdt": -55.2077,
+                "return_pct": -5.5208,
+                "max_close_drawdown_pct": 6.8986,
+                "round_trips": 72,
+                "orders": 144,
+                "win_rate": 0.3194444444444444,
+                "profit_factor": 0.583774640902344,
+                "ending_equity": 944.7923013372381
+              }
+            },
+            "cash": {
+              "base": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              },
+              "stress": {
+                "pnl_usdt": 0,
+                "return_pct": 0.0,
+                "max_close_drawdown_pct": 0.0,
+                "round_trips": 0,
+                "orders": 0,
+                "win_rate": null,
+                "profit_factor": null,
+                "ending_equity": 1000
+              }
+            }
+          },
+          "selected_base": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "selected_stress": {
+            "pnl_usdt": 0,
+            "return_pct": 0.0,
+            "max_close_drawdown_pct": 0.0,
+            "round_trips": 0,
+            "orders": 0,
+            "win_rate": null,
+            "profit_factor": null,
+            "ending_equity": 1000
+          },
+          "baseline_base": {
+            "pnl_usdt": -7.7497,
+            "return_pct": -0.775,
+            "max_close_drawdown_pct": 2.4167,
+            "round_trips": 21,
+            "orders": 42,
+            "win_rate": 0.2857142857142857,
+            "profit_factor": 0.8091172057854814,
+            "ending_equity": 992.2502574638784
+          }
+        }
+      ],
+      "unused_final_months": [
+        "2026-07",
+        "2026-08"
+      ],
+      "sum_window_pnl_usdt": 0,
+      "baseline_sum_window_pnl_usdt": -48.3817,
+      "cash_windows": 8,
+      "note": "Chaque fen\u00eatre repart \u00e0 1000 USDT ; somme de PnL de comptes r\u00e9initialis\u00e9s, pas un rendement compos\u00e9."
+    }
+  }
+}

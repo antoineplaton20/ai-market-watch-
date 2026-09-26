@@ -198,6 +198,10 @@ def tableau(store: OpsStore, settings, dossier="."):
         alertes.append("Bot principal : connexion Binance instable")
     if w.get("pending"):
         alertes.append("v17 : rapprochement en cours avec Binance")
+    if w.get("entries_blocked"):
+        alertes.append("v17 : achats bloqués par un réglage invalide")
+    if w.get("governor", {}).get("halted"):
+        alertes.append("v17 : limite de perte cumulée atteinte, achats bloqués")
     if w.get("kill_switch"):
         alertes.append("v17 : KILL_SWITCH actif")
     return {"ts": time.time(), "services": etat_services(), "principal": p, "v17": w,

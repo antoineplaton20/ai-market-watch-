@@ -59,15 +59,15 @@ def test_achat_incertain_confirme_par_binance_puis_reprise(reglages):
     assert len(fx.ordres) == 1                                        # jamais de second envoi à l'aveugle
 
 
-def test_ordre_inconnu_de_binance_leve_le_blocage_apres_2_min(reglages):
+def test_ordre_inconnu_de_binance_reste_bloque_apres_2_min(reglages):
     fx = BinanceCoupee(hausse(), None)
     e, _ = _moteur(fx, reglages)
     e.tick('BTC/USDT')
     e._prochain_rapprochement = 0
     assert e.tick('BTC/USDT')['status'] == 'reconciliation_required'   # trop tôt : on attend
     _vieillir(e, W.AGE_ORDRE_INCONNU_S + 1)
-    assert e.rapprocher() is True
-    assert e.store.get('pending:demo') is None and not e.book.open_positions() and e.book.cash == 1000
+    assert e.rapprocher() is False
+    assert e.store.get('pending:demo') and not e.book.open_positions() and e.book.cash == 1000
 
 
 def test_ordre_clos_sans_execution(reglages):
@@ -88,7 +88,7 @@ def test_panne_pendant_le_rapprochement_garde_le_blocage(reglages):
     assert e.rapprocher() is False                                    # au plus un essai par minute
 
 
-def test_solde_disparu_retire_du_carnet_apres_10_min(reglages):
+def test_solde_indisponible_conserve_le_carnet_apres_10_min(reglages):
     fx = FauxBinance(hausse())
     e, n = _moteur(fx, reglages, stop_loss_pct=3)
     achat = e.tick('BTC/USDT')
@@ -97,10 +97,10 @@ def test_solde_disparu_retire_du_carnet_apres_10_min(reglages):
     assert e.tick('BTC/USDT')['status'] == 'reconciliation_required'
     cash = e.book.cash
     _vieillir(e, W.AGE_SOLDE_S + 1)
-    assert e.rapprocher() is True
-    assert not e.book.open_positions() and e.book.cash == cash        # aucune recette inventée
+    assert e.rapprocher() is False
+    assert e.book.open_positions() and e.book.cash == cash        # aucune recette inventée
     assert [o for o in fx.ordres if o[0] == 'sell'] == []
-    assert e.store.get('pending:demo') is None
+    assert e.store.get('pending:demo')
 
 
 def test_argent_reel_jamais_debloque_automatiquement(reglages):

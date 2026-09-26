@@ -1,3 +1,5 @@
+> Mise à jour V17.8 : lire d’abord **V17_8_TERMIUS.md**. Les anciens déblocages par simple délai sont supprimés. Les résultats positifs ne sont pas garantis.
+
 # V17.6 — Bots increvables
 
 Objectif : **rien n'arrête les bots, sauf toi.** Plantage, Binance injoignable, Telegram en panne, fichier

@@ -1,0 +1,28 @@
+Vérification logicielle, sans ordre Binance ni message Telegram.
+Tests : tests
+........................................................................ [ 30%]
+........................................................................ [ 61%]
+........................................................................ [ 92%]
+.................                                                        [100%]
+- generated xml file: /workspace/scratch/c06cb670ef25/v177/equipe-bots-v17/verification-bots-6ijj7glg/tests.xml -
+233 passed in 25.08s
+Tests : tests_v15
+...                                                                      [100%]
+- generated xml file: /workspace/scratch/c06cb670ef25/v177/equipe-bots-v17/verification-bots-6ijj7glg/tests_v15.xml -
+3 passed in 0.02s
+Tests : tests_v16
+....                                                                     [100%]
+- generated xml file: /workspace/scratch/c06cb670ef25/v177/equipe-bots-v17/verification-bots-6ijj7glg/tests_v16.xml -
+4 passed in 0.02s
+Tests : tests_v17
+........................................................................ [ 61%]
+.............................................                            [100%]
+=============================== warnings summary ===============================
+tests_v17/test_appli.py::test_routes_http
+  /workspace/scratch/c06cb670ef25/deps/starlette/testclient.py:37: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = typing.Callable[[], typing.ContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /workspace/scratch/c06cb670ef25/v177/equipe-bots-v17/verification-bots-6ijj7glg/tests_v17.xml -
+117 passed, 1 warning in 2.48s
+357 tests logiciels réussis. Aucune garantie de résultat financier.

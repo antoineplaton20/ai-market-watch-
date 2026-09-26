@@ -162,7 +162,7 @@ def test_pause_telegram_bloque_les_achats_pas_la_protection(reglages):
 
 def test_plafond_de_capital_et_budget(reglages):
     m = FakeMarket(hausse())
-    e = moteur(reglages, m, symbols=("BTC/USDT", "ETH/USDT", "SOL/USDT"), capital_max_usdt=150)
+    e = moteur(reglages, m, symbols=("BTC/USDT", "ETH/USDT", "SOL/USDT"), capital_max_usdt=150, risk_per_trade_pct=5)
     assert e.tick('BTC/USDT')['status'] == 'filled'
     r = e.tick('ETH/USDT')
     assert r['status'] == 'filled' and r['qty'] * r['price'] == pytest.approx(50, rel=0.01)

@@ -30,14 +30,16 @@ def _txt(*noms: str, defaut: str = "") -> str:
 def _float(*noms: str, defaut: float) -> float:
     try:
         return float(_txt(*noms, defaut=str(defaut)).replace(",", "."))
-    except ValueError:
+    except (ValueError, OverflowError):
+        CORRECTIONS.append(f'{noms[0]} : format numérique invalide')
         return float(defaut)
 
 
 def _int(*noms: str, defaut: int) -> int:
     try:
         return int(float(_txt(*noms, defaut=str(defaut))))
-    except ValueError:
+    except (ValueError, OverflowError):
+        CORRECTIONS.append(f'{noms[0]} : format entier invalide')
         return int(defaut)
 
 
@@ -93,7 +95,21 @@ class Settings:
     auto_reconcile: bool = True          # démo/testnet : lever seul un blocage en interrogeant Binance
     slippage_pause_min: float = 60.0     # pause des achats après un glissement excessif (0 = jusqu'à /v17 reprise)
 
+    entries_blocked: bool = False
+    risk_per_trade_pct: float = 0.5
+    max_drawdown_pct: float = 10.0
+    max_positions: int = 3
+    cooldown_bars: int = 4
+
     def __post_init__(self):
+        for name in ('risk_per_trade_pct', 'max_drawdown_pct'):
+            value = getattr(self, name)
+            if not math.isfinite(value) or not 0 < value <= 100:
+                raise ValueError(f'{name} hors limites')
+        if not isinstance(self.max_positions, int) or self.max_positions < 1:
+            raise ValueError('max_positions invalide')
+        if not isinstance(self.cooldown_bars, int) or self.cooldown_bars < 0:
+            raise ValueError('cooldown_bars invalide')
         positive = ('capital_max_usdt', 'max_order_usdt', 'max_position_usdt',
                     'max_daily_loss_usdt', 'paper_cash_usdt', 'min_order_usdt', 'interval')
         for name in positive:
@@ -123,7 +139,10 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        return cls.tolerant(**cls._env())
+        start = len(CORRECTIONS)
+        data = cls._env()
+        data['entries_blocked'] = len(CORRECTIONS) > start
+        return cls.tolerant(**data)
 
     @classmethod
     def tolerant(cls, **valeurs) -> "Settings":
@@ -140,12 +159,19 @@ class Settings:
                 retenus[nom] = valeur
             except ValueError:
                 CORRECTIONS.append(f"{nom}={valeur!r} invalide : valeur par défaut utilisée")
+        retenus['entries_blocked'] = True
         return cls(**retenus)
 
     @classmethod
     def _env(cls) -> dict:
         mode = _txt("V17_MODE", defaut="paper").lower()
+        if mode not in MODES:
+            CORRECTIONS.append('V17_MODE inconnu : achats bloqués')
         return dict(
+            risk_per_trade_pct=_float('V17_RISK_PER_TRADE_PCT', defaut=0.5),
+            max_drawdown_pct=_float('V17_MAX_DRAWDOWN_PCT', defaut=10),
+            max_positions=_int('V17_MAX_POSITIONS', defaut=3),
+            cooldown_bars=_int('V17_COOLDOWN_BARS', defaut=4),
             mode=mode if mode in MODES else "paper",
             symbols=_symboles(_txt("V17_SYMBOLS", "SYMBOL", defaut="BTC/USDT")),
             timeframe=_txt("V17_TIMEFRAME", defaut="15m"),

@@ -38,6 +38,8 @@ def etat(store=None, settings=None):
         'network_failures': int(hb.get('network_failures', 0) or 0),
         'paused': bool(store.get('pause', False)) or time.time() < float(store.get('pause_until', 0) or 0),
         'kill_switch': s.kill_switch,
+        'entries_blocked': s.entries_blocked,
+        'governor': store.get(f'governor:{mode}') or {},
         'pending': store.get(f'pending:{mode}'),
         'cash': book.cash, 'equity': book.equity(prices), 'start_equity': depart,
         'realized_pnl': book.realized_pnl, 'positions': positions,
@@ -72,6 +74,10 @@ def texte_statut(store=None, settings=None):
         lignes.append("⛔ KILL_SWITCH actif : aucun ordre")
     elif e['paused']:
         lignes.append("⏸ Achats en pause (/v17 reprise pour relancer) · ventes et protections actives")
+    if e['entries_blocked']:
+        lignes.append('⛔ Achats bloqués : corriger les réglages invalides dans .env, puis redémarrer la v17.')
+    if e['governor'].get('halted'):
+        lignes.append('⛔ Limite de perte cumulée atteinte : achats bloqués, ventes actives. /v17 reprise ne réarme pas cette protection.')
     total = e['equity'] - e['start_equity']
     lignes.append(f"Portefeuille : {dollars(e['equity'])} ({dollars(total, True)} depuis le départ) · "
                   f"disponible {dollars(e['cash'])}")
@@ -96,7 +102,7 @@ def regler_pause(active, store=None, settings=None):
         store.set('pause_until', 0)                    # /v17 reprise lève aussi une pause automatique
     store.event('pause', {'active': bool(active)})
     return ("⏸ v17 : achats en pause. Les ventes et la protection continuent. Pour reprendre : /v17 reprise"
-            if active else "▶️ v17 : les achats reprennent.")
+            if active else "▶️ v17 : pause levée. Les autres contrôles de risque restent actifs.")
 
 
 def commande_telegram(arg=None, store=None, settings=None):

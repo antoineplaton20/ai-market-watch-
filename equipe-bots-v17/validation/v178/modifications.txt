@@ -1,0 +1,20 @@
+Fichiers existants modifiés :
+.env.example
+INCREVABLE.md
+README.md
+README_V17_READY.md
+VERSION_V17.txt
+bots
+installer.sh
+research/validate.py
+termius_demo_check.sh
+termius_demo_start.sh
+tests_v17/test_increvable.py
+tests_v17/test_plateforme.py
+v17_ops/api/mobile.py
+v17_ops/core/config.py
+v17_ops/rapport.py
+v17_ops/workers/engine.py
+verifier.py
+
+Nouveaux principaux : v17_ops/core/governor.py ; tests_v17/test_v178.py ; research/walk_forward_ops.py ; research/walk_forward_v178.json ; V17_8_TERMIUS.md.

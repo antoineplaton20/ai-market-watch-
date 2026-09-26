@@ -1,3 +1,5 @@
+> Mise à jour V17.8 : lire d’abord **V17_8_TERMIUS.md**. Les anciens déblocages par simple délai sont supprimés. Les résultats positifs ne sont pas garantis.
+
 > Révision du 25/09/2026 : lire `LIRE_AVANT_UTILISATION.md` et `RESULTATS_HISTORIQUES.md` avant utilisation. Version de recherche ; rentabilité non démontrée.
 
 # V17 OPS — prête pour la plateforme

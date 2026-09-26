@@ -1,3 +1,5 @@
+> Mise à jour V17.8 : lire d’abord **V17_8_TERMIUS.md**. Les anciens déblocages par simple délai sont supprimés. Les résultats positifs ne sont pas garantis.
+
 # Équipe de bots crypto v10 — prête à fonctionner sur serveur, 24 h/24
 
 > **v17.5** : 3 portes avant le réel, backtest corrigé, bougies japonaises (PORTES_ET_BOUGIES.md). **v17.4** : armée de renseignement (RENSEIGNEMENT.md). **v17.3** : veille marchés mondiaux et notes de 0 à 5 (VEILLE_MARCHES.md). **v17.1** : moteur v17 branché sur la plateforme (service `equipe-bots-v17`, `/v17` sur Telegram,

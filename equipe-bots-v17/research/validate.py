@@ -97,7 +97,7 @@ def collect(symbol, month, root):
                   'retrieved_at': dt.datetime.now(dt.timezone.utc).isoformat()}
 
 
-def simulate(rows, strength=True, fee=0.001, slip=0.0005):
+def simulate(rows, strength=True, fee=0.001, slip=0.0005, *, policy=None, cooldown_bars=0):
     """Fixed-size spot proxy, not a full OpsEngine replay or profitability proof.
     Decision at closed bar t; fill at next open; pessimistic stop at open/low.
     Initial and deployable cash 1000 USDT; order 100; stop 3%; daily loss 50.
@@ -112,6 +112,7 @@ def simulate(rows, strength=True, fee=0.001, slip=0.0005):
     day = None
     day_equity = equity
     pending = None
+    cooldown_until = 0
     for ts, op, high, low, close, volume in rows:
         date = ts // 86400000
         if date != day:
@@ -121,7 +122,7 @@ def simulate(rows, strength=True, fee=0.001, slip=0.0005):
             result = book.execute('X', 'sell', qty, op * (1 - slip), fee_rate=fee)
             pnls.append(result['pnl'])
             orders += 1
-        elif not qty and pending == 'buy' and book.equity({'X': op}) - day_equity > -50:
+        elif not qty and ts >= cooldown_until and pending == 'buy' and book.equity({'X': op}) - day_equity > -50:
             notional = min(100, book.cash / ((1 + fee) * (1 + slip)))
             if notional >= 10:
                 book.execute('X', 'buy', notional / op, op * (1 + slip), fee_rate=fee)
@@ -130,6 +131,7 @@ def simulate(rows, strength=True, fee=0.001, slip=0.0005):
         stop = book.avg_cost.get('X', 0) * 0.97
         # Includes gap-through-stop and stops hit within the entry bar.
         if qty and low <= stop:
+            cooldown_until = ts + (cooldown_bars + 1) * STEP
             result = book.execute('X', 'sell', qty, min(op, stop) * (1 - slip), fee_rate=fee)
             pnls.append(result['pnl'])
             orders += 1
@@ -146,6 +148,8 @@ def simulate(rows, strength=True, fee=0.001, slip=0.0005):
             sell = sum(v.score for v in votes if v.side == 'sell')
             agg = None if buy == sell else ('buy' if buy > sell else 'sell', max(buy, sell) / (buy + sell))
         pending = agg[0] if agg and agg[1] >= 0.65 else None
+        if policy is not None:
+            pending = policy(closes, pending)
     qty = book.positions.get('X', 0)
     if qty:
         result = book.execute('X', 'sell', qty, rows[-1][4] * (1 - slip), fee_rate=fee)

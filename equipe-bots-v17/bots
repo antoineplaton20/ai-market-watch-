@@ -332,6 +332,8 @@ case "${1:-aide}" in
     read -r -p "As-tu vérifié l'ordre et le solde dans Binance ? Tape exactement JE CONFIRME : " OK
     [ "$OK" = "JE CONFIRME" ] || { echo "Annulé : la v17 reste bloquée."; exit 1; }
     en_bots ".venv/bin/python -c 'from v17_ops import rapport; print(rapport.debloquer())'" ;;
+  valider-v178)
+    en_bots ".venv/bin/python -m research.walk_forward_ops" ;;
   v17-arreter)
     systemctl disable --now $SERVICE_V17 > /dev/null 2>&1; echo -e "${J}Moteur v17 arrêté (le bot principal continue).${N}" ;;
   v17-symboles)
@@ -414,24 +416,42 @@ puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" 
     fi
     NOUVEAU=$(dirname "$(find "$TMP" -name main.py -not -path '*/tests/*' | head -n 1)")
     [ -f "$NOUVEAU/main.py" ] || { echo -e "${R}Ce zip ne contient pas le bot.${N}"; exit 1; }
-    SAUVE="/home/bots/ancienne-version-$(date +%Y%m%d-%H%M)"
+    SAUVE="/home/bots/ancienne-version-$(date +%Y%m%d-%H%M%S)"
     # Unité de signal actuelle : .env (v11) sinon config.py (v10 et avant)
     UNITE=$(lire_env TIMEFRAME_SIGNAL "")
     [ -n "$UNITE" ] || UNITE=$(grep -oE '^UNITE_BOUGIE = "[^"]+"' "$DOSSIER/config.py" | head -n 1 | cut -d'"' -f2)
     UNITE="${UNITE:-15m}"
-    systemctl stop $SERVICE $SERVICE_TR $SERVICE_V17 $SERVICE_V17_API $SERVICE_MARCHES $SERVICE_RENS 2> /dev/null
-    rsync -a --exclude archives --exclude .venv "$DOSSIER/" "$SAUVE/"
-    rsync -a --exclude .env --exclude '*.db' --exclude '*.json' --exclude '*.jsonl' --exclude deblocages.csv \
-      --exclude archives --exclude sauvegardes --exclude '*.log' "$NOUVEAU/" "$DOSSIER/"
+    # Restaurer exactement les services actifs ; ne pas activer un autre bot pendant une mise à jour.
+    ACTIFS=()
+    for svc in "$SERVICE" "$SERVICE_TR" "$SERVICE_V17" "$SERVICE_V17_API" "$SERVICE_MARCHES" "$SERVICE_RENS"; do
+      systemctl is-active --quiet "$svc" && ACTIFS+=("$svc")
+    done
+    restaurer_services_maj() {
+      local svc
+      for svc in "${ACTIFS[@]}"; do systemctl start "$svc" || return 1; done
+    }
+    for svc in "${ACTIFS[@]}"; do
+      systemctl stop "$svc" || { echo "Arrêt impossible : mise à jour annulée."; restaurer_services_maj; exit 1; }
+    done
+    rsync -a --exclude '/archives' --exclude .venv "$DOSSIER/" "$SAUVE/" \
+      || { echo "Sauvegarde impossible : mise à jour annulée."; restaurer_services_maj; exit 1; }
+    retour_arriere_maj() {
+      rsync -a --delete --exclude '/archives' --exclude .venv "$SAUVE/" "$DOSSIER/" || return 1
+      chown -R bots:bots "$DOSSIER"
+      install -m 755 "$DOSSIER/bots" /usr/local/bin/bots || return 1
+      restaurer_services_maj
+    }
+    rsync -a --exclude .env --exclude '/runtime' --exclude '*.db*' --exclude '/*.json' --exclude '*.jsonl' --exclude deblocages.csv \
+      --exclude '/archives' --exclude sauvegardes --exclude .venv --exclude __pycache__ --exclude '*.log' "$NOUVEAU/" "$DOSSIER/" \
+      || { echo "Copie incomplète : retour à la sauvegarde."; retour_arriere_maj; exit 1; }
     sed -i -E "s/^(UNITE_BOUGIE = )\"[^\"]*\"/\1\"$UNITE\"/" "$DOSSIER/config.py"
     # v11 lit l'unité de signal dans .env : on y reporte ton réglage s'il n'était pas 15m
     if [ "$UNITE" != 15m ] && ! grep -qE '^TIMEFRAME_SIGNAL=' "$DOSSIER/.env" 2>/dev/null; then
       regler_env TIMEFRAME_SIGNAL "$UNITE"; echo -e "${J}Ton unité de signal $UNITE est conservée (TIMEFRAME_SIGNAL dans .env).${N}"
     fi
     chown -R bots:bots "$DOSSIER"; install -m 755 "$DOSSIER/bots" /usr/local/bin/bots
-    en_bots ".venv/bin/pip install -q -r requirements.txt"
-    if en_bots ".venv/bin/python verifier.py"; then
-      service_principal; systemctl start $SERVICE; service_tr; relancer_v17_si_actif
+    if en_bots ".venv/bin/pip install -q -r requirements.txt" && en_bots ".venv/bin/python verifier.py"; then
+      restaurer_services_maj || { echo "Code installé mais un service ne redémarre pas : consulte bots etat / bots v17-etat."; exit 1; }
       echo -e "${V}✔ Mise à jour installée et vérifiée. Ancienne version gardée dans $SAUVE${N}"
       systemctl is-enabled --quiet $SERVICE_RENS 2> /dev/null || [ ! -f "$DOSSIER/renseignement.py" ] \
         || echo -e "${J}Pour déployer l'armée de renseignement : bots renseignement-demarrer${N}"
@@ -440,9 +460,9 @@ puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" 
       systemctl is-enabled --quiet $SERVICE_V17 2> /dev/null || [ ! -d "$DOSSIER/v17_ops" ] \
         || echo -e "${J}Pour lancer le moteur v17 : bots v17-demarrer${N}"
     else
-      rsync -a --delete --exclude archives --exclude .venv "$SAUVE/" "$DOSSIER/"; chown -R bots:bots "$DOSSIER"
-      systemctl start $SERVICE; service_tr; relancer_v17_si_actif
-      echo -e "${R}✖ La nouvelle version échoue aux tests : ancienne version remise en place.${N}"
+      retour_arriere_maj || { echo "Retour arrière incomplet : services à contrôler, sauvegarde dans $SAUVE."; exit 1; }
+      echo -e "${R}✖ Installation ou tests en échec : ancien code remis en place (les bibliothèques Python peuvent avoir changé).${N}"
+      exit 1
     fi
     rm -rf "$TMP" ;;
   *)
@@ -476,6 +496,7 @@ Veille Trade Republic (signaux manuels) :
   bots tr-journal      journal de la veille en direct
   bots tr-demarrer | tr-arreter
 Moteur v17 (portefeuille fictif par défaut, ou compte démo Binance avec bots v17-demo) :
+  bots valider-v178    validation historique hors ligne (aucun ordre)
   bots v17-etat        en marche ? + portefeuille v17 + dernières lignes du journal
   bots v17-journal     journal v17 en direct
   bots v17-demarrer | v17-arreter

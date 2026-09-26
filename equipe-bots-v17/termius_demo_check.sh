@@ -9,7 +9,9 @@ if [ -f /etc/systemd/system/equipe-bots.service ] && command -v bots > /dev/null
   exec bots v17-demo-test
 fi
 [ -x .venv/bin/python ] || { echo "Lance d'abord ./termius_demo_install.sh"; exit 1; }
-set -a; source .env; set +a
-case "${V17_DEMO_ONLY:-0}" in 1|true|yes|on) ;; *) echo "ERREUR : V17_DEMO_ONLY=1 attendu dans .env"; exit 1 ;; esac
-[ "${V17_MODE:-}" = demo ] || { echo "ERREUR : V17_MODE=demo attendu dans .env"; exit 1; }
+.venv/bin/python - <<'PYCONFIG'
+from v17_ops.core.config import settings
+if not settings.demo_only or settings.mode != 'demo' or settings.entries_blocked:
+    raise SystemExit('ERREUR : V17_MODE=demo, V17_DEMO_ONLY=1 et réglages valides requis dans .env')
+PYCONFIG
 .venv/bin/python -m v17_ops.verif_demo

@@ -48,7 +48,7 @@ id -u "$COMPTE" > /dev/null 2>&1 || useradd -m -s /bin/bash "$COMPTE"
 mkdir -p "$DOSSIER"
 if [ "$SOURCE" != "$DOSSIER" ]; then
   # Copie du code SANS toucher aux données (clés, journal, champion, apprentissage)
-  rsync -a --exclude .env --exclude '*.db' --exclude '*.json' --exclude '*.jsonl' --exclude archives \
+  rsync -a --exclude .env --exclude '/runtime' --exclude '*.db*' --exclude '/*.json' --exclude '*.jsonl' --exclude '/archives' \
     --exclude sauvegardes --exclude '*.log' --exclude .venv --exclude __pycache__ "$SOURCE/" "$DOSSIER/"
   [ -f "$DOSSIER/deblocages.csv" ] || cp "$SOURCE/deblocages.csv" "$DOSSIER/" 2> /dev/null || true
 fi

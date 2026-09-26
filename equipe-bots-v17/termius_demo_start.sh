@@ -10,7 +10,7 @@ if [ -f /etc/systemd/system/equipe-bots.service ] && command -v bots > /dev/null
 fi
 [ -x .venv/bin/python ] || { echo "Lance d'abord ./termius_demo_install.sh"; exit 1; }
 AUTO=0; [ "${1:-}" = "--auto" ] && AUTO=1          # appel automatique (cron) : silencieux, sans test réseau
-set -a; source .env; set +a
+# Le moteur Python lit .env comme données, sans exécuter son contenu.
 mkdir -p runtime logs
 chmod 600 .env
 if [ -f runtime/v17_superviseur.pid ] && kill -0 "$(cat runtime/v17_superviseur.pid)" 2>/dev/null; then
