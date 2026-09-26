@@ -3,6 +3,7 @@
 # Usage (en root, depuis Termius) :  bash /root/armee-or/installer_or.sh
 # Ne touche à rien dans /home/bots/equipe-bots : dossier, environnement Python, base, services et journal séparés.
 set -euo pipefail
+umask 022
 SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOSSIER=/home/bots/armee-or
 COMPTE=bots
@@ -57,7 +58,7 @@ PY
     CHAT=$(grep -E '^TELEGRAM_CHAT_ID=' /home/bots/equipe-bots/.env | tail -n 1 | cut -d= -f2-)
     echo "Bot actuel réutilisé en ENVOI SEUL (messages préfixés 🟡 [or]) ; commandes via Termius : « or etat »..."
   fi
-  umask 077
+  : > "$DOSSIER/.env"; chmod 600 "$DOSSIER/.env"     # fichier secret seul (umask global inchangé : apt doit lire ses clés)
   cat > "$DOSSIER/.env" <<ENV
 # Armée de l'or — réglages (ne jamais partager ce fichier)
 OR_TELEGRAM_BOT_TOKEN=$JETON

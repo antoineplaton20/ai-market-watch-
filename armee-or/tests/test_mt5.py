@@ -20,6 +20,7 @@ class FauxMT5:
 
     def __init__(self):
         self.trade_mode, self.algo, self.prix, self.solde = 0, True, 4000.0, 100_000.0
+        self.devise, self.eurusd = "USD", 1.0
         self.positions, self.deals, self.envois = [], [], []
         self.suivant, self.temps = 1000, 1_700_000_000_000
 
@@ -39,7 +40,7 @@ class FauxMT5:
     def account_info(self):
         marge = sum(p.volume * 100 * p.price_open / 100 for p in self.positions)
         return NS(login=LOGIN, server="MetaQuotes-Demo", trade_mode=self.trade_mode, balance=self.solde,
-                  equity=self.solde, margin=marge, margin_free=self.solde - marge, leverage=100, currency="USD",
+                  equity=self.solde, margin=marge, margin_free=self.solde - marge, leverage=100, currency=self.devise,
                   trade_allowed=True)
 
     def symbol_select(self, s, v):
@@ -57,6 +58,9 @@ class FauxMT5:
 
     def symbol_info_tick(self, s):
         self.temps += 1000
+        if s == "EURUSD":
+            return NS(bid=self.eurusd - 0.0001, ask=self.eurusd + 0.0001, last=0.0, time=self.temps // 1000,
+                      time_msc=self.temps)
         return NS(bid=self.prix - 0.1, ask=self.prix + 0.1, last=0.0, time=self.temps // 1000, time_msc=self.temps)
 
     def copy_rates_from_pos(self, s, tf, debut, n):
@@ -306,3 +310,17 @@ def test_pilotage_au_doigt_depuis_telegram(faux, monkeypatch):
     assert executant.entrainement_actif() is False and "/or_mt5_fermer" in envoyes[-1]
     from armee_or import telegram
     assert all(len(n) <= 32 and n.islower() and " " not in n for n, _ in telegram.MENU)
+
+
+def test_compte_en_euros_converti_en_dollars(faux):
+    faux.devise, faux.eurusd = "EUR", 1.10
+    _prono("4h", 1)
+    executant.bot_mt5(_chef())
+    assert faux.positions[0].volume == pytest.approx(0.36)            # 100 000 € = 110 000 $ ; 1 % / 30 $ de stop
+
+
+def test_etat_de_l_installation_visible_dans_telegram(monkeypatch):
+    monkeypatch.setattr(config, "MT5_ACTIF", False)
+    (config.RACINE / "runtime" / "installation_mt5.txt").write_text("échec|Wine et écran virtuel\n")
+    texte = executant.rapport_mt5()
+    assert "Wine et écran virtuel" in texte and "or mt5 installer" in texte

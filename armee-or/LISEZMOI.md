@@ -1,4 +1,4 @@
-# Armée de l'or — v2.1 (avec MetaTrader 5 démo, pilotable depuis l'iPhone)
+# Armée de l'or — v2.2 (avec MetaTrader 5 démo, pilotable depuis l'iPhone)
 
 Des bots dédiés **uniquement à l'or**. Ils tournent **à côté** de l'équipe V17.9, sans jamais la toucher :
 
@@ -15,10 +15,10 @@ Les comptes de levier x1 → x50 restent **simulés sur papier**. Si tu branches
 
 ## Installation (Termius, en root)
 
-1. Envoie `armee-or-v2.1.zip` dans `/root` (SFTP de Termius).
+1. Envoie `armee-or-v2.2.zip` dans `/root` (SFTP de Termius).
 2. Lance :
    ```
-   unzip -o /root/armee-or-v2.1.zip -d /root/
+   unzip -o /root/armee-or-v2.2.zip -d /root/
    bash /root/armee-or/installer_or.sh
    ```
 3. Choisis le Telegram :
@@ -109,10 +109,12 @@ Ubuntu ne peut pas lancer MT5 directement. Le service `armee-or-mt5` fait tourne
 - Si le pont perd la connexion au serveur MT5 pendant 10 minutes, il se relance avec le terminal. Le chef signale le problème sur Telegram.
 
 Ce qui a été vérifié avant livraison :
-- les 46 tests passent, dont 19 sur MT5 avec un faux terminal ;
+- les 48 tests passent, dont 21 sur MT5 avec un faux terminal ;
 - Wine 11 s'installe sur Ubuntu 24.04 ;
 - la vraie bibliothèque MetaTrader5 (5.0.6180) tourne sous Wine et expose exactement les fonctions et constantes utilisées ;
 - le vrai pont sous Wine répond au client Linux.
+
+Si l'installation de MT5 échoue, l'étape en cause est envoyée sur Telegram, et `/or_mt5` l'affiche aussi. Pour recommencer, tape `or mt5 installer` : tes identifiants sont demandés en premier et conservés, même en cas d'échec.
 
 Ce qui n'a **pas** pu être testé depuis ma machine : l'installation du terminal, la connexion à ton compte et le premier ordre réel de démo. `or mt5` et `or mt5 journal` te montrent où ça en est.
 

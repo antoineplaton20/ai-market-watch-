@@ -59,6 +59,21 @@ def _frais(p, equipe_tf, maintenant_ms):
     return p and maintenant_ms - (p["ts"] + MS[equipe_tf]) < min(MS[equipe_tf], 4 * 3_600_000)
 
 
+def _taux_usd(devise):
+    """Valeur d'une unité de la devise du compte en dollars (compte en EUR : cours EURUSD du courtier)."""
+    if not devise or devise.upper() == "USD":
+        return 1.0
+    for symbole, inverse in ((f"{devise}USD", False), (f"USD{devise}", True)):
+        try:
+            t = mt5.appel("tick", symbole=symbole)
+        except mt5.ErreurMT5:
+            continue
+        milieu = (t["bid"] + t["ask"]) / 2
+        if milieu > 0:
+            return 1 / milieu if inverse else milieu
+    raise mt5.ErreurMT5(f"cours {devise}/USD introuvable pour convertir le capital")
+
+
 def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
     eq = EQUIPES[cle]
     specs = mt5.appel("specs")
@@ -71,9 +86,10 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
         if mt5.appel("marge", sens=sens, volume=lots) > 0.9 * compte["margin_free"]:
             lots, explication = 0.0, "marge insuffisante"
     else:
-        marge_lot = mt5.appel("marge", sens=sens, volume=1.0)
-        lots, explication = mt5.volume(profil_actif(), compte["equity"], prix, stop, specs, marge_lot,
-                                       compte["margin_free"])
+        marge_lot = mt5.appel("marge", sens=sens, volume=1.0)            # dans la devise du compte
+        taux = _taux_usd(compte.get("currency"))                          # capital converti en dollars (XAUUSD)
+        lots, explication = mt5.volume(profil_actif(), compte["equity"] * taux, prix, stop, specs, marge_lot * taux,
+                                       compte["margin_free"] * taux)
     if lots <= 0:
         _noter(cle, "refus", sens=sens, prix=prix, sl=stop, ok=False, message=explication)
         return f"{eq['nom']} : pas d'ordre ({explication})"
@@ -214,12 +230,25 @@ def bot_mt5(chef):
     return "; ".join(msgs) or f"{len(positions)} position(s), équité {compte['equity']:.2f} {compte['currency']}"
 
 
+def etat_installation():
+    """Dernier état écrit par installer_mt5.sh (« échec|étape », « ok|connecté »…), lisible depuis Telegram."""
+    try:
+        statut, _, detail = (config.RACINE / "runtime" / "installation_mt5.txt").read_text().strip().partition("|")
+    except OSError:
+        return None
+    return {"échec": f"installation arrêtée à l'étape « {detail} »", "en cours": f"installation en cours ({detail})",
+            "installé": "installé, connexion en attente", "ok": "installation réussie"}.get(statut, statut)
+
+
 def rapport_mt5():
+    inst = etat_installation()
     if not config.MT5_ACTIF:
-        return "MT5 non branché (installation : bash /home/bots/armee-or/installer_mt5.sh)."
+        return ("MT5 non branché" + (f" · {inst}" if inst else "") + ". Dans Termius : « or mt5 installer » "
+                "(identifiants demandés en premier ; le résultat arrive ici).")
     e = base.lire("mt5:etat")
     if not e or not e.get("compte"):
-        return "MT5 : pas encore connecté" + (f" ({e.get('erreur')})" if e and e.get("erreur") else "") + "."
+        return ("MT5 : pas encore connecté" + (f" ({e.get('erreur')})" if e and e.get("erreur") else "")
+                + (f" · {inst}" if inst and not inst.startswith("installation réussie") else "") + ".")
     c = e["compte"]
     lignes = [f"MT5 {'DÉMO' if c['demo'] else 'RÉEL (aucun ordre)'} · compte …{str(c['login'])[-3:]} · solde "
               f"{c['balance']:.2f} · équité {c['equity']:.2f} {c['currency']} · levier du compte 1:{c['leverage']}"
