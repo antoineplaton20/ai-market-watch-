@@ -31,6 +31,7 @@ def isolement(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TELEGRAM_JETON", "")
     monkeypatch.setattr(config, "TELEGRAM_CHAT", "")
     monkeypatch.setattr(config, "TELEGRAM_COMMANDES", False)
+    monkeypatch.setattr(config, "MT5_ACTIF", False)          # jamais le vrai compte MT5 pendant les tests
     (tmp_path / "runtime").mkdir()
     yield
 
