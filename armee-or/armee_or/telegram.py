@@ -35,6 +35,22 @@ def envoyer(texte, important=False, session=None):
         return False
 
 
+def envoyer_photo(chemin, legende="", session=None):
+    """Photo (ex. capture de l'écran virtuel de MT5 pendant l'installation) : diagnostic depuis le téléphone."""
+    if not (config.TELEGRAM_JETON and config.TELEGRAM_CHAT):
+        return False
+    try:
+        import requests
+        with open(chemin, "rb") as f:
+            (session or requests).post(f"https://api.telegram.org/bot{config.TELEGRAM_JETON}/sendPhoto",
+                                       data={"chat_id": config.TELEGRAM_CHAT, "caption": (PREFIXE + legende)[:1000]},
+                                       files={"photo": f}, timeout=60)
+        return True
+    except Exception as ex:
+        _log.warning("Photo Telegram non envoyée : %s", ex)
+        return False
+
+
 def alerte_rare(cle, texte, fenetre_s=3600, important=False):
     """Au plus un message par `cle` et par fenêtre (mémoire en base : survit aux redémarrages)."""
     deja = base.lire(f"alerte:{cle}", 0) or 0

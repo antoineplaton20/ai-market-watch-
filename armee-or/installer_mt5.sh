@@ -18,9 +18,18 @@ V='\033[1;32m'; J='\033[1;33m'; R='\033[1;31m'; N='\033[0m'
 [ "$(id -u)" -eq 0 ] || { echo "Lance cette commande en root."; exit 1; }
 umask 022                       # jamais hériter d'un umask restrictif : apt doit pouvoir lire la clé de WineHQ
 mkdir -p "$DOSSIER/runtime"; chown "$COMPTE:$COMPTE" "$DOSSIER/runtime"
-en_bots() { runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all \
+# Mono (.NET) et Gecko (HTML) sont installés dans le préfixe : l'installateur MT5 en a besoin (comme dans le
+# script officiel MetaQuotes). Ils ne sont désactivés QUE pendant la création du préfixe, pour éviter une fenêtre
+# de téléchargement que personne ne pourrait valider.
+en_bots() { runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all "$@"; }
+sans_composants() { runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all \
   WINEDLLOVERRIDES="mscoree,mshtml=" "$@"; }
 ecran() { en_bots xvfb-run -a -s "-screen 0 1280x800x24" "$@"; }
+photo() {
+  [ -s "$1" ] || return 0
+  runuser -u "$COMPTE" -- bash -c 'cd "$1" && .venv/bin/python -c "import sys; from armee_or import telegram; telegram.envoyer_photo(sys.argv[1], sys.argv[2])" "$2" "$3"' \
+    _ "$DOSSIER" "$1" "$2" > /dev/null 2>&1 || true
+}
 telegram() {
   runuser -u "$COMPTE" -- bash -c 'cd "$1" && .venv/bin/python -c "import sys; from armee_or import telegram; telegram.envoyer(sys.argv[1], True)" "$2"' \
     _ "$DOSSIER" "$1" > /dev/null 2>&1 || true
@@ -33,6 +42,7 @@ echec() {
   echo "échec|$ETAPE" > "$ETAT"; chown "$COMPTE:$COMPTE" "$ETAT" "$JOURNAL" 2> /dev/null || true
   echo -e "${R}✖ Installation MT5 arrêtée à l'étape « $ETAPE » (code $code).${N}"
   echo "   Dernières lignes du journal :"; tail -n 8 "$JOURNAL" | sed 's/^/   /'
+  photo "$DOSSIER/runtime/ecran_mt5.png" "Écran virtuel de MT5 au moment de l'arrêt (étape « $ETAPE »)"
   telegram "✖ Installation MT5 arrêtée à l'étape « $ETAPE » (code $code). Fin du journal : $(tail -n 6 "$JOURNAL" | tr '\n' ' ' | cut -c1-700) — Relance : « or mt5 installer » dans Termius."
   exit "$code"
 }
@@ -92,43 +102,80 @@ if ! command -v wine > /dev/null || ! command -v xvfb-run > /dev/null; then
     fi
   fi
 fi
+if ! command -v import > /dev/null || ! command -v Xvfb > /dev/null; then     # captures de l'écran virtuel
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q xvfb xauth imagemagick >> "$JOURNAL" 2>&1 || true
+fi
 echo "   $(wine --version)"
 
 etape "Préfixe Wine dédié"
 mkdir -p "$CACHE"; chown -R "$COMPTE:$COMPTE" "/home/$COMPTE/.cache"
 if [ ! -f "$PREFIXE/system.reg" ]; then
-  ecran wineboot -i >> "$JOURNAL" 2>&1 || true
+  sans_composants xvfb-run -a wineboot -i >> "$JOURNAL" 2>&1 || true
   en_bots wineserver -w || true
-  ecran wine winecfg -v=win10 >> "$JOURNAL" 2>&1 || true
+  sans_composants xvfb-run -a wine winecfg -v=win10 >> "$JOURNAL" 2>&1 || true
   en_bots wineserver -w || true
 fi
 [ -f "$PREFIXE/system.reg" ]
 echo "   $PREFIXE"
 
+etape "Composants Windows (Mono et Gecko, 2 à 5 minutes)"
+if [ ! -d "$PREFIXE/drive_c/windows/mono" ] || [ ! -d "$PREFIXE/drive_c/windows/system32/gecko" ]; then
+  # versions exactes attendues par CE Wine (lues dans sa propre bibliothèque appwiz.cpl)
+  read -r MONO GECKO < <(python3 - "$(dirname "$(readlink -f "$(command -v wine)")")/.." <<'PY'
+import glob, re, sys
+texte = ""
+for f in glob.glob(sys.argv[1] + "/**/x86_64-windows/appwiz.cpl", recursive=True) + glob.glob(sys.argv[1] + "/**/appwiz.cpl*", recursive=True):
+    b = open(f, "rb").read()
+    texte += b.decode("utf-16-le", "ignore") + b.decode("latin-1")
+mono = re.search(r"wine-mono-([0-9.]+[0-9])-x86\.msi", texte)
+gecko = re.search(r"wine-gecko-([0-9.]+[0-9])-x86", texte)
+print(mono.group(1) if mono else "10.4.1", gecko.group(1) if gecko else "2.47.4")
+PY
+)
+  echo "   Mono $MONO, Gecko $GECKO"
+  for f in "wine-mono/$MONO/wine-mono-$MONO-x86.msi" "wine-gecko/$GECKO/wine-gecko-$GECKO-x86.msi" \
+           "wine-gecko/$GECKO/wine-gecko-$GECKO-x86_64.msi"; do
+    [ -s "$CACHE/$(basename "$f")" ] || curl -fsSL --retry 3 -o "$CACHE/$(basename "$f")" "https://dl.winehq.org/wine/$f" >> "$JOURNAL" 2>&1
+    chown "$COMPTE:$COMPTE" "$CACHE/$(basename "$f")"
+    timeout 900 runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all WINEDLLOVERRIDES=mscoree=d \
+      xvfb-run -a wine msiexec /i "$CACHE/$(basename "$f")" /qn >> "$JOURNAL" 2>&1 || true
+  done
+  en_bots wineserver -w || true
+fi
+[ -d "$PREFIXE/drive_c/windows/mono" ] && [ -d "$PREFIXE/drive_c/windows/system32/gecko" ] \
+  || { echo "Mono ou Gecko absent après installation" >> "$JOURNAL"; false; }
+echo "   ✔ Mono et Gecko installés"
+
 trouver_terminal() { find "$PREFIXE/drive_c" -iname terminal64.exe -path '*MetaTrader 5*' 2> /dev/null | head -n 1; }
-etape "Terminal MetaTrader 5 (téléchargé chez MetaQuotes, jusqu'à 15 minutes)"
+ecran_libre() { for n in $(seq 90 99); do [ -e "/tmp/.X11-unix/X$n" ] || [ -e "/tmp/.X$n-lock" ] || { echo "$n"; return; }; done; echo 89; }
+capture() { runuser -u "$COMPTE" -- env DISPLAY=":$AFFICHAGE" import -window root "$DOSSIER/runtime/ecran_mt5.png" > /dev/null 2>&1 || true; }
+etape "Terminal MetaTrader 5 (téléchargé chez MetaQuotes, jusqu'à 20 minutes)"
 TERMINAL=$(trouver_terminal)
 if [ -z "$TERMINAL" ]; then
-  if [ ! -f "$CACHE/webview2.exe" ]; then        # composant Microsoft utilisé par les versions récentes de MT5
-    curl -fsSL --retry 3 -o "$CACHE/webview2.exe" "https://go.microsoft.com/fwlink/p/?LinkId=2124703" >> "$JOURNAL" 2>&1 || true
-    chown "$COMPTE:$COMPTE" "$CACHE/webview2.exe" 2> /dev/null || true
-    if [ -f "$CACHE/webview2.exe" ]; then
-      timeout 600 runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all \
-        xvfb-run -a wine "$CACHE/webview2.exe" /silent /install >> "$JOURNAL" 2>&1 || true
-      en_bots wineserver -k || true
-    fi
-  fi
+  rm -f "$DOSSIER/runtime/ecran_mt5.png"
   curl -fsSL --retry 3 -o "$CACHE/mt5setup.exe" https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe >> "$JOURNAL" 2>&1
   chown "$COMPTE:$COMPTE" "$CACHE/mt5setup.exe"
-  ( ecran wine "$CACHE/mt5setup.exe" /auto >> "$JOURNAL" 2>&1 || true ) &
-  for i in $(seq 1 180); do
+  AFFICHAGE=$(ecran_libre)
+  runuser -u "$COMPTE" -- Xvfb ":$AFFICHAGE" -screen 0 1280x800x24 -nolisten tcp > /dev/null 2>&1 &
+  XVFB=$!
+  sleep 3
+  runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=fixme-all DISPLAY=":$AFFICHAGE" \
+    timeout 1200 wine "$CACHE/mt5setup.exe" /auto >> "$JOURNAL" 2>&1 &
+  INSTALLATEUR=$!
+  for i in $(seq 1 "${DELAI_TERMINAL:-240}"); do
     TERMINAL=$(trouver_terminal); [ -n "$TERMINAL" ] && break
-    [ $((i % 12)) -eq 0 ] && echo "   … téléchargement du terminal en cours ($((i * 5 / 60)) min)"
+    kill -0 "$INSTALLATEUR" 2> /dev/null || { sleep 20; TERMINAL=$(trouver_terminal); break; }
+    if [ $((i % 12)) -eq 0 ]; then
+      echo "   … installation du terminal en cours ($((i * 5 / 60)) min)"
+      capture
+    fi
     sleep 5
   done
-  sleep 30; en_bots wineserver -k || true; wait || true
-  TERMINAL=$(trouver_terminal)
-  [ -n "$TERMINAL" ] || { echo "terminal64.exe introuvable après 15 minutes" >> "$JOURNAL"; false; }
+  [ -n "$TERMINAL" ] && sleep 30                     # laisser l'installateur finir d'écrire ses fichiers
+  capture
+  en_bots wineserver -k || true
+  kill "$XVFB" 2> /dev/null || true; wait 2> /dev/null || true
+  [ -n "$TERMINAL" ] || { echo "terminal64.exe introuvable (installateur terminé ou délai dépassé)" >> "$JOURNAL"; false; }
 fi
 echo "   $TERMINAL"
 TERMINAL_WIN=$(en_bots winepath -w "$TERMINAL" 2> /dev/null | tr -d '\r')
@@ -165,7 +212,7 @@ StartLimitIntervalSec=0
 [Service]
 User=$COMPTE
 WorkingDirectory=$DOSSIER
-Environment=HOME=/home/$COMPTE WINEPREFIX=$PREFIXE WINEDEBUG=-all WINEDLLOVERRIDES=mscoree,mshtml=
+Environment=HOME=/home/$COMPTE WINEPREFIX=$PREFIXE WINEDEBUG=-all
 ExecStart=$DOSSIER/pont_mt5.sh
 ExecStopPost=-/usr/bin/env WINEPREFIX=$PREFIXE wineserver -k
 Restart=always
