@@ -96,6 +96,13 @@ def articles(age_h: float = 48, limite: int = 1500, base: Optional[str] = None) 
              "themes": [t for t in (r["themes"] or "").split(",") if t]} for r in lignes]
 
 
+def par_source(source: str, age_h: float = 24, limite: int = 8, base: Optional[str] = None) -> List[Dict]:
+    """Derniers faits d'une source (ex. « Polymarket »), les plus importants d'abord : pour l'application."""
+    lignes = _lire("SELECT titre, ts, importance FROM faits WHERE source = ? AND ts >= ? "
+                   "ORDER BY importance DESC, ts DESC LIMIT ?", (source, time.time() - age_h * 3600, int(limite)), base)
+    return [{"titre": r["titre"], "ts": r["ts"], "importance": r["importance"] or 0} for r in lignes]
+
+
 def frais(age_max_min: float = 30, base: Optional[str] = None) -> bool:
     """La synthèse a-t-elle tourné récemment ? (sinon : l'armée est arrêtée ou en panne)"""
     return signal("global", age_max_min, base) is not None

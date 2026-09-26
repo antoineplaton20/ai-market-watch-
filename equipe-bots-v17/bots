@@ -363,12 +363,24 @@ puis dans le navigateur : http://127.0.0.1:$(lire_env V17_API_PORT 8080)/state" 
       || { echo -e "${R}L'API ne démarre pas :${N}"; journalctl -u $SERVICE_V17_API -n 20 --no-pager; exit 1; }
     ADRESSE=""
     if command -v tailscale > /dev/null 2>&1 && tailscale status > /dev/null 2>&1; then
-      tailscale serve --bg "$PORT" > /dev/null 2>&1 || tailscale serve --bg --https=443 "http://127.0.0.1:$PORT" > /dev/null 2>&1 \
-        || echo -e "${J}Tailscale serve a échoué : active « HTTPS Certificates » dans la console Tailscale (DNS), puis relance bots app.${N}"
-      NOM=$(tailscale status --json 2> /dev/null | "$DOSSIER/.venv/bin/python" -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))' 2> /dev/null)
-      [ -n "$NOM" ] && ADRESSE="https://$NOM/app/"
+      if ! tailscale serve status 2> /dev/null | grep -q ":$PORT"; then
+        # La sortie reste VISIBLE : la première fois, Tailscale affiche un lien d'activation et attend qu'on
+        # l'ouvre (sinon la commande semble figée). timeout : jamais plus de 5 min d'attente.
+        echo "Partage HTTPS privé par Tailscale (première fois : jusqu'à 5 min)..."
+        echo -e "${J}  Si un lien https://login.tailscale.com/... s'affiche : ouvre-le, touche « Enable »,"
+        echo -e "  puis reviens ici : la commande continue toute seule.${N}"
+        timeout 300 tailscale serve --bg "$PORT" < /dev/null \
+          || timeout 300 tailscale serve --bg --https=443 "http://127.0.0.1:$PORT" < /dev/null
+      fi
+      if tailscale serve status 2> /dev/null | grep -q ":$PORT"; then
+        NOM=$(tailscale status --json 2> /dev/null | "$DOSSIER/.venv/bin/python" -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))' 2> /dev/null)
+        [ -n "$NOM" ] && ADRESSE="https://$NOM/app/"
+      else
+        echo -e "${R}Le partage Tailscale n'est pas actif.${N} Console Tailscale (login.tailscale.com) > DNS :"
+        echo "  active « MagicDNS » et « HTTPS Certificates », puis relance : bots app"
+      fi
     fi
-    echo -e "${V}✔ Application iPhone prête.${N}"
+    [ -n "$ADRESSE" ] && echo -e "${V}✔ Application iPhone prête.${N}" || echo -e "${J}Application prête côté serveur, accès iPhone à terminer :${N}"
     echo
     if [ -n "$ADRESSE" ]; then
       echo "  1) iPhone : installe l'app Tailscale (App Store), connecte-toi avec le MÊME compte."

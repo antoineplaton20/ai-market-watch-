@@ -167,11 +167,32 @@ def renseignement():
         return None
     if not r.get("bots"):
         return None
+    try:                                              # Polymarket, LECTURE SEULE (aucun pari : bloqué en France)
+        predictions = [{"titre": x["titre"][:220], "ts": x["ts"], "importance": x["importance"]}
+                       for x in LR.par_source("Polymarket")]
+    except Exception:
+        predictions = []
     g = (r.get("signaux") or {}).get("global") or {}
     return {"bots": r["bots"], "actifs": r["actifs"], "faits_24h": r["faits_24h"], "sources_24h": r["sources_24h"],
             "climat": g.get("valeur"), "confiance": g.get("confiance"), "en_erreur": r["en_erreur"][:5],
             "alertes": [{"titre": a.get("titre", "")[:200], "niveau": a.get("niveau", 0), "ts": a.get("ts")}
-                        for a in r["alertes"]]}
+                        for a in r["alertes"]],
+            "predictions": predictions}
+
+
+def symbole_tradingview(symbole):
+    """« BTC/USDT » -> « BINANCE:BTCUSDT » (même marché que les bots : Binance spot)."""
+    s = str(symbole or "").upper().strip()
+    if not re.fullmatch(r"[A-Z0-9]{1,15}/[A-Z0-9]{2,10}", s):
+        return None
+    return "BINANCE:" + s.replace("/", "")
+
+
+def symboles_tradingview(principal, w):
+    """Tous les marchés suivis ou détenus par les bots, sans doublon, positions d'abord."""
+    brut = ([x.get("symbole") for x in principal.get("positions", [])]
+            + [x.get("symbol") for x in (w.get("positions") or [])] + list(w.get("symbols") or []))
+    return [t for t in dict.fromkeys(symbole_tradingview(x) for x in brut) if t]
 
 
 def marches(dossier="."):
@@ -205,7 +226,8 @@ def tableau(store: OpsStore, settings, dossier="."):
     if w.get("kill_switch"):
         alertes.append("v17 : KILL_SWITCH actif")
     return {"ts": time.time(), "services": etat_services(), "principal": p, "v17": w,
-            "renseignement": renseignement(), "marches": marches(dossier), "alertes": alertes}
+            "renseignement": renseignement(), "marches": marches(dossier), "alertes": alertes,
+            "tradingview": symboles_tradingview(p, w)}
 
 
 def executer_action(action, store: OpsStore, settings, dossier="."):

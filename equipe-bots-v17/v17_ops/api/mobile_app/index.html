@@ -140,6 +140,17 @@ input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 
 .lien { border: 0; background: none; color: var(--accent); font-weight: 600; margin-top: 16px; cursor: pointer; }
 #erreur-connexion { color: var(--rouge); min-height: 20px; margin-top: 10px; font-size: 14px; }
 
+/* Graphique TradingView (reste en place entre deux actualisations) */
+.tv { height: 330px; border-radius: 12px; overflow: hidden; background: var(--carte-2); margin-top: 4px; }
+.tv-credit { font-size: 11px; color: var(--doux); margin-top: 6px; }
+.tv-credit a { color: var(--doux); }
+.boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.boutons a, .boutons button { display: flex; align-items: center; justify-content: center; gap: 6px; border: 0;
+  border-radius: 10px; padding: 11px 8px; background: var(--carte-2); color: var(--accent); font-weight: 600;
+  font-size: 14px; text-decoration: none; cursor: pointer; text-align: center; }
+.cliquable { cursor: pointer; }
+.cliquable:active { opacity: .6; }
+
 #toast { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 84px); z-index: 10;
   background: var(--texte); color: var(--fond); padding: 12px 14px; border-radius: 12px; font-size: 14px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, .25); opacity: 0; transform: translateY(10px); pointer-events: none;
@@ -170,7 +181,7 @@ input[type=password], input[type=text] { width: 100%; font: inherit; font-size: 
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
     </button>
   </header>
-  <main id="contenu"></main>
+  <main><div id="graphique" hidden></div><div id="contenu"></div></main>
   <nav role="tablist">
     <button role="tab" data-onglet="accueil" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Accueil</button>
@@ -196,6 +207,7 @@ const SERVICES = [["principal", "Bot principal"], ["v17", "Moteur v17"], ["tr", 
                   ["marches", "Veille marchés"], ["renseignement", "Armée de renseignement"]];
 const MODES = {paper: "Portefeuille fictif", demo: "Compte démo", testnet: "Testnet", live: "Argent réel"};
 let onglet = "accueil", donnees = null, journalSource = "principal", minuterie = null, horsLigne = false;
+let symboleGraphique = null, cleGraphique = "";
 
 const stock = {                              // localStorage peut être indisponible : jamais bloquant
   lire(k, d = null) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
@@ -302,6 +314,7 @@ function afficher() {
   document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.onglet === onglet)));
   const maj = document.getElementById("maj");
   maj.textContent = donnees ? (horsLigne ? "hors ligne · " : "") + new Date(donnees.ts * 1000).toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"}) : "";
+  majGraphique();
   const zone = document.getElementById("contenu");
   zone.replaceChildren();
   if (!donnees && onglet !== "commandes") { zone.append(h("div", {class: "vide"}, "Chargement…")); return; }
@@ -380,18 +393,81 @@ function ecranAccueil(zone) {
   zone.append(services);
 }
 
+// ================================================================ TradingView
+const nomTV = (t) => String(t).split(":")[1].replace(/USDT$/, "");
+const lienTV = (t) => "https://fr.tradingview.com/chart/?symbol=" + encodeURIComponent(t);
+function themeSombre() {
+  const t = document.documentElement.dataset.theme;
+  return t ? t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+}
+function voirGraphique(symbole) {                   // « BTC/USDT » (position) -> graphique en haut de l'écran
+  const t = "BINANCE:" + String(symbole || "").toUpperCase().replace("/", "");
+  symboleGraphique = t; majGraphique(); window.scrollTo({top: 0, behavior: "smooth"});
+}
+async function exporterListe(symboles) {
+  const texte = symboles.join(",");
+  try {
+    const fichier = new File([texte], "bots-tradingview.txt", {type: "text/plain"});
+    if (navigator.canShare && navigator.canShare({files: [fichier]})) {
+      await navigator.share({files: [fichier], title: "Liste TradingView des bots"}); return;
+    }
+    await navigator.clipboard.writeText(texte);
+    toast("Liste copiée : dans TradingView, liste de suivi > Importer la liste (fichier .txt) ou ajoute les symboles.");
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+    prompt("Copie cette liste pour TradingView :", texte);
+  }
+}
+function majGraphique() {
+  // Le graphique vit HORS de la zone redessinée toutes les 20 s : il n'est recréé que si le marché ou le thème change.
+  const zone = document.getElementById("graphique");
+  const symboles = (donnees && donnees.tradingview) || [];
+  if (onglet !== "positions" || !symboles.length) { zone.hidden = true; return; }
+  zone.hidden = false;
+  if (!symboles.includes(symboleGraphique)) symboleGraphique = symboles[0];
+  const cle = symboleGraphique + (themeSombre() ? ":d" : ":l") + ":" + symboles.join(",");
+  if (cle === cleGraphique) return;
+  cleGraphique = cle;
+  const seg = h("div", {class: "segments", role: "group", "aria-label": "Marché affiché"},
+    symboles.map((t) => h("button", {"aria-pressed": String(t === symboleGraphique),
+      onclick: () => { symboleGraphique = t; majGraphique(); }}, nomTV(t))));
+  const widget = h("div", {class: "tradingview-widget-container", style: "height:100%;width:100%"},
+    h("div", {class: "tradingview-widget-container__widget", style: "height:100%;width:100%"}));
+  const script = document.createElement("script");
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+  script.async = true;
+  script.textContent = JSON.stringify({symbol: symboleGraphique, interval: "15", timezone: "Europe/Paris",
+    theme: themeSombre() ? "dark" : "light", style: "1", locale: "fr", autosize: true, hide_side_toolbar: true,
+    allow_symbol_change: false, save_image: false, calendar: false, support_host: "https://www.tradingview.com"});
+  widget.append(script);
+  zone.replaceChildren(carte("Graphique · " + nomTV(symboleGraphique), puce("Binance · 15 min"), seg,
+    h("div", {class: "tv"}, widget),
+    h("div", {class: "tv-credit"}, "Graphique fourni par ", h("a", {href: "https://fr.tradingview.com/", target: "_blank", rel: "noopener"}, "TradingView")),
+    h("div", {class: "boutons"},
+      h("a", {href: lienTV(symboleGraphique), target: "_blank", rel: "noopener"}, "Ouvrir dans TradingView"),
+      h("button", {type: "button", onclick: () => exporterListe(symboles)}, "Liste pour TradingView"))));
+}
+
+function cliquable(symbole, el) {                  // toucher une position affiche son graphique
+  el.classList.add("cliquable");
+  el.setAttribute("role", "button"); el.setAttribute("tabindex", "0");
+  el.setAttribute("aria-label", "Voir le graphique de " + base(symbole));
+  el.addEventListener("click", () => voirGraphique(symbole));
+  return el;
+}
+
 function ecranPositions(zone) {
   const p = donnees.principal || {}, w = donnees.v17 || {};
   zone.append(h("div", {class: "titre-section"}, "Bot principal"));
   const cp = carte(null, null);
   if (!(p.positions || []).length) cp.append(h("div", {class: "vide"}, "Aucun achat en cours."));
   for (const x of p.positions || []) {
-    cp.append(ligne(
+    cp.append(cliquable(x.symbole, ligne(
       h("div", {}, h("b", {}, base(x.symbole)), " ", x.essai ? puce("🧪 essai") : null, " ",
         x.securise ? puce("🔒 sans perte", "ok") : null, !x.protege ? puce("⚠ sans stop", "ko") : null,
         h("div", {class: "sous num"}, "acheté " + prix(x.entree) + (x.ouvert ? " · " + heure(x.ouvert) : ""))),
       h("div", {class: "num"}, h("b", {}, dollars(x.valeur_entree)),
-        h("div", {class: "sous"}, "stop " + prix(x.stop)), x.objectif ? h("div", {class: "sous"}, "objectif " + prix(x.objectif)) : null)));
+        h("div", {class: "sous"}, "stop " + prix(x.stop)), x.objectif ? h("div", {class: "sous"}, "objectif " + prix(x.objectif)) : null))));
   }
   zone.append(cp);
 
@@ -399,9 +475,9 @@ function ecranPositions(zone) {
   const cv = carte(null, null);
   if (!(w.positions || []).length) cv.append(h("div", {class: "vide"}, "Aucune position v17."));
   for (const x of w.positions || []) {
-    cv.append(ligne(
+    cv.append(cliquable(x.symbol, ligne(
       h("div", {}, h("b", {}, base(x.symbol)), h("div", {class: "sous num"}, "acheté " + prix(x.entry) + " · maintenant " + prix(x.price))),
-      h("div", {class: "num"}, h("b", {}, dollars(x.value)), h("div", {class: signe(x.pnl_pct)}, pct(x.pnl_pct)))));
+      h("div", {class: "num"}, h("b", {}, dollars(x.value)), h("div", {class: signe(x.pnl_pct)}, pct(x.pnl_pct))))));
   }
   zone.append(cv);
 
@@ -452,6 +528,12 @@ function ecranVeille(zone) {
     if ((r.en_erreur || []).length) c.append(h("div", {class: "sous", style: "margin-top:10px"}, "En difficulté (ils réessaient seuls) : " + r.en_erreur.join(", ")));
     zone.append(c);
   }
+  const pm = (r && r.predictions) || [];
+  const cp = carte("Marchés de prédiction", puce("Polymarket · lecture seule"));
+  if (!pm.length) cp.append(h("div", {class: "vide"}, r ? "Rien de marquant ces dernières 24 h." : "Visible quand l'armée de renseignement tourne."));
+  for (const x of pm) cp.append(ligne(h("span", {}, (x.importance >= 2 ? "⚡ " : "🎲 ") + x.titre), h("span", {class: "sous"}, heure(x.ts))));
+  cp.append(h("div", {class: "sous", style: "margin-top:10px"}, "Probabilités publiques, pour information : aucun pari n'est passé (Polymarket est bloqué en France)."));
+  zone.append(cp);
   zone.append(carte("Veille marchés mondiaux", null,
     m && m.texte ? h("div", {class: "texte"}, m.texte) : h("div", {class: "vide"}, "Pas déployée (bots marches-demarrer).")));
 }
@@ -572,7 +654,10 @@ function demo(chemin, options) {
         {ts: t - 9000, symbole: "ETH/USDT", cote: "buy", qte: 0.04, prix: 2490, statut: "risk_rejected"}],
       courbe},
     renseignement: {bots: 48, actifs: 45, faits_24h: 3120, sources_24h: 212, climat: -0.34, confiance: 0.71, en_erreur: ["gdelt-asie"],
-      alertes: [{titre: "Banque centrale : décision de taux attendue jeudi", niveau: 2, ts: t - 3600}]},
+      alertes: [{titre: "Banque centrale : décision de taux attendue jeudi", niveau: 2, ts: t - 3600}],
+      predictions: [{titre: "Marché de prédiction : « Fed rate cut in October? » → Yes 62 % (+11 pts sur 24 h)", importance: 2, ts: t - 1800},
+        {titre: "Marché de prédiction : « Bitcoin above $120k on December 31? » → Yes 34 % (-2 pts sur 24 h)", importance: 1, ts: t - 5400}]},
+    tradingview: ["BINANCE:SOLUSDT", "BINANCE:ETHUSDT", "BINANCE:BTCUSDT"],
     marches: {texte: "🌍 Briefing : marchés européens stables, volatilité en baisse.\n\n⭐ Top du moment :\n• LVMH 4/5 · moment d'achat\n• Apple 3/5 · neutre"},
   });
 }

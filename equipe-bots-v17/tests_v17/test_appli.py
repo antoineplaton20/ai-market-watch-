@@ -189,3 +189,59 @@ def test_routes_http(tmp_path, monkeypatch, reglages):
     assert (tmp_path / commandes_app.FICHIER).read_text().strip() == "/stop"
     assert c.post("/app/api/action", json={"action": "principal_stop"}).status_code == 401
     assert c.get("/health").status_code == 200                        # routes historiques inchangées
+
+
+# ------------------------------------------------------------------ TradingView / Polymarket (V17.9)
+def test_symboles_tradingview():
+    assert M.symbole_tradingview("BTC/USDT") == "BINANCE:BTCUSDT"
+    for invalide in (None, "", "BTCUSDT", "BTC/USDT\" onload=x", "../../x/USDT"):
+        assert M.symbole_tradingview(invalide) is None
+    principal = {"positions": [{"symbole": "SOL/USDT"}, {"symbole": "ETH/USDT"}]}
+    w = {"positions": [{"symbol": "ETH/USDT"}], "symbols": ["BTC/USDT", "ETH/USDT"]}
+    assert M.symboles_tradingview(principal, w) == ["BINANCE:SOLUSDT", "BINANCE:ETHUSDT", "BINANCE:BTCUSDT"]
+    assert M.symboles_tradingview({}, {}) == []
+
+
+def test_tableau_contient_les_marches_tradingview(tmp_path, reglages):
+    _etat_principal(tmp_path)
+    s = reglages()
+    st = OpsStore(s.ops_db)
+    st.set('heartbeat', {'ts': time.time(), 'mode': 'paper', 'symbols': ['BTC/USDT']})
+    t = M.tableau(st, s, str(tmp_path))
+    assert t["tradingview"][0] in ("BINANCE:SOLUSDT", "BINANCE:ETHUSDT") and "BINANCE:BTCUSDT" in t["tradingview"]
+
+
+def test_predictions_polymarket_en_lecture_seule(tmp_path, monkeypatch):
+    import sqlite3
+    import lecture_renseignement as LR
+    base = tmp_path / "renseignement.db"
+    c = sqlite3.connect(base)
+    c.executescript(LR.SCHEMA)
+    maintenant = time.time()
+    for i, (titre, source, imp, age) in enumerate([
+            ("« Fed cut? » → Yes 62 %", "Polymarket", 2, 60), ("« BTC 120k? » → Yes 34 %", "Polymarket", 1, 30),
+            ("Article Reuters", "Reuters", 3, 10), ("« Vieux marché » → Yes 5 %", "Polymarket", 2, 3 * 86400)]):
+        c.execute("INSERT INTO faits(hash, ts, vu, bot, source, titre, importance) VALUES(?,?,?,?,?,?,?)",
+                  (str(i), maintenant - age, maintenant, "foule", source, titre, imp))
+    c.execute("INSERT INTO bots(nom, famille, derniere, ok) VALUES('Foule', 'foule', ?, 1)", (maintenant,))
+    c.commit(); c.close()
+    assert [x["titre"] for x in LR.par_source("Polymarket", base=str(base))] == ["« Fed cut? » → Yes 62 %",
+                                                                                "« BTC 120k? » → Yes 34 %"]
+    assert LR.par_source("Polymarket", base=str(tmp_path / "absente.db")) == []   # base absente : liste vide
+    monkeypatch.setattr(LR, "BASE", str(base))
+    r = M.renseignement()
+    assert len(r["predictions"]) == 2 and r["predictions"][0]["importance"] == 2
+
+
+def test_application_tradingview_et_polymarket():
+    html = (M.DOSSIER_APP / "index.html").read_text(encoding="utf-8")
+    assert "s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" in html
+    assert "fr.tradingview.com/chart/?symbol=" in html and "Liste pour TradingView" in html
+    assert "Polymarket · lecture seule" in html and "innerHTML" not in html
+
+
+def test_bots_app_affiche_le_lien_d_activation_tailscale():
+    texte = open(os.path.join(M.DOSSIER_APP.parent.parent.parent, "bots"), encoding="utf-8").read()
+    bloc = texte[texte.index("  app|app-nouveau-code)"):texte.index("  app-tailscale)")]
+    assert "timeout 300 tailscale serve --bg" in bloc
+    assert "serve --bg \"$PORT\" > /dev/null" not in bloc          # la sortie (lien d'activation) reste visible
