@@ -137,7 +137,14 @@ def calculer_niveaux(j, h4, prix):
         cle = round(float(v), 1)
         if cle not in garde or priorite(nom) < priorite(garde[cle][0]):
             garde[cle] = (nom, float(v))
-    return [{"nom": nom, "prix": v} for nom, v in sorted(garde.values(), key=lambda x: x[1])]
+    fusion = []                                         # niveaux à moins de 0,05 % l'un de l'autre : un seul
+    for nom, v in sorted(garde.values(), key=lambda x: x[1]):
+        if fusion and v - fusion[-1][1] <= prix * 0.0005:
+            if priorite(nom) < priorite(fusion[-1][0]):
+                fusion[-1] = (nom, v)
+            continue
+        fusion.append((nom, v))
+    return [{"nom": nom, "prix": v} for nom, v in fusion]
 
 
 def surveiller_niveaux(source="PAXGUSDT"):
@@ -345,9 +352,13 @@ MOTS_CRITIQUES = {
 
 def actualites(session=None, requete="gold price OR XAUUSD OR \"gold prices\""):
     r = _get(FLUX_ACTUS, session, {"q": requete, "hl": "en-US", "gl": "US", "ceid": "US:en"})
-    items = []
+    items, titres_vus = [], set()
     for it in ET.fromstring(r.content).findall(".//item")[:40]:
         titre = html.unescape(it.findtext("title") or "")
+        sans_source = titre.rsplit(" - ", 1)[0].strip().lower()      # même article repris par plusieurs sites
+        if sans_source in titres_vus:
+            continue
+        titres_vus.add(sans_source)
         bas = f" {titre.lower()} "
         themes = [th for th, mots in MOTS_CRITIQUES.items() if any(m in bas for m in mots)]
         items.append({"titre": titre, "lien": it.findtext("link") or "", "date": it.findtext("pubDate") or "",

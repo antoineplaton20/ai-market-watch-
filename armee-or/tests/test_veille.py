@@ -187,3 +187,13 @@ def test_texte_veille_complet():
     for mot in ("Tendances", "Niveaux", "Microstructure", "COT", "Calendrier", "Actualités"):
         assert mot in texte or mot.lower() in texte.lower(), mot
     json.dumps(texte)
+
+
+def test_niveaux_voisins_fusionnes_et_titres_en_double_ecartes():
+    j = _jours()
+    h4 = {k: v.copy() for k, v in _jours(120).items()}
+    niv = veille.calculer_niveaux(j, h4, float(j["c"][-1]))
+    prix = [n["prix"] for n in niv]
+    assert all(b - a > float(j["c"][-1]) * 0.0005 for a, b in zip(prix, prix[1:]))
+    s = Session({veille.FLUX_ACTUS: Reponse(contenu=_rss(["Gold falls - Yahoo", "Gold falls - Kitco", "Other"]))})
+    assert [i["titre"] for i in veille.actualites(s)] == ["Gold falls - Yahoo", "Other"]
