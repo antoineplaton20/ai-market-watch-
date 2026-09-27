@@ -16,6 +16,7 @@ Usage : python pont_mt5.py              (service)
 """
 import datetime as dt
 import json
+import ntpath
 import os
 import socketserver
 import subprocess
@@ -58,9 +59,11 @@ class ErreurPont(Exception):
 
 
 class Pont:
-    def __init__(self, mt5, reglages):
+    def __init__(self, mt5, reglages, dossier=None):
         self.mt5 = mt5
         self.r = reglages
+        self.dossier = dossier                     # dossier de l'armée : runtime/activer_algo pour le lanceur
+        self.derniere_demande_algo = 0.0
         self.verrou = threading.RLock()
         self.symbole = reglages.get("OR_MT5_SYMBOLE") or "XAUUSD"
         self.derniere_connexion_ok = time.time()
@@ -279,6 +282,25 @@ class Pont:
         socketserver.ThreadingTCPServer.daemon_threads = True
         return socketserver.ThreadingTCPServer(("127.0.0.1", int(port)), Gestion)
 
+    def verifier_algo(self, pause=60):
+        """Bouton « Algo Trading » du terminal éteint (état par défaut après installation) : on demande au lanceur
+        (pont_mt5.sh, côté Linux) d'appuyer sur Ctrl+E, le raccourci officiel de ce bouton. Seulement quand il est
+        éteint, et au plus une fois par minute : jamais d'aller-retour."""
+        t = self.mt5.terminal_info()
+        if t is None or not t.connected or t.trade_allowed or not self.dossier:
+            return False
+        if time.time() - self.derniere_demande_algo < pause:
+            return False
+        self.derniere_demande_algo = time.time()
+        try:
+            with open(os.path.join(self.dossier, "runtime", "activer_algo"), "w") as f:
+                f.write(str(time.time()))
+            journal("Algo Trading éteint dans le terminal : activation demandée (Ctrl+E)")
+            return True
+        except OSError as ex:
+            journal("demande d'activation impossible :", ex)
+            return False
+
     def surveiller(self, delai_max=600, periode=30):
         """Garde-fou : sans connexion au serveur MT5 pendant 10 min, le pont s'arrête et systemd relance TOUT
         (pont + terminal)."""
@@ -286,7 +308,8 @@ class Pont:
             time.sleep(periode)
             with self.verrou:
                 try:
-                    self.connecter()
+                    if self.connecter():
+                        self.verifier_algo()
                 except Exception as ex:
                     journal("surveillance :", ex)
             if time.time() - self.derniere_connexion_ok > delai_max:
@@ -306,11 +329,18 @@ def fichier_demarrage(reglages):
     return "\r\n".join(lignes) + "\r\n"
 
 
+def chemin_demarrage(chemin):
+    """À la racine du disque (C:\\) : aucun espace dans « /config:… », que MT5 lirait mal entre guillemets."""
+    lecteur = ntpath.splitdrive(chemin or "")[0]
+    return lecteur + "\\armee_or_demarrage.ini" if lecteur else os.path.join(os.path.dirname(chemin),
+                                                                             "armee_or_demarrage.ini")
+
+
 def lancer_terminal(chemin, reglages=None):
     """Démarre le terminal en mode portable avec le fichier de démarrage, effacé dès que le terminal l'a lu."""
     if not chemin or not os.path.exists(chemin):
         return None
-    ini = os.path.join(os.path.dirname(chemin), "armee_or_demarrage.ini")
+    ini = chemin_demarrage(chemin)
     with open(ini, "w", encoding="utf-8") as f:
         f.write(fichier_demarrage(reglages or {}))
     journal("lancement du terminal", chemin)
@@ -325,7 +355,7 @@ def lancer_terminal(chemin, reglages=None):
 def effacer_demarrage(chemin):
     """Le mot de passe ne reste jamais sur le disque plus longtemps que le démarrage du terminal."""
     try:
-        os.remove(os.path.join(os.path.dirname(chemin), "armee_or_demarrage.ini"))
+        os.remove(chemin_demarrage(chemin))
     except (OSError, TypeError):
         pass
 
@@ -335,7 +365,7 @@ def main(argv=None):
     ici = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     reglages = lire_env(os.path.join(ici, ".env"))
     import MetaTrader5 as mt5
-    pont = Pont(mt5, reglages)
+    pont = Pont(mt5, reglages, dossier=ici)
     if "--verifier" in argv:
         lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
         for _ in range(12):

@@ -342,3 +342,16 @@ def test_fichier_de_demarrage_connecte_directement_au_compte(tmp_path):
     (tmp_path / "armee_or_demarrage.ini").write_text(texte)
     pont_mt5.effacer_demarrage(str(exe))
     assert not (tmp_path / "armee_or_demarrage.ini").exists()
+
+
+def test_le_pont_demande_l_activation_d_algo_trading_seulement_s_il_est_eteint(tmp_path):
+    (tmp_path / "runtime").mkdir(exist_ok=True)
+    f = FauxMT5()
+    pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN)}, dossier=str(tmp_path))
+    drapeau = tmp_path / "runtime" / "activer_algo"
+    assert pont.verifier_algo() is False and not drapeau.exists()            # déjà allumé : on ne touche à rien
+    f.algo = False
+    assert pont.verifier_algo() is True and drapeau.exists()                 # éteint : Ctrl+E demandé au lanceur
+    drapeau.unlink()
+    assert pont.verifier_algo() is False and not drapeau.exists()            # au plus une demande par minute
+    assert pont_mt5.chemin_demarrage(r"C:\Program Files\MetaTrader 5\terminal64.exe") == r"C:\armee_or_demarrage.ini"

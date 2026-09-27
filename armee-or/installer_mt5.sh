@@ -218,11 +218,28 @@ cat > "$DOSSIER/pont_mt5.sh" <<LANCEUR
 # Lancé par le service armee-or-mt5 : écran virtuel + Python Windows + pont (qui démarre le terminal MT5).
 cd "$DOSSIER"
 export PYTHONIOENCODING=utf-8
-# photo de l'écran virtuel chaque minute (commande Telegram /or_mt5_ecran) pour tout voir depuis le téléphone
+# Boucle d'appoint côté Linux (toutes les 5 s) :
+#  - si le pont demande l'activation du trading algorithmique (runtime/activer_algo), appui sur Ctrl+E dans le
+#    terminal MT5 (raccourci officiel du bouton « Algo Trading », éteint par défaut après installation) ;
+#  - photo de l'écran virtuel chaque minute (commande Telegram /or_mt5_ecran).
 exec xvfb-run -a -s "-screen 0 1280x800x24" bash -c '
-  ( while sleep 60; do import -window root "png:$DOSSIER/runtime/ecran_pont.tmp" 2> /dev/null \
-      && mv "$DOSSIER/runtime/ecran_pont.tmp" "$DOSSIER/runtime/ecran_pont.png"; done ) &
-  exec wine "$PYWIN" "\$(winepath -w "$DOSSIER/armee_or/pont_mt5.py")"' 
+  ( i=0
+    while sleep 5; do
+      i=\$((i + 1))
+      if [ -f "$DOSSIER/runtime/activer_algo" ]; then
+        rm -f "$DOSSIER/runtime/activer_algo"
+        w=\$(xdotool search --onlyvisible --name "MetaTrader|MetaQuotes|^[0-9]+ " 2> /dev/null | head -n 1)
+        if [ -n "\$w" ]; then                          # Échap : ferme une éventuelle fenêtre ouverte par-dessus
+          xdotool windowfocus --sync "\$w" key Escape 2> /dev/null; sleep 1
+          xdotool windowfocus --sync "\$w" key ctrl+e 2> /dev/null && echo "Ctrl+E envoyé au terminal"
+        fi
+      fi
+      if [ \$((i % 12)) -eq 0 ]; then
+        import -window root "png:$DOSSIER/runtime/ecran_pont.tmp" 2> /dev/null \\
+          && mv "$DOSSIER/runtime/ecran_pont.tmp" "$DOSSIER/runtime/ecran_pont.png"
+      fi
+    done ) &
+  exec wine "$PYWIN" "\$(winepath -w "$DOSSIER/armee_or/pont_mt5.py")"'
 LANCEUR
 chmod 755 "$DOSSIER/pont_mt5.sh"; chown "$COMPTE:$COMPTE" "$DOSSIER/pont_mt5.sh"
 cat > /etc/systemd/system/armee-or-mt5.service <<UNITE
