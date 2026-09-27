@@ -1,0 +1,4 @@
+jarvis/.env
+jarvis/.venv/
+jarvis/data/
+__pycache__/
