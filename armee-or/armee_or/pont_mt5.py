@@ -294,16 +294,40 @@ class Pont:
                 os._exit(3)
 
 
-def lancer_terminal(chemin):
-    """Démarre le terminal en mode portable, trading algorithmique autorisé (fichier de démarrage officiel)."""
+def fichier_demarrage(reglages):
+    """Fichier de démarrage officiel MT5 : trading algorithmique autorisé et connexion directe au compte
+    (sinon un premier lancement affiche « Select a company to open an account with » et attend un clic)."""
+    lignes = ["[Common]"]
+    if reglages.get("OR_MT5_LOGIN"):
+        lignes += [f"Login={reglages['OR_MT5_LOGIN']}", f"Password={reglages.get('OR_MT5_MOT_DE_PASSE', '')}",
+                   f"Server={reglages.get('OR_MT5_SERVEUR') or 'MetaQuotes-Demo'}"]
+    lignes += ["NewsEnable=0", "[Experts]", "AllowLiveTrading=1", "AllowDllImport=0", "Enabled=1", "Account=0",
+               "Profile=0"]
+    return "\r\n".join(lignes) + "\r\n"
+
+
+def lancer_terminal(chemin, reglages=None):
+    """Démarre le terminal en mode portable avec le fichier de démarrage, effacé dès que le terminal l'a lu."""
     if not chemin or not os.path.exists(chemin):
         return None
     ini = os.path.join(os.path.dirname(chemin), "armee_or_demarrage.ini")
-    with open(ini, "w", encoding="ascii") as f:
-        f.write("[Experts]\r\nAllowLiveTrading=1\r\nAllowDllImport=0\r\nEnabled=1\r\nAccount=0\r\nProfile=0\r\n"
-                "[Common]\r\nNewsEnable=0\r\n")
+    with open(ini, "w", encoding="utf-8") as f:
+        f.write(fichier_demarrage(reglages or {}))
     journal("lancement du terminal", chemin)
-    return subprocess.Popen([chemin, "/portable", "/config:" + ini])
+    processus = subprocess.Popen([chemin, "/portable", "/config:" + ini])
+
+    minuterie = threading.Timer(90, effacer_demarrage, args=(chemin,))
+    minuterie.daemon = True
+    minuterie.start()
+    return processus
+
+
+def effacer_demarrage(chemin):
+    """Le mot de passe ne reste jamais sur le disque plus longtemps que le démarrage du terminal."""
+    try:
+        os.remove(os.path.join(os.path.dirname(chemin), "armee_or_demarrage.ini"))
+    except (OSError, TypeError):
+        pass
 
 
 def main(argv=None):
@@ -313,11 +337,12 @@ def main(argv=None):
     import MetaTrader5 as mt5
     pont = Pont(mt5, reglages)
     if "--verifier" in argv:
-        lancer_terminal(reglages.get("OR_MT5_TERMINAL"))
+        lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
         for _ in range(12):
             if pont.connecter():
                 break
             time.sleep(10)
+        effacer_demarrage(reglages.get("OR_MT5_TERMINAL"))
         etat = pont.op_etat()
         print(json.dumps(etat, indent=1, default=str))
         if not etat["connecte"]:
@@ -326,9 +351,10 @@ def main(argv=None):
                          indent=1, default=str))
         mt5.shutdown()
         return 0
-    lancer_terminal(reglages.get("OR_MT5_TERMINAL"))
+    lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
     time.sleep(15)
     pont.connecter()
+    effacer_demarrage(reglages.get("OR_MT5_TERMINAL"))
     threading.Thread(target=pont.surveiller, daemon=True).start()
     port = int(reglages.get("OR_MT5_PORT") or 18777)
     journal("pont MT5 à l'écoute sur 127.0.0.1:%d" % port)

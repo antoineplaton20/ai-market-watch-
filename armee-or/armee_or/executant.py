@@ -158,10 +158,14 @@ def bot_mt5(chef):
         return "MT5 non configuré"
     if not base.lire("mt5:depuis"):
         base.ecrire("mt5:depuis", time.time())
+    inst = etat_installation()
+    if inst and not inst.startswith(("installation réussie", "installé")):
+        return f"MT5 pas encore installé ({inst})"          # pas d'alerte à répétition : /or_mt5 donne l'état
     try:
         etat = mt5.appel("etat", delai=150)
     except mt5.ErreurMT5 as ex:
-        telegram.alerte_rare("mt5-pont", f"🔴 MT5 : {ex}. Le service se relance seul ; or mt5 pour le détail.", 3600)
+        telegram.alerte_rare("mt5-pont", f"🔴 MT5 : {ex}. Le service se relance seul ; or mt5 pour le détail.",
+                             6 * 3600)
         raise
     base.ecrire("mt5:etat", {**etat, "ts": time.time()})
     compte = etat.get("compte")

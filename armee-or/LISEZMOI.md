@@ -1,4 +1,4 @@
-# Armée de l'or — v2.3 (avec MetaTrader 5 démo, pilotable depuis l'iPhone)
+# Armée de l'or — v2.4 (avec MetaTrader 5 démo, pilotable depuis l'iPhone)
 
 Des bots dédiés **uniquement à l'or**. Ils tournent **à côté** de l'équipe V17.9, sans jamais la toucher :
 
@@ -15,10 +15,10 @@ Les comptes de levier x1 → x50 restent **simulés sur papier**. Si tu branches
 
 ## Installation (Termius, en root)
 
-1. Envoie `armee-or-v2.3.zip` dans `/root` (SFTP de Termius).
+1. Envoie `armee-or-v2.4.zip` dans `/root` (SFTP de Termius).
 2. Lance :
    ```
-   unzip -o /root/armee-or-v2.3.zip -d /root/
+   unzip -o /root/armee-or-v2.4.zip -d /root/
    bash /root/armee-or/installer_or.sh
    ```
 3. Choisis le Telegram :
@@ -109,12 +109,16 @@ Ubuntu ne peut pas lancer MT5 directement. Le service `armee-or-mt5` fait tourne
 - Si le pont perd la connexion au serveur MT5 pendant 10 minutes, il se relance avec le terminal. Le chef signale le problème sur Telegram.
 
 Ce qui a été vérifié avant livraison :
-- les 48 tests passent, dont 21 sur MT5 avec un faux terminal ;
+- les 50 tests passent, dont 23 sur MT5 avec un faux terminal ;
 - Wine 11 s'installe sur Ubuntu 24.04 ;
 - la vraie bibliothèque MetaTrader5 (5.0.6180) tourne sous Wine et expose exactement les fonctions et constantes utilisées ;
 - le vrai pont sous Wine répond au client Linux.
 
-Comme dans le script officiel de MetaQuotes, l'installateur ajoute à Wine les composants Mono (.NET) et Gecko (HTML), sans aucune fenêtre à valider. Si l'installation de MT5 échoue, Telegram reçoit une **photo de l'écran virtuel** et l'étape en cause, et `/or_mt5` l'affiche aussi. Pour recommencer, tape `or mt5 installer` : tes identifiants sont demandés en premier et conservés, même en cas d'échec.
+Comme dans le script officiel de MetaQuotes, l'installateur utilise **Wine Staging** : avec Wine « stable », l'installateur MT5 bloque sur « A debugger has been found running in your system ». Il ajoute aussi les composants Mono (.NET) et Gecko (HTML) sans aucune fenêtre à valider, et accepte la licence MT5 à ta place (touche Entrée simulée). Le terminal se connecte directement à ton compte grâce au fichier de démarrage officiel de MT5, effacé dès le démarrage.
+
+`/or_mt5_ecran` t'envoie une photo de l'écran du terminal MT5 sur le serveur. Elle est mise à jour chaque minute. Si l'installation de MT5 échoue, Telegram reçoit une **photo de l'écran virtuel** et l'étape en cause, et `/or_mt5` l'affiche aussi. Pour recommencer, tape `or mt5 installer` : tes identifiants sont demandés en premier et conservés, même en cas d'échec.
+
+Vérifié en réel sur un Ubuntu 24.04 dans le même état que ton serveur : passage à Wine Staging, mise à jour du préfixe, Mono 11.3, installation complète du **vrai terminal MT5** (build 6230) avec acceptation automatique de la licence, Python et MetaTrader5, lanceur du service.
 
 Ce qui n'a **pas** pu être testé depuis ma machine : l'installation du terminal, la connexion à ton compte et le premier ordre réel de démo. `or mt5` et `or mt5 journal` te montrent où ça en est.
 

@@ -360,6 +360,13 @@ def bot_commandes(chef):
                                  important=True)
             except mt5.ErreurMT5 as ex:
                 telegram.envoyer(f"🛑 MT5 : ordres suspendus, mais fermeture impossible pour l'instant ({ex}).", True)
+        elif c in ("/or_mt5_ecran", "mt5_ecran"):
+            photo = config.RACINE / "runtime" / "ecran_pont.png"
+            if not (photo.exists() and time.time() - photo.stat().st_mtime < 600
+                    and telegram.envoyer_photo(str(photo), "Écran du terminal MT5 sur le serveur "
+                                               f"(il y a {int(time.time() - photo.stat().st_mtime)} s)")):
+                telegram.envoyer("📷 Pas de photo récente du terminal MT5 : le service armee-or-mt5 ne tourne pas "
+                                 "encore (installation : « or mt5 installer »).")
         elif c in ("/or_mt5_reprendre", "mt5_reprendre"):
             base.ecrire("mt5:pause", False)
             telegram.envoyer("▶️ MT5 : ordres automatiques repris.")

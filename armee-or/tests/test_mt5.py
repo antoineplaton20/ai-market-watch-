@@ -324,3 +324,21 @@ def test_etat_de_l_installation_visible_dans_telegram(monkeypatch):
     (config.RACINE / "runtime" / "installation_mt5.txt").write_text("échec|Wine et écran virtuel\n")
     texte = executant.rapport_mt5()
     assert "Wine et écran virtuel" in texte and "or mt5 installer" in texte
+
+
+def test_pas_d_alerte_a_repetition_tant_que_mt5_n_est_pas_installe(monkeypatch):
+    monkeypatch.setattr(config, "MT5_ACTIF", True)
+    monkeypatch.setattr(config, "MT5_PORT", 1)
+    (config.RACINE / "runtime" / "installation_mt5.txt").write_text("échec|Terminal MetaTrader 5\n")
+    bot = chef.Bot("Exécutant MT5 (démo)", "execution", 20, executant.bot_mt5)
+    assert bot.executer(_chef()) is True and "pas encore installé" in bot.dernier_message
+
+
+def test_fichier_de_demarrage_connecte_directement_au_compte(tmp_path):
+    texte = pont_mt5.fichier_demarrage({"OR_MT5_LOGIN": "123", "OR_MT5_MOT_DE_PASSE": "x", "OR_MT5_SERVEUR": ""})
+    assert "Login=123" in texte and "Server=MetaQuotes-Demo" in texte and "AllowLiveTrading=1" in texte
+    exe = tmp_path / "terminal64.exe"
+    exe.write_text("")
+    (tmp_path / "armee_or_demarrage.ini").write_text(texte)
+    pont_mt5.effacer_demarrage(str(exe))
+    assert not (tmp_path / "armee_or_demarrage.ini").exists()
