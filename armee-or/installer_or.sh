@@ -130,7 +130,7 @@ for NOM in $NOMS; do
   systemctl is-active --quiet armee-or-$NOM && echo -e "${V}● armee-or-$NOM en marche${N}" || echo -e "${R}● armee-or-$NOM arrêté${N} (or journal)"
 done
 echo -e "\n${V}✔ Armée de l'or installée.${N} Tes autres bots n'ont pas été touchés."
-echo "  Termius : or etat · or mt5 · or levier · or bilan · or journal · or pause · or reprise · or aide"
+echo "  Termius : or etat · or mt5 · or maj (mise à jour) · or journal · or aide — Telegram : bouton Menu"
 if grep -q '^OR_MT5_ACTIF=1' "$DOSSIER/.env"; then
   echo "  MT5 démo : ordres automatiques (profil « pro 1 % risqué », or mt5 profil x20 pour changer) + équipe d'entraînement."
   echo "  Ouvre l'app MetaTrader 5 sur ton iPhone avec le même compte démo pour voir les positions en direct."

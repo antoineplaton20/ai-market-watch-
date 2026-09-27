@@ -13,14 +13,13 @@ Des bots dédiés **uniquement à l'or**. Ils tournent **à côté** de l'équip
 
 Les comptes de levier x1 → x50 restent **simulés sur papier**. Si tu branches MetaTrader 5, l'armée passe aussi de **vrais ordres sur ton compte DÉMO** (argent fictif). Elle refuse tout ordre sur un compte réel : le contrôle est fait deux fois, dans le chef et dans le pont MT5. Aucune clé Binance n'est demandée.
 
-## Installation (Termius, en root)
+## Installation et mises à jour (iPhone + Termius, en root)
 
-1. Envoie `armee-or-v2.4.zip` dans `/root` (SFTP de Termius).
-2. Lance :
+1. Aucun zip ni SFTP : colle cette ligne dans Termius. Elle télécharge la dernière version publiée sur GitHub et lance l'installation :
    ```
-   unzip -o /root/armee-or-v2.4.zip -d /root/
-   bash /root/armee-or/installer_or.sh
+   curl -fsSL https://github.com/antoineplaton20/ai-market-watch-/archive/refs/heads/claude/termius-binance-bot-optimization-g98ihl.tar.gz | tar -xz -C /root && bash /root/ai-market-watch--claude-termius-binance-bot-optimization-g98ihl/armee-or/installer_or.sh
    ```
+2. Ensuite, chaque mise à jour se fait en tapant simplement `or maj`.
 3. Choisis le Telegram :
    - **Recommandé** : crée un nouveau bot avec @BotFather (`/newbot`), colle le jeton, puis envoie « bonjour » à ce nouveau bot. Tu pourras ensuite lui envoyer `/or`, `/or_levier`, `/or_bilan`, `/or_pause`, `/or_reprise`, `/or_bibliotheque`, `/or_mt5`, `/or_mt5_fermer`, `/or_mt5_reprendre`.
    - **Sinon**, appuie sur Entrée : ton bot actuel est réutilisé en **envoi seul**, avec des messages préfixés 🟡 [or]. Il ne lit jamais les messages, pour ne pas voler les commandes de l'équipe V17.9.

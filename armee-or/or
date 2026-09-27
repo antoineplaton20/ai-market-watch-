@@ -30,6 +30,15 @@ case "${1:-aide}" in
       *) echo "or mt5 [etat|fermer|reprendre|profil X|entrainement on|off|journal|compte|installer]" ;;
     esac ;;
   config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;
+  maj)
+    # mise à jour depuis le téléphone : télécharge la dernière version publiée sur GitHub et relance l'installation
+    URL="https://github.com/antoineplaton20/ai-market-watch-/archive/refs/heads/claude/termius-binance-bot-optimization-g98ihl.tar.gz"
+    TMP=$(mktemp -d)
+    echo "Téléchargement de la dernière version de l'armée…"
+    curl -fsSL --retry 3 "$URL" | tar -xz -C "$TMP" || { echo "Téléchargement impossible (réseau ?). Réessaie : or maj"; rm -rf "$TMP"; exit 1; }
+    NOUVEAU=$(dirname "$(find "$TMP" -path '*/armee-or/installer_or.sh' | head -n 1)")
+    [ -f "$NOUVEAU/installer_or.sh" ] || { echo "Version téléchargée incomplète."; rm -rf "$TMP"; exit 1; }
+    bash "$NOUVEAU/installer_or.sh"; rm -rf "$TMP" ;;
   mettre-a-jour)
     [ -f "${2:-}" ] || { echo "Usage : or mettre-a-jour /root/armee-or-vX.zip"; exit 1; }
     TMP=$(mktemp -d); unzip -q "$2" -d "$TMP" || { echo "Zip illisible."; exit 1; }
@@ -51,6 +60,7 @@ Armée de l'or (indépendante de tes autres bots) :
   or journal       journal en direct
   or demarrer | arreter | redemarrer
   or test          contrôle complet
+  or maj          mettre à jour l'armée (dernière version, sans zip ni SFTP)
   or mettre-a-jour /root/armee-or-vX.zip
   or config        refaire le réglage Telegram
 AIDE
