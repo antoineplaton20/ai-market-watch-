@@ -303,3 +303,34 @@ def test_independance_des_autres_bots():
     assert "rm -rf /home/bots/equipe-bots" not in inst and "systemctl stop equipe" not in inst
     for script in ("installer_or.sh", "installer_mt5.sh", "or"):
         assert subprocess.run(["bash", "-n", os.path.join(RACINE, script)]).returncode == 0
+
+
+def test_quarante_motifs_et_seuil_corrige():
+    b = _barres(np.arange(60.0) + 100)
+    assert len(C.detecter(b)) == 40
+    assert C.seuil_z(40) > C.seuil_z(16) > 2.5                          # plus on teste de motifs, plus on exige
+
+
+def test_nouveaux_motifs_detectes():
+    # pendu : longue mèche basse après une hausse
+    c = list(np.linspace(100, 120, 30)) + [121.0]
+    b = _barres(c, o=list(np.linspace(100, 120, 30) - 0.4) + [121.2], h=list(np.linspace(100, 120, 30) + 0.5) + [121.3],
+                l=list(np.linspace(100, 120, 30) - 0.9) + [117.0])
+    assert C.detecter(b)["pendu"][1][-1] and not C.detecter(b)["marteau"][1][-1]
+    # frappe à trois lignes haussière : trois bougies rouges descendantes puis une verte qui les efface
+    c = [100.0] * 20 + [99, 98, 97, 101]
+    o = [100.0] * 20 + [100, 99, 98, 96.5]
+    b = _barres(c, o=o, h=np.maximum(o, c) + 0.2, l=np.minimum(o, c) - 0.2)
+    assert C.detecter(b)["frappe_trois_lignes_haussiere"][1][-1]
+    # trois méthodes montantes : grande verte, trois petites contenues, verte qui clôture plus haut
+    o = [100.0] * 30 + [100, 104.5, 104, 103.5, 103.5]
+    c = [100.0] * 30 + [105, 104, 103.5, 103, 106]
+    h = [100.5] * 30 + [105.2, 104.8, 104.3, 103.8, 106.2]
+    l = [99.5] * 30 + [99.8, 103.8, 103.3, 102.8, 103.3]
+    assert C.detecter(_barres(c, o=o, h=h, l=l))["trois_methodes_montantes"][1][-1]
+
+
+def test_rapport_des_bougies(historique):
+    chef.bot_chandeliers(type("Chef", (), {"pause": False})())
+    texte = chef.rapport_bougies("4h")
+    assert "40 motifs" in texte and "3.23" in texte and "Motifs fiables" in texte

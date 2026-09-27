@@ -18,7 +18,7 @@ from . import config
 
 
 COMMANDES = ("pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
-             "mt5_entrainement", "mt5_ecran")
+             "mt5_entrainement", "mt5_ecran", "bougies")
 
 
 def _journal():
@@ -69,6 +69,8 @@ def main(argv=None):
         print(bibliotheque.texte())
     elif cmd == "test":
         return test()
+    elif cmd == "bougies":
+        print(chef.rapport_bougies("4h") + "\n\n" + chef.rapport_bougies("1d", nb=6))
     elif cmd == "mt5":
         from . import executant
         print(executant.rapport_mt5())

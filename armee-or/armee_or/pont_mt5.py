@@ -152,6 +152,19 @@ class Pont:
         return [[int(x["time"]), float(x["open"]), float(x["high"]), float(x["low"]), float(x["close"]),
                  float(x["tick_volume"])] for x in r]
 
+    def op_bougies_periode(self, tf="1d", debut=0, fin=0, symbole=None, **_):
+        """Historique du courtier entre deux instants (secondes, heure du SERVEUR MT5). Liste vide si le serveur
+        n'a rien pour cette période (début de l'historique atteint)."""
+        self.exiger()
+        s = symbole or self.symbole
+        self.mt5.symbol_select(s, True)
+        r = self.mt5.copy_rates_range(s, getattr(self.mt5, TIMEFRAMES[tf]), int(debut), int(fin))
+        if r is None:
+            journal("historique", tf, "indisponible :", self.mt5.last_error())
+            return []
+        return [[int(x["time"]), float(x["open"]), float(x["high"]), float(x["low"]), float(x["close"]),
+                 float(x["tick_volume"])] for x in r]
+
     def op_marge(self, sens=1, volume=0.01, prix=None, symbole=None, **_):
         self.exiger()
         s = symbole or self.symbole

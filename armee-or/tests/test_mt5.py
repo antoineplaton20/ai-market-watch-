@@ -6,7 +6,7 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from armee_or import base, chef, config, executant, flux, mt5, pont_mt5
+from armee_or import base, chef, config, donnees as D, executant, flux, mt5, pont_mt5
 
 LOGIN = 5550001
 
@@ -101,6 +101,21 @@ class FauxMT5:
                                  swap=0.0, fee=0.0, magic=d["magic"], comment=d["comment"]))
         return NS(retcode=10009, comment="Request executed", order=self.suivant, deal=self.suivant, price=prix,
                   volume=d["volume"])
+
+    DUREES = {1: 60, 15: 900, 16385: 3600, 16388: 14400, 16408: 86400}
+    debut_historique = 1_420_070_400                                  # 01/01/2015, heure du serveur
+
+    def copy_rates_range(self, s, tf, debut, fin):
+        pas = self.DUREES[tf]
+        debut = max(int(debut), self.debut_historique)
+        debut += (-debut) % pas
+        t = np.arange(debut, int(fin) + 1, pas, dtype=np.int64)
+        r = np.zeros(len(t), dtype=[("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"), ("close", "f8"),
+                                    ("tick_volume", "i8")])
+        r["time"] = t
+        r["open"] = r["close"] = self.prix
+        r["high"], r["low"] = self.prix + 5, self.prix - 5
+        return r
 
     def history_deals_get(self, debut, fin):
         return tuple(self.deals)
@@ -368,3 +383,22 @@ def test_marche_ferme_ni_ordre_ni_alerte(faux, monkeypatch):
     faux.order_send = lambda d: NS(retcode=10018, comment="Market closed", order=0, deal=0, price=0.0, volume=0.0)
     assert "marché fermé" in executant.bot_mt5(_chef()) and not alertes          # refus « marché fermé » : silencieux
     faux.order_send = orig
+
+
+
+def test_archive_de_l_historique_mt5_jusqu_au_debut_puis_en_continu(faux):
+    from armee_or import archive_mt5
+    assert "en attente" in archive_mt5.archiver()                       # marché fermé et décalage inconnu : on attend
+    faux.temps = int((time.time() + 3 * 3600) * 1000)                   # serveur du courtier en UTC+3
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    for _ in range(5):
+        msg = archive_mt5.archiver(unites=("1d", "4h"))
+    assert "(complet)" in msg and base.lire("mt5:decalage") == 3 * 3600
+    lignes = D.charger_lignes("MT5", "1d")
+    assert lignes[0][0] == (faux.debut_historique - 3 * 3600) * 1000     # ramené en UTC
+    assert all(t + 86_400_000 <= time.time() * 1000 for t, *_ in lignes)  # bougies terminées seulement
+    n4 = len(D.charger_lignes("MT5", "4h"))
+    assert n4 > 6 * len(lignes) - 20
+    archive_mt5.archiver(unites=("1d",))                                 # passage suivant : rien en double
+    assert len(D.charger_lignes("MT5", "1d")) == len(lignes)
+    assert "1d" in archive_mt5.resume() and chef.source_stats("1d") == "MT5"

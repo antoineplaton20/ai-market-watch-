@@ -20,8 +20,8 @@ import traceback
 
 import numpy as np
 
-from . import base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, levier as L, \
-    mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram
+from . import archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
+    levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -134,6 +134,23 @@ def bot_rythme(chef):
     return f"{e['regime']}, séance {e['seance']}"
 
 
+def source_stats(tf):
+    """Historique le plus long pour mesurer les motifs : XAUUSD du courtier MT5 s'il est plus fourni que PAXG."""
+    with base.connexion() as c:
+        n = {s: c.execute("SELECT COUNT(*) FROM bougies WHERE source=? AND tf=?", (s, tf)).fetchone()[0]
+             for s in (archive_mt5.SOURCE, SOURCE_DECISION)}
+    return archive_mt5.SOURCE if n[archive_mt5.SOURCE] > n[SOURCE_DECISION] else SOURCE_DECISION
+
+
+def bot_archive_mt5(chef):
+    if not config.MT5_ACTIF:
+        return "MT5 non configuré"
+    inst = executant.etat_installation()
+    if inst and not inst.startswith(("installation réussie", "installé")):
+        return f"MT5 pas encore installé ({inst})"
+    return archive_mt5.archiver()
+
+
 def bot_chandeliers(chef):
     msgs = []
     for tf in ("1h", "4h", "1d"):
@@ -143,8 +160,9 @@ def bot_chandeliers(chef):
         cle_stats = f"stats_chandeliers:{tf}"
         stats = base.lire(cle_stats)
         if not stats or time.time() - stats.get("_ts", 0) > 86400:
-            stats = chandeliers.statistiques(donnees.charger(SOURCE_DECISION, tf), S.UNITES[tf][0])
-            stats["_ts"] = time.time()
+            source = source_stats(tf)
+            stats = chandeliers.statistiques(donnees.charger(source, tf), S.UNITES[tf][0])
+            stats["_ts"], stats["_source"] = time.time(), source
             base.ecrire(cle_stats, stats)
         derniers = chandeliers.derniers_motifs(b, stats)
         dernier_ts = int(b["ts"][-1])
@@ -350,6 +368,8 @@ def bot_commandes(chef):
             telegram.envoyer(rapport_bilan())
         elif c in ("/or_bibliotheque", "bibliotheque"):
             telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
+        elif c in ("/or_bougies", "bougies"):
+            telegram.envoyer(rapport_bougies("4h") + "\n\n" + rapport_bougies("1d", nb=6))
         elif c in ("/or_mt5", "mt5"):
             telegram.envoyer("🤖 " + executant.rapport_mt5())
         elif c in ("/or_mt5_fermer", "mt5_fermer"):
@@ -445,6 +465,7 @@ def rapport(chef=None):
                       + (f" · en difficulté : {', '.join(ko)}" if ko else "") + (" · ⏸ PAUSE" if chef.pause else ""))
     if config.MT5_ACTIF:
         lignes.append(executant.rapport_mt5())
+        lignes.append(archive_mt5.resume())
         lignes.append("Papier : simulé. MT5 : ordres réels sur compte DÉMO uniquement.")
     else:
         lignes.append("Tout est simulé sur papier : aucun ordre réel.")
@@ -465,6 +486,29 @@ def rapport_levier():
                       f"du capital, liquidation atteinte dans {f['proba_liquidation_historique'] * 100:.1f} % des 24 h passées"
                       + (" ⚠ liquidation AVANT le stop" if f["liquidation_avant_stop"] else ""))
     lignes.append("Rappel : la majorité des particuliers perdent de l'argent avec le levier (AMF, 2014).")
+    return "\n".join(lignes)
+
+
+def rapport_bougies(tf="4h", nb=12):
+    """Les motifs de chandeliers mesurés sur l'or : les plus marqués d'abord, et le seuil de fiabilité exigé."""
+    st = base.lire(f"stats_chandeliers:{tf}")
+    if not st:
+        return "Statistiques des chandeliers pas encore calculées (quelques minutes après le démarrage)."
+    motifs = {k: v for k, v in st.items() if not k.startswith("_")}
+    exige = chandeliers.seuil_z(len(motifs))
+    source = {"MT5": "XAUUSD du courtier MT5", "PAXGUSDT": "PAXG Binance"}.get(st.get("_source"), st.get("_source") or "PAXG")
+    lignes = [f"🕯 {len(motifs)} motifs de chandeliers mesurés sur l'or ({tf}, {source}) · fiable si |z| ≥ {exige:.2f} "
+              "et au moins 30 cas (correction pour 40 tests à la fois)"]
+    classes = sorted(motifs.items(), key=lambda kv: -abs(kv[1].get("z") or 0))
+    for nom, v in classes[:nb]:
+        if not v.get("n"):
+            continue
+        marque = "✅" if v["n"] >= 30 and abs(v["z"]) >= exige else "·"
+        lignes.append(f"{marque} {nom.replace('_', ' ')} : {v['reussite'] * 100:.0f} % dans le sens annoncé "
+                      f"(sans signal : {v['base'] * 100:.0f} %) · n={v['n']} · z={v['z']:+.1f}")
+    fiables = [n for n, v in motifs.items() if (v.get("n") or 0) >= 30 and abs(v.get("z") or 0) >= exige]
+    lignes.append(f"Motifs fiables : {', '.join(f.replace('_', ' ') for f in fiables) if fiables else 'aucun pour l’instant'}. "
+                  f"Jamais vus sur cet historique : {sum(1 for v in motifs.values() if not v.get('n'))}.")
     return "\n".join(lignes)
 
 
@@ -497,6 +541,7 @@ class Chef:
             Bot("Stratège de fond", "strategie", 3600, bot_fond),
             Bot("Bilan historique", "archiviste", 7 * 86400, bot_bilan),
             Bot("Exécutant MT5 (démo)", "execution", 20, executant.bot_mt5),
+            Bot("Archiviste MT5", "archiviste", 3600, bot_archive_mt5),
             Bot("Commandes", "chef", 10, bot_commandes),
             Bot("Rapporteur", "chef", config.RAPPORT_HEURES * 3600, bot_rapporteur),
         ]

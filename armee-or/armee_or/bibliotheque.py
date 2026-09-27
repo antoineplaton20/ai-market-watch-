@@ -33,8 +33,13 @@ FICHES = [
      "Markets, 2014", "idee": "Des mouvements anormaux précédaient le fixing de Londres de l'après-midi.",
      "usage": "Séances et heure UTC dans l'analyste du rythme.", "mesure": "Profil horaire mesuré sur l'historique."},
     {"theme": "Chandeliers", "reference": "S. Nison — « Japanese Candlestick Charting Techniques », 1991",
-     "idee": "Les motifs de bougies résument l'équilibre acheteurs / vendeurs.", "usage": "Analyste des chandeliers (16 motifs).",
+     "idee": "Les motifs de bougies résument l'équilibre acheteurs / vendeurs.", "usage": "Analyste des chandeliers (40 motifs, "
+     "commande /or_bougies).",
      "mesure": "Sur PAXG 1 h : la plupart des motifs sont suivis du mouvement INVERSE plus souvent qu'à l'ordinaire."},
+    {"theme": "Chandeliers", "reference": "T. Bulkowski — « Encyclopedia of Candlestick Charts », Wiley, 2008",
+     "idee": "Taux de réussite mesurés de plus de 100 motifs sur des milliers d'actions : beaucoup font à peine mieux "
+     "que le hasard.", "usage": "24 motifs ajoutés (pendu, pinces, trois méthodes, frappe à trois lignes…), chacun "
+     "mesuré sur l'or.", "mesure": "Aucun des 40 motifs ne passe le seuil corrigé sur PAXG 4 h et 1 j."},
     {"theme": "Indicateurs", "reference": "J. W. Wilder — « New Concepts in Technical Trading Systems », 1978",
      "idee": "RSI, ATR (volatilité), ADX (force de tendance).", "usage": "Calculs de volatilité, stops et scores.",
      "mesure": "—"},
@@ -50,7 +55,9 @@ FICHES = [
     {"theme": "Sur-apprentissage", "reference": "Bailey, Borwein, López de Prado, Zhu — « The Probability of Backtest "
      "Overfitting », 2014 ; Bailey & López de Prado — « The Deflated Sharpe Ratio », 2014",
      "idee": "Plus on essaie de stratégies, plus un beau backtest peut être dû au hasard.",
-     "usage": "Calibration glissante sans regarder le futur ; bilans séparés par moitié d'historique.", "mesure": "—"},
+     "usage": "Calibration glissante sans regarder le futur ; bilans séparés par moitié d'historique ; seuil de "
+     "fiabilité des chandeliers corrigé pour 40 tests (Bonferroni : |z| ≥ 3,23 au lieu de 2).",
+     "mesure": "Au seuil naïf de 2, 4 motifs paraissaient « fiables » en 4 h : exactement ce que le hasard produit."},
     {"theme": "Évaluation", "reference": "G. W. Brier — « Verification of Forecasts Expressed in Terms of "
      "Probability », Monthly Weather Review, 1950", "idee": "Noter un pronostic probabiliste.",
      "usage": "Chaque pronostiqueur est noté en continu contre le naïf ; poids nul s'il ne fait pas mieux.", "mesure": "—"},

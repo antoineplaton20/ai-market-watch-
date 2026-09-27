@@ -11,6 +11,7 @@ case "${1:-aide}" in
   levier) en_bots "$PY -m armee_or levier" ;;
   bilan) echo "Calcul sur tout l'historique (quelques secondes)..."; en_bots "$PY -m armee_or bilan" ;;
   bibliotheque) en_bots "$PY -m armee_or bibliotheque" ;;
+  bougies) en_bots "$PY -m armee_or bougies" ;;
   pause|reprise) en_bots "$PY -m armee_or commande $1" ;;
   test) en_bots "$PY -m armee_or test" ;;
   journal) echo "Journal en direct (Ctrl+C pour quitter)"; tail -n 60 -f "$DOSSIER/runtime/or.log" ;;
@@ -51,6 +52,7 @@ Armée de l'or (indépendante de tes autres bots) :
   or levier        fiches de levier x1 à x50 : marge, liquidation, perte au stop, risque historique
   or bilan         bilan sur tout l'historique (sans regarder le futur, frais compris)
   or bibliotheque  connaissances et études utilisées par l'armée
+  or bougies       les 40 chandeliers mesurés sur l'or (fiables ou non)
   or pause | reprise   suspendre / reprendre les nouvelles positions (papier et MT5 ; l'analyse continue)
   or mt5           compte MT5 démo : solde, positions des équipes, résultats
   or mt5 fermer    ferme toutes les positions de l'armée et suspend ses ordres (or mt5 reprendre)

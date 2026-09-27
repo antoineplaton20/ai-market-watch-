@@ -74,10 +74,11 @@ systemd relance les services quoi qu'il arrive : `Restart=always`, sans limite d
 |---|---|---|
 | Vigies du cours (`armee-or-flux`) | continu | WebSocket Binance XAUUSDT (perpétuel or) et PAXGUSDT, bougies 1 min. Retard affiché en ms, reconnexion automatique, rattrapage REST des minutes perdues. |
 | Vigie du cours | 30 s | Fraîcheur du prix. Écart PAXG/XAU > 1 %. Secours COMEX (GC=F) si Binance est muet. |
+| Archiviste MT5 | 1 h | Rapatrie l'historique XAUUSD de ton courtier (1 j, 4 h, 1 h, 15 min) jusqu'au début de ce que le serveur fournit, puis le complète. Les chandeliers sont mesurés sur l'historique le plus long. |
 | Archiviste | 60 s | Bougies 1 min → 15 min → 1 h → 4 h → 1 j. Mise à jour COMEX quotidienne. |
 | Vigie des marchés liés | 15 min | Dollar (DXY), taux US 10 ans, argent, cuivre, pétrole, S&P 500, VIX, EUR/USD, mines d'or (GDX), Bitcoin. Corrélations sur 60 jours et « contexte » pour l'or. |
 | Analyste du rythme | 5 min | Séance (Asie / Londres / New York), rang de volatilité, expansion, séries de bougies, régime. |
-| Analyste des chandeliers | 60 s | 16 motifs (marteau, avalements, étoiles, trois soldats…) avec leur **taux de réussite réel mesuré sur l'or**. |
+| Analyste des chandeliers | 60 s | **40 motifs** (Nison, Bulkowski : marteau, pendu, avalements, étoiles, pinces, trois méthodes, frappe à trois lignes…), chacun **mesuré sur l'or**. Fiable seulement si l'écart dépasse le seuil corrigé pour 40 tests (\|z\| ≥ 3,23). `/or_bougies` montre les résultats. |
 | Pronostiqueurs + décision | 60 s | 7 pronostiqueurs (tendance, momentum, retour à la moyenne, chandeliers, canal, saisonnalité, volatilité) en 1 h, 4 h et 1 j. Chacun est noté en continu (Brier) contre le naïf. Consensus pondéré par la compétence. Décision seulement si l'avantage dépasse 1,5 × les coûts. |
 | Stratège de fond | 1 h | « Garder l'or » comparé à « tendance 10 mois » (Faber) sur les clôtures COMEX. |
 | Bilan historique | 7 j | Rejoue tout l'historique sans regarder le futur. |
