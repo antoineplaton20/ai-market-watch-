@@ -355,3 +355,16 @@ def test_le_pont_demande_l_activation_d_algo_trading_seulement_s_il_est_eteint(t
     drapeau.unlink()
     assert pont.verifier_algo() is False and not drapeau.exists()            # au plus une demande par minute
     assert pont_mt5.chemin_demarrage(r"C:\Program Files\MetaTrader 5\terminal64.exe") == r"C:\armee_or_demarrage.ini"
+
+
+def test_marche_ferme_ni_ordre_ni_alerte(faux, monkeypatch):
+    alertes = []
+    monkeypatch.setattr(executant.telegram, "alerte_rare", lambda *a, **k: alertes.append(a) or True)
+    base.ecrire("direct:MT5", {"prix": 4290, "ts": time.time() - 3600, "retard_ms": 0, "source": "MT5"})
+    _prono("1h", 0, p=0.47)
+    assert "fermé" in executant.bot_mt5(_chef()) and not faux.envois and not alertes
+    base.ecrire("direct:MT5", {"prix": 4290, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    orig = faux.order_send
+    faux.order_send = lambda d: NS(retcode=10018, comment="Market closed", order=0, deal=0, price=0.0, volume=0.0)
+    assert "marché fermé" in executant.bot_mt5(_chef()) and not alertes          # refus « marché fermé » : silencieux
+    faux.order_send = orig

@@ -54,6 +54,16 @@ def _atr(tf):
     return float(I.atr(r[:, 2], r[:, 3], r[:, 4], 14)[-1])
 
 
+MARCHE_FERME = 10018                                      # TRADE_RETCODE_MARKET_CLOSED
+SILENCE_MARCHE_S = 900                                    # plus aucun cours MT5 depuis 15 min : marché fermé
+
+
+def marche_ferme():
+    """Week-end ou pause quotidienne de l'or : le cours MT5 ne bouge plus (vigie du service flux)."""
+    d = base.lire("direct:MT5")
+    return bool(d) and time.time() - d.get("ts", 0) > SILENCE_MARCHE_S
+
+
 def _frais(p, equipe_tf, maintenant_ms):
     """Décision encore fraîche (prise à la clôture de la dernière bougie de l'unité) ?"""
     return p and maintenant_ms - (p["ts"] + MS[equipe_tf]) < min(MS[equipe_tf], 4 * 3_600_000)
@@ -97,6 +107,8 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
                   commentaire=f"armee-or {cle}")
     _noter(cle, "ouverture", r.get("ordre"), sens, lots, r.get("prix") or prix, stop, r["ok"],
            f"{r['retcode']} {r['commentaire']} · {explication}")
+    if not r["ok"] and r["retcode"] == MARCHE_FERME:
+        return f"{eq['nom']} : marché fermé, pas d'ordre"
     if not r["ok"]:
         telegram.alerte_rare(f"mt5-refus-{cle}", f"⚠️ MT5 a refusé l'ordre ({eq['nom']}) : {r['retcode']} "
                              f"{r['commentaire']}", 3600, important=True)
@@ -215,6 +227,8 @@ def bot_mt5(chef):
                              "mot de passe INVESTISSEUR = lecture seule). Donne le mot de passe principal : « or mt5 "
                              "compte », puis « or redemarrer ».", 6 * 3600, important=True)
         return "; ".join(msgs + ["trading algorithmique non autorisé par le terminal"])
+    if marche_ferme():
+        return "; ".join(msgs + ["marché de l'or fermé (week-end ou pause) : aucun nouvel ordre"])
     maintenant_ms = time.time() * 1000
     ouvertes = {s["equipe"] for s in suivi.values()}
     for cle in ("4h", "1d"):
