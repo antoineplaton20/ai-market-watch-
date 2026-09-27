@@ -69,6 +69,9 @@ def main(argv=None):
         print(bibliotheque.texte())
     elif cmd == "test":
         return test()
+    elif cmd == "veille":
+        from . import veille
+        print(veille.texte_veille())
     elif cmd == "bougies":
         print(chef.rapport_bougies("4h") + "\n\n" + chef.rapport_bougies("1d", nb=6))
     elif cmd == "mt5":

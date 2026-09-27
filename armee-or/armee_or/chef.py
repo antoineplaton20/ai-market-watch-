@@ -21,7 +21,7 @@ import traceback
 import numpy as np
 
 from . import archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
-    levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram
+    levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, veille
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -32,14 +32,26 @@ PROFILS_DIRECT = ["x1", "x3", "x10", "x20 (max. UE)", "pro 1 % risqué"]
 
 # ============================================================================ les bots
 class Bot:
-    def __init__(self, nom, famille, periode_s, fonction):
+    def __init__(self, nom, famille, periode_s, fonction, fond=False):
         self.nom, self.famille, self.periode, self.fonction = nom, famille, periode_s, fonction
+        self.fond = fond                    # travail lent (réseau, gros calcul) : dans son propre fil, sans bloquer
+        self.fil = None                     # les bots rapides (sentinelle éclair, exécutant MT5)
         self.prochaine = 0.0
         self.echecs = 0
         self.ok = self.ko = 0
         self.dernier_message = ""
         self.derniere_erreur = None
         self.duree = 0.0
+
+    def lancer(self, chef):
+        if not self.fond:
+            return self.executer(chef)
+        if self.fil is not None and self.fil.is_alive():
+            return None                                        # encore au travail : on ne l'empile pas
+        import threading
+        self.fil = threading.Thread(target=self.executer, args=(chef,), daemon=True, name=f"bot-{self.nom}")
+        self.fil.start()
+        return None
 
     def du(self, maintenant):
         return maintenant >= self.prochaine
@@ -140,6 +152,36 @@ def source_stats(tf):
         n = {s: c.execute("SELECT COUNT(*) FROM bougies WHERE source=? AND tf=?", (s, tf)).fetchone()[0]
              for s in (archive_mt5.SOURCE, SOURCE_DECISION)}
     return archive_mt5.SOURCE if n[archive_mt5.SOURCE] > n[SOURCE_DECISION] else SOURCE_DECISION
+
+
+def bot_eclair(chef):
+    if not hasattr(chef, "eclair"):
+        chef.eclair = veille.Eclair()
+    return chef.eclair.observer()
+
+
+def bot_niveaux(chef):
+    return veille.surveiller_niveaux(SOURCE_DECISION)
+
+
+def bot_tendances(chef):
+    return veille.surveiller_tendances(SOURCE_DECISION)
+
+
+def bot_microstructure(chef):
+    return veille.surveiller_microstructure()
+
+
+def bot_calendrier(chef):
+    return veille.surveiller_calendrier()
+
+
+def bot_actualites(chef):
+    return veille.surveiller_actualites()
+
+
+def bot_cot(chef):
+    return veille.surveiller_cot()
 
 
 def bot_archive_mt5(chef):
@@ -368,6 +410,14 @@ def bot_commandes(chef):
             telegram.envoyer(rapport_bilan())
         elif c in ("/or_bibliotheque", "bibliotheque"):
             telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
+        elif c in ("/or_veille", "veille"):
+            telegram.envoyer(veille.texte_veille())
+        elif c in ("/or_calendrier", "calendrier"):
+            telegram.envoyer(veille.texte_calendrier(10))
+        elif c in ("/or_niveaux", "niveaux"):
+            telegram.envoyer(veille.texte_niveaux())
+        elif c in ("/or_actus", "actus"):
+            telegram.envoyer(veille.texte_actualites(10))
         elif c in ("/or_bougies", "bougies"):
             telegram.envoyer(rapport_bougies("4h") + "\n\n" + rapport_bougies("1d", nb=6))
         elif c in ("/or_mt5", "mt5"):
@@ -450,6 +500,10 @@ def rapport(chef=None):
         if p:
             lignes.append(f"Pronostic {tf} : hausse {p['p'] * 100:.1f} % (naïf {(p['naif'] or 0.5) * 100:.1f} %) -> "
                           + ("ACHAT" if p["sens"] > 0 else "VENTE" if p["sens"] < 0 else "aucune action (avantage < coûts)"))
+    lignes.append(veille.texte_tendances())
+    ev = [e for e in (base.lire("calendrier") or {}).get("evenements", []) if e["ts"] > time.time()]
+    if ev:
+        lignes.append(f"Prochaine annonce à fort impact : {ev[0]['titre']} ({veille.heure_paris(ev[0]['ts'])}, Paris)")
     for tf in ("1h", "4h", "1d"):
         e = base.lire(f"papier:{tf}")
         if e:
@@ -532,26 +586,40 @@ class Chef:
     def __init__(self):
         self.pause = bool(base.lire("pause", False))
         self.bots = [
-            Bot("Vigie du cours", "vigie", 30, bot_vigie),
-            Bot("Archiviste", "archiviste", 60, bot_archiviste),
-            Bot("Vigie des marchés liés", "vigie", 900, bot_marches),
+            Bot("Vigie du cours", "vigie", 10, bot_vigie, fond=True),
+            Bot("Sentinelle éclair", "vigie", 2, bot_eclair),
+            Bot("Niveaux clés", "analyste", 10, bot_niveaux),
+            Bot("Tendance multi-unités", "analyste", 60, bot_tendances, fond=True),
+            Bot("Microstructure Binance", "vigie", 30, bot_microstructure, fond=True),
+            Bot("Calendrier économique", "vigie", 60, bot_calendrier, fond=True),
+            Bot("Actualités", "vigie", 300, bot_actualites, fond=True),
+            Bot("COT CFTC", "vigie", 6 * 3600, bot_cot, fond=True),
+            Bot("Archiviste", "archiviste", 20, bot_archiviste, fond=True),
+            Bot("Vigie des marchés liés", "vigie", 900, bot_marches, fond=True),
             Bot("Analyste du rythme", "analyste", 300, bot_rythme),
-            Bot("Analyste des chandeliers", "analyste", 60, bot_chandeliers),
-            Bot("Pronostiqueurs + décision", "pronostic", 60, bot_pronostiqueurs),
-            Bot("Stratège de fond", "strategie", 3600, bot_fond),
-            Bot("Bilan historique", "archiviste", 7 * 86400, bot_bilan),
-            Bot("Exécutant MT5 (démo)", "execution", 20, executant.bot_mt5),
-            Bot("Archiviste MT5", "archiviste", 3600, bot_archive_mt5),
-            Bot("Commandes", "chef", 10, bot_commandes),
-            Bot("Rapporteur", "chef", config.RAPPORT_HEURES * 3600, bot_rapporteur),
+            Bot("Analyste des chandeliers", "analyste", 10, bot_chandeliers, fond=True),
+            Bot("Pronostiqueurs + décision", "pronostic", 10, bot_pronostiqueurs, fond=True),
+            Bot("Stratège de fond", "strategie", 3600, bot_fond, fond=True),
+            Bot("Bilan historique", "archiviste", 7 * 86400, bot_bilan, fond=True),
+            Bot("Exécutant MT5 (démo)", "execution", 5, executant.bot_mt5),
+            Bot("Archiviste MT5", "archiviste", 3600, bot_archive_mt5, fond=True),
+            Bot("Commandes", "chef", 3, bot_commandes, fond=True),
+            Bot("Rapporteur", "chef", config.RAPPORT_HEURES * 3600, bot_rapporteur, fond=True),
         ]
         self.bots[-1].prochaine = time.time() + 300           # premier rapport après 5 min
 
     def tour(self):
         for bot in self.bots:
             if bot.du(time.time()):
-                bot.executer(self)
+                bot.lancer(self)
         base.ecrire("chef", {"ts": time.time(), "pause": self.pause, "bots": [b.etat() for b in self.bots]})
+
+    def attendre(self, delai=600):
+        """Attend la fin des bots qui travaillent dans leur propre fil (tests, arrêt propre)."""
+        fin = time.time() + delai
+        for b in self.bots:
+            if b.fil is not None:
+                b.fil.join(max(0.0, fin - time.time()))
 
 
 def premier_demarrage():
@@ -575,4 +643,4 @@ def main():
             chef.tour()
         except Exception:
             _log.exception("Tour du chef en erreur (il continue)")
-        dormir(5)
+        dormir(1)

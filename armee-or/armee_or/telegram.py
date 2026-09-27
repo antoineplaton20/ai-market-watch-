@@ -61,7 +61,9 @@ def alerte_rare(cle, texte, fenetre_s=3600, important=False):
     return envoyer(texte, important)
 
 
-MENU = [("or", "Rapport complet"), ("or_mt5", "Compte MT5 démo et équipes"),
+MENU = [("or", "Rapport complet"), ("or_veille", "Veille : tendances, niveaux, flux, COT, annonces, actus"),
+        ("or_calendrier", "Annonces économiques à fort impact"), ("or_niveaux", "Niveaux clés (supports, résistances)"),
+        ("or_actus", "Derniers titres sur l'or"), ("or_mt5", "Compte MT5 démo et équipes"),
         ("or_mt5_fermer", "Fermer les positions de l'armée et suspendre"), ("or_mt5_reprendre", "Reprendre les ordres MT5"),
         ("or_mt5_profil", "Choisir le levier des décisions"), ("or_mt5_ecran", "Photo de l'écran du terminal MT5"), ("or_entrainement", "Équipe d'entraînement on/off"),
         ("or_levier", "Fiches de levier x1 à x50"), ("or_bougies", "Les 40 chandeliers mesurés sur l'or"), ("or_bilan", "Bilan historique"), ("or_pause", "Pause des nouvelles positions"),

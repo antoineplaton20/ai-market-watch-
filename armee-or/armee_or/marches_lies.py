@@ -14,10 +14,13 @@ import numpy as np
 TICKERS = {
     "GC=F": "Or COMEX", "DX-Y.NYB": "Dollar (DXY)", "^TNX": "Taux US 10 ans", "SI=F": "Argent", "HG=F": "Cuivre",
     "CL=F": "Pétrole WTI", "^GSPC": "S&P 500", "^VIX": "Peur (VIX)", "EURUSD=X": "Euro / dollar", "GDX": "Mines d'or",
-    "BTC-USD": "Bitcoin",
+    "BTC-USD": "Bitcoin", "^FCHI": "CAC 40", "^DJI": "Dow Jones", "USDJPY=X": "Dollar / yen", "CNY=X": "Dollar / yuan",
+    "PL=F": "Platine", "PA=F": "Palladium", "TIP": "Obligations indexées inflation (TIP)", "GLD": "ETF or GLD",
+    "SLV": "ETF argent SLV", "^FVX": "Taux US 5 ans",
 }
 # sens habituel de la relation avec l'or (+1 : montent ensemble, -1 : en sens inverse), pour le score de contexte
-SENS_HABITUEL = {"DX-Y.NYB": -1, "^TNX": -1, "SI=F": 1, "EURUSD=X": 1, "GDX": 1, "^VIX": 1}
+SENS_HABITUEL = {"DX-Y.NYB": -1, "^TNX": -1, "SI=F": 1, "EURUSD=X": 1, "GDX": 1, "^VIX": 1, "USDJPY=X": -1,
+                 "TIP": 1, "PL=F": 1, "^FVX": -1}
 
 
 def telecharger(ticker, intervalle="1d", periode="6mo", session=None):
@@ -57,7 +60,11 @@ def analyser(series):
             s = SENS_HABITUEL[t] * np.tanh(v5 / 2)
             score += s
             poids += 1
-    return {"ts": time.time(), "marches": lignes, "contexte": float(score / poids) if poids else 0.0}
+    ratio = None                                              # ratio or / argent : combien d'onces d'argent pour une d'or
+    if len(or_c) and len(series.get("SI=F", ((), ()))[1]):
+        ratio = float(or_c[-1] / series["SI=F"][1][-1])
+    return {"ts": time.time(), "marches": lignes, "contexte": float(score / poids) if poids else 0.0,
+            "ratio_or_argent": ratio}
 
 
 def releve(session=None):

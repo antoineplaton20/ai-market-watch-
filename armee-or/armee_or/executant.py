@@ -16,7 +16,7 @@ import time
 
 import numpy as np
 
-from . import base, config, indicateurs as I, mt5, strategie as S, telegram
+from . import base, config, indicateurs as I, mt5, strategie as S, telegram, veille
 
 EQUIPES = {
     "4h": {"magic": 770004, "tf": "4h", "nom": "décisions 4 h", "duree_h": S.UNITES["4h"][0] * S.UNITES["4h"][1]},
@@ -222,6 +222,9 @@ def bot_mt5(chef):
     # 2) nouvelles positions
     if chef.pause or base.lire("mt5:pause"):
         return "; ".join(msgs + ["ordres en pause"])
+    annonce = veille.evenement_proche()
+    if annonce:                                           # annonce économique majeure : ni avant ni pendant la secousse
+        return "; ".join(msgs + [f"annonce « {annonce['titre']} » : aucun nouvel ordre de 15 min avant à 15 min après"])
     if not (etat.get("terminal") or {}).get("trade_allowed") or not compte.get("trade_allowed", True):
         telegram.alerte_rare("mt5-algo", "⚠️ MT5 refuse les ordres automatiques (trading algorithmique désactivé, ou "
                              "mot de passe INVESTISSEUR = lecture seule). Donne le mot de passe principal : « or mt5 "

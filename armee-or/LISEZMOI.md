@@ -74,9 +74,16 @@ systemd relance les services quoi qu'il arrive : `Restart=always`, sans limite d
 |---|---|---|
 | Vigies du cours (`armee-or-flux`) | continu | WebSocket Binance XAUUSDT (perpétuel or) et PAXGUSDT, bougies 1 min. Retard affiché en ms, reconnexion automatique, rattrapage REST des minutes perdues. |
 | Vigie du cours | 30 s | Fraîcheur du prix. Écart PAXG/XAU > 1 %. Secours COMEX (GC=F) si Binance est muet. |
+| Sentinelle éclair | 2 s | Mouvement brutal du cours (plus de 5× la normale en 1 ou 5 min), écart achat/vente MT5 anormal : alerte immédiate. |
+| Niveaux clés | 10 s | Pivots du jour (P, R1, R2, S1, S2), plus haut / bas d'hier et de 5 jours, Fibonacci 3 mois, sommets / creux 4 h, chiffres ronds : alerte à chaque cassure. `/or_niveaux`. |
+| Tendance multi-unités | 60 s | 15 min, 1 h, 4 h, 1 j (moyennes 20/50, RSI, ADX) ; alerte quand les 4 sont alignées. |
+| Microstructure Binance | 30 s | Perpétuel or : taux de financement, positions ouvertes, ratio acheteurs / vendeurs ; carnet d'ordres PAXG. |
+| Calendrier économique | 60 s | Annonces américaines à fort impact (emploi, inflation, PIB, Fed), alerte 30 et 5 min avant, **aucun nouvel ordre MT5 de 15 min avant à 15 min après**. `/or_calendrier`. |
+| Actualités | 5 min | Titres sur l'or (Google Actualités), thèmes critiques (Fed, inflation, géopolitique, banques centrales, records). `/or_actus`. |
+| COT CFTC | 6 h | Positions des gros spéculateurs sur l'or COMEX (hebdomadaire), alerte aux extrêmes de 3 ans. |
 | Archiviste MT5 | 1 h | Rapatrie l'historique XAUUSD de ton courtier (1 j, 4 h, 1 h, 15 min) jusqu'au début de ce que le serveur fournit, puis le complète. Les chandeliers sont mesurés sur l'historique le plus long. |
 | Archiviste | 60 s | Bougies 1 min → 15 min → 1 h → 4 h → 1 j. Mise à jour COMEX quotidienne. |
-| Vigie des marchés liés | 15 min | Dollar (DXY), taux US 10 ans, argent, cuivre, pétrole, S&P 500, VIX, EUR/USD, mines d'or (GDX), Bitcoin. Corrélations sur 60 jours et « contexte » pour l'or. |
+| Vigie des marchés liés | 15 min | 21 marchés : dollar (DXY), taux US 5 et 10 ans, obligations indexées sur l'inflation (TIP), argent, platine, palladium, cuivre, pétrole, S&P 500, Dow Jones, **CAC 40**, VIX, EUR/USD, dollar/yen, dollar/yuan, mines d'or (GDX), ETF GLD et SLV, Bitcoin, ratio or/argent. Corrélations sur 60 jours et « contexte » pour l'or. |
 | Analyste du rythme | 5 min | Séance (Asie / Londres / New York), rang de volatilité, expansion, séries de bougies, régime. |
 | Analyste des chandeliers | 60 s | **40 motifs** (Nison, Bulkowski : marteau, pendu, avalements, étoiles, pinces, trois méthodes, frappe à trois lignes…), chacun **mesuré sur l'or**. Fiable seulement si l'écart dépasse le seuil corrigé pour 40 tests (\|z\| ≥ 3,23). `/or_bougies` montre les résultats. |
 | Pronostiqueurs + décision | 60 s | 7 pronostiqueurs (tendance, momentum, retour à la moyenne, chandeliers, canal, saisonnalité, volatilité) en 1 h, 4 h et 1 j. Chacun est noté en continu (Brier) contre le naïf. Consensus pondéré par la compétence. Décision seulement si l'avantage dépasse 1,5 × les coûts. |
@@ -152,3 +159,12 @@ Sur la même période, **garder l'or a fait ×2,35**. Depuis 2000, le facteur es
 - **MT5 démo** : les résultats de démo ne garantissent rien en réel, car l'exécution et les écarts diffèrent selon le courtier. Le compte « MetaQuotes-Demo » sert à s'entraîner, pas à trader de l'argent.
 - **Binance** a cessé de servir les résidents de l'UE au 1er juillet 2026 (MiCA), et XAUUSDT n'y est pas ouvert aux Européens. Les flux publics restent lisibles depuis le serveur, ce qui suffit à l'armée, qui ne passe aucun ordre.
 - « Aucune erreur possible » n'existe pas. Ce qui existe : chaque erreur est isolée, relancée, comptée et signalée au chef, puis sur Telegram.
+
+## Réactivité
+- Le chef d'orchestre passe **chaque seconde**.
+- Les travaux lents (sources internet, gros calculs) tournent dans leurs propres fils : une source lente ne retarde jamais la sentinelle éclair ni l'exécutant MT5.
+- Délais typiques :
+  - cours MT5 lu chaque seconde, cours Binance en continu ;
+  - décision prise quelques secondes après la clôture d'une bougie ;
+  - ordre MT5 envoyé dans les 5 s qui suivent ;
+  - alerte de mouvement brutal en 2 s.

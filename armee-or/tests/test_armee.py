@@ -248,9 +248,11 @@ def test_tour_complet_sur_l_historique(historique, monkeypatch):
     monkeypatch.setattr(chef, "bot_marches", lambda c: "réseau désactivé en test")
     monkeypatch.setattr(chef.Bot, "__init__", chef.Bot.__init__)
     ch = chef.Chef()
-    ch.bots = [b for b in ch.bots if b.nom not in ("Vigie des marchés liés",)]
-    ch.bots[1].fonction = lambda c: "archiviste sans réseau"
+    reseau = ("Vigie des marchés liés", "Microstructure Binance", "Calendrier économique", "Actualités", "COT CFTC")
+    ch.bots = [b for b in ch.bots if b.nom not in reseau]                  # aucun accès réseau en test
+    next(b for b in ch.bots if b.nom == "Archiviste").fonction = lambda c: "archiviste sans réseau"
     ch.tour()
+    ch.attendre()
     assert all(b.echecs == 0 for b in ch.bots), [b.etat() for b in ch.bots if b.echecs]
     for tf in ("1h", "4h", "1d"):
         assert base.lire(f"prono:{tf}")["p"] > 0 and base.lire(f"papier:{tf}")["comptes"]
