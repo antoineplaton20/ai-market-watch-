@@ -168,3 +168,16 @@ Sur la même période, **garder l'or a fait ×2,35**. Depuis 2000, le facteur es
   - décision prise quelques secondes après la clôture d'une bougie ;
   - ordre MT5 envoyé dans les 5 s qui suivent ;
   - alerte de mouvement brutal en 2 s.
+
+## Apprentissage (`/or_apprentissage`)
+L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesuré sans regarder le futur.
+
+| Bot | Rythme | Rôle |
+|---|---|---|
+| Archiviste de la veille | 1 min | Archive par quart d'heure la microstructure Binance, le contexte des marchés liés, le ratio or/argent, l'écart achat/vente MT5, les actualités critiques et l'alignement des tendances. |
+| Rattrapage de l'historique | 1 fois / jour | 10 ans des marchés liés en journalier, 2 ans en horaire (Yahoo), 10 ans de rapports COT (CFTC), historique du financement du perpétuel PAXG (Binance). Chaque valeur est datée à l'instant où elle était **connue**. |
+| Examinateur des signaux | 1 fois / jour | Chaque série devient un pronostiqueur candidat. **Examen d'entrée** : calibration glissante, puis test de Diebold-Mariano contre le naïf, avec un seuil corrigé pour le nombre de tests (Bonferroni, recommandation Harvey-Liu-Zhu). Le signal doit aussi faire mieux sur les **deux moitiés** de l'historique. Seuls les admis entrent dans le consensus. |
+| Mesure des frais réels | 1 h | Écart achat/vente, glissement (prix demandé contre prix obtenu), commissions et frais de nuit mesurés sur tes exécutions MT5. Ils remplacent progressivement l'estimation fixe dans la règle « avantage > 1,5 × coûts » (poids de la mesure = n / (n + 30)). |
+| Journal d'apprentissage | 1 fois / semaine | Poids des pronostiqueurs et leur évolution, score **en direct** sur 7 jours, signaux admis ou rejetés, frais réels, chandeliers fiables, résultats MT5. |
+
+Premier examen réel (sept. 2026) : 80 807 observations, 47 tests, seuil z ≥ 3,07, **aucun signal admis**. Le meilleur est la variation du pétrole sur 5 jours en 4 h (z = +0,74). Les signaux publics gratuits ne prédisent pas l'or mieux que le hasard une fois correctement mesurés. L'examen les tient donc à l'écart, et les réexamine chaque jour à mesure que l'historique s'allonge.

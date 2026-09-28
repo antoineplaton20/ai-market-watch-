@@ -18,7 +18,7 @@ from . import config
 
 
 COMMANDES = ("pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
-             "mt5_entrainement", "mt5_ecran", "bougies")
+             "mt5_entrainement", "mt5_ecran", "bougies", "apprentissage")
 
 
 def _journal():
@@ -69,6 +69,9 @@ def main(argv=None):
         print(bibliotheque.texte())
     elif cmd == "test":
         return test()
+    elif cmd == "apprentissage":
+        from . import apprentissage
+        print(apprentissage.journal())
     elif cmd == "veille":
         from . import veille
         print(veille.texte_veille())

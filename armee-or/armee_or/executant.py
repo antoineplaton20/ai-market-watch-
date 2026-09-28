@@ -113,6 +113,8 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
         telegram.alerte_rare(f"mt5-refus-{cle}", f"⚠️ MT5 a refusé l'ordre ({eq['nom']}) : {r['retcode']} "
                              f"{r['commentaire']}", 3600, important=True)
         return f"{eq['nom']} : ordre refusé ({r['retcode']} {r['commentaire']})"
+    from . import apprentissage                             # mesure du glissement réel (prix demandé / obtenu)
+    apprentissage.enregistrer_execution(cle, sens, prix, r.get("prix"), lots)
     suivi = base.lire("mt5:suivi", {}) or {}
     for p in mt5.appel("positions"):
         if p["magic"] == eq["magic"] and str(p["ticket"]) not in suivi and p["ticket"] not in pos_avant:

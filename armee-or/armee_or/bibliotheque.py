@@ -58,6 +58,19 @@ FICHES = [
      "usage": "Calibration glissante sans regarder le futur ; bilans séparés par moitié d'historique ; seuil de "
      "fiabilité des chandeliers corrigé pour 40 tests (Bonferroni : |z| ≥ 3,23 au lieu de 2).",
      "mesure": "Au seuil naïf de 2, 4 motifs paraissaient « fiables » en 4 h : exactement ce que le hasard produit."},
+    {"theme": "Évaluation", "reference": "F. X. Diebold & R. S. Mariano — « Comparing Predictive Accuracy », "
+     "Journal of Business & Economic Statistics, 1995", "idee": "Test statistique de référence pour savoir si une "
+     "prévision bat vraiment une autre, et pas seulement par chance.", "usage": "Examen d'entrée de chaque signal "
+     "de veille candidat contre le naïf (erreurs chevauchantes prises en compte).", "mesure": "Journal /or_apprentissage."},
+    {"theme": "Sur-apprentissage", "reference": "C. Harvey, Y. Liu, H. Zhu — « …and the Cross-Section of Expected "
+     "Returns », Review of Financial Studies, 2016", "idee": "Des centaines de « facteurs » publiés sont des faux "
+     "positifs : quand on teste beaucoup d'idées, il faut exiger un t d'au moins 3.", "usage": "Seuil d'admission des "
+     "signaux corrigé pour le nombre total de tests (Bonferroni).", "mesure": "—"},
+    {"theme": "Coûts", "reference": "R. Almgren & N. Chriss — « Optimal Execution of Portfolio Transactions », "
+     "Journal of Risk, 2000 ; A. Frazzini, R. Israel, T. Moskowitz — « Trading Costs », 2018", "idee": "Les coûts "
+     "réels d'exécution (écart, glissement) décident de la rentabilité d'une stratégie : ils se mesurent, ils ne "
+     "se supposent pas.", "usage": "Frais mesurés sur les exécutions MT5, substitués progressivement à l'estimation.",
+     "mesure": "Journal /or_apprentissage."},
     {"theme": "Évaluation", "reference": "G. W. Brier — « Verification of Forecasts Expressed in Terms of "
      "Probability », Monthly Weather Review, 1950", "idee": "Noter un pronostic probabiliste.",
      "usage": "Chaque pronostiqueur est noté en continu contre le naïf ; poids nul s'il ne fait pas mieux.", "mesure": "—"},

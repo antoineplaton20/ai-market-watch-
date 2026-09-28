@@ -32,6 +32,8 @@ def isolement(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "TELEGRAM_CHAT", "")
     monkeypatch.setattr(config, "TELEGRAM_COMMANDES", False)
     monkeypatch.setattr(config, "MT5_ACTIF", False)          # jamais le vrai compte MT5 pendant les tests
+    from armee_or import strategie
+    monkeypatch.setattr(strategie, "COUTS_REELS", None)          # frais estimés, jamais ceux appris ailleurs
     (tmp_path / "runtime").mkdir()
     yield
 

@@ -16,6 +16,9 @@ UNITES = {  # unité : (horizon en bougies, heures par bougie)
     "1h": (4, 1), "4h": (6, 4), "1d": (5, 24),
 }
 MARGE = 1.5
+COUTS_REELS = None     # frais mesurés sur MT5 (apprentissage.appliquer_couts) ; None = estimation fixe
+
+
 
 
 def mouvement_habituel(c, h, n=500):
@@ -35,6 +38,8 @@ def mouvement_habituel(c, h, n=500):
 
 
 def couts(h, heures_barre):
+    if COUTS_REELS:                                     # frais réels de ton courtier, appris sur tes exécutions
+        return COUTS_REELS["aller_retour"] + COUTS_REELS["financement_heure"] * h * heures_barre
     return 2 * (L.FRAIS + L.GLISSEMENT) + L.FINANCEMENT_8H * h * heures_barre / 8
 
 

@@ -20,7 +20,7 @@ import traceback
 
 import numpy as np
 
-from . import archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
+from . import apprentissage, archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
     levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, veille
 
 _log = logging.getLogger("or.chef")
@@ -184,6 +184,60 @@ def bot_cot(chef):
     return veille.surveiller_cot()
 
 
+def bot_archive_veille(chef):
+    return f"{apprentissage.archiver_veille()} observations archivées"
+
+
+def bot_rattrapage(chef):
+    dernier = (base.lire("apprentissage:rattrapage") or {}).get("ts", 0)
+    if time.time() - dernier < 20 * 3600:                      # une fois par jour, même après un redémarrage
+        return "historique déjà à jour aujourd'hui"
+    bilan, erreurs = apprentissage.rattraper_historique()
+    return f"{sum(bilan.values())} observations rattrapées" + (f" · indisponibles : {', '.join(erreurs)}" if erreurs else "")
+
+
+def bot_examen(chef):
+    dernier = (base.lire("apprentissage:examen") or {}).get("ts", 0)
+    rattrapage = (base.lire("apprentissage:rattrapage") or {}).get("ts", 0)
+    if not rattrapage or (time.time() - dernier < 20 * 3600 and dernier > rattrapage):
+        return "examen à jour" if rattrapage else "en attente du rattrapage de l'historique"
+    barres = {tf: donnees.charger(SOURCE_DECISION, tf, limite=FENETRES[tf]) for tf in ("1h", "4h", "1d")}
+    resultats, seuil = apprentissage.examiner(barres)
+    admis = [f"{n} ({tf})" for tf, r in resultats.items() for n, x in r.items() if x.get("admis")]
+    anciens = set(base.lire("apprentissage:admis_precedents") or [])
+    nouveaux = [a for a in admis if a not in anciens]
+    if nouveaux:
+        telegram.envoyer("🎓 Nouveaux signaux admis dans les décisions (ils battent le naïf, test de Diebold-Mariano "
+                         f"z ≥ {seuil:.2f}, sur les deux moitiés de l'historique) : " + ", ".join(nouveaux))
+    base.ecrire("apprentissage:admis_precedents", admis)
+    return f"{sum(len(r) for r in resultats.values())} candidats examinés · admis : {', '.join(admis) or 'aucun'}"
+
+
+def bot_frais(chef):
+    deals = None
+    if config.MT5_ACTIF:
+        try:
+            deals = mt5.appel("historique", depuis=base.lire("mt5:depuis") or time.time() - 30 * 86400)
+        except mt5.ErreurMT5:
+            deals = None
+    m = apprentissage.mesurer_couts(deals)
+    c = apprentissage.appliquer_couts()
+    return ("frais réels " + (f"{c['aller_retour'] * 100:.4f} % aller-retour ({c['executions']} exécutions)" if c
+                              else f"pas encore assez d'exécutions ({m.get('executions', 0)})"))
+
+
+def bot_journal(chef):
+    dernier = base.lire("journal:dernier")
+    if dernier is None:                                       # premier journal un jour après l'installation
+        base.ecrire("journal:dernier", time.time() - 6 * 86400)
+        return "premier journal dans 24 h"
+    if time.time() - dernier < 7 * 86400:
+        return "prochain journal dans " + f"{(dernier + 7 * 86400 - time.time()) / 86400:.1f} j"
+    telegram.envoyer(apprentissage.journal())
+    base.ecrire("journal:dernier", time.time())
+    return "journal envoyé"
+
+
 def bot_archive_mt5(chef):
     if not config.MT5_ACTIF:
         return "MT5 non configuré"
@@ -241,6 +295,7 @@ def _resoudre(tf, b):
 
 def bot_pronostiqueurs(chef):
     msgs = []
+    apprentissage.appliquer_couts()                            # frais réels MT5 appris (sinon estimation fixe)
     for tf in ("1h", "4h", "1d"):
         b = donnees.charger(SOURCE_DECISION, tf, limite=FENETRES[tf])
         h, hb = S.UNITES[tf]
@@ -252,6 +307,7 @@ def bot_pronostiqueurs(chef):
         if base.lire(f"prono_vu:{tf}") == dernier_ts:
             continue
         probas, naif, y = P.tout_calculer(b, h)
+        probas.update(apprentissage.probas_admis(b, tf, h, y))  # signaux de veille ADMIS à l'examen d'entrée
         cons, poids_hist = P.consensus(probas, naif, y, h)
         dec = S.decisions(cons, b, tf)
         sens = int(dec[-1])
@@ -412,6 +468,8 @@ def bot_commandes(chef):
             telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
         elif c in ("/or_veille", "veille"):
             telegram.envoyer(veille.texte_veille())
+        elif c in ("/or_apprentissage", "apprentissage"):
+            telegram.envoyer(apprentissage.journal())
         elif c in ("/or_calendrier", "calendrier"):
             telegram.envoyer(veille.texte_calendrier(10))
         elif c in ("/or_niveaux", "niveaux"):
@@ -594,6 +652,11 @@ class Chef:
             Bot("Calendrier économique", "vigie", 60, bot_calendrier, fond=True),
             Bot("Actualités", "vigie", 300, bot_actualites, fond=True),
             Bot("COT CFTC", "vigie", 6 * 3600, bot_cot, fond=True),
+            Bot("Archiviste de la veille", "apprentissage", 60, bot_archive_veille, fond=True),
+            Bot("Rattrapage de l'historique", "apprentissage", 3600, bot_rattrapage, fond=True),
+            Bot("Examinateur des signaux", "apprentissage", 1800, bot_examen, fond=True),
+            Bot("Mesure des frais réels", "apprentissage", 3600, bot_frais, fond=True),
+            Bot("Journal d'apprentissage", "apprentissage", 3600, bot_journal, fond=True),
             Bot("Archiviste", "archiviste", 20, bot_archiviste, fond=True),
             Bot("Vigie des marchés liés", "vigie", 900, bot_marches, fond=True),
             Bot("Analyste du rythme", "analyste", 300, bot_rythme),
