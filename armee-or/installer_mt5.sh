@@ -56,9 +56,13 @@ etape "Compte MetaTrader 5"
 if ! grep -q '^OR_MT5_LOGIN=' "$DOSSIER/.env" 2> /dev/null; then
   echo "Identifiants de ton compte DÉMO MT5 (l'armée refusera tout ordre sur un compte réel)."
   LOGIN=""
+  # saisie masquée : si login et mot de passe sont collés ensemble par erreur, rien ne s'affiche à l'écran
   while ! [[ "$LOGIN" =~ ^[0-9]+$ ]]; do
-    read -r -p "Login (numéro, ex. 5056…) : " LOGIN || exit 1; LOGIN=${LOGIN// /}
+    read -r -s -p "Login (numéro seul, ex. 5056…, invisible pendant la frappe) : " LOGIN || exit 1; echo
+    LOGIN=${LOGIN// /}
+    [[ "$LOGIN" =~ ^[0-9]+$ ]] || echo "   ✖ Le login ne contient que des chiffres (pas le mot de passe). Recommence."
   done
+  echo "   ✔ login …${LOGIN: -3}"
   MDP=""
   while [ -z "$MDP" ]; do
     read -r -s -p "Mot de passe PRINCIPAL (invisible pendant la frappe, collage possible) : " MDP || exit 1; echo
