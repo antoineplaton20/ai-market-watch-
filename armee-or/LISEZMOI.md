@@ -157,6 +157,7 @@ Sur la même période, **garder l'or a fait ×2,35**. Depuis 2000, le facteur es
 - **Influencer le rythme des bougies**, c'est de la manipulation de marché, interdite par le règlement européen MAR. L'armée observe et calcule, elle n'influence rien.
 - **Aucune architecture ne garantit un profit.** Environ 89 % des particuliers sur CFD/Forex perdent de l'argent (AMF, 2014). Le levier maximal pour un particulier dans l'UE est de 20 sur l'or (ESMA).
 - **MT5 démo** : les résultats de démo ne garantissent rien en réel, car l'exécution et les écarts diffèrent selon le courtier. Le compte « MetaQuotes-Demo » sert à s'entraîner, pas à trader de l'argent.
+- **Autre courtier MT5** : `or mt5 compte`, puis le login, le mot de passe et le nom exact du serveur du courtier (ex. `XMGlobal-MT5 3`). Le pont trouve seul le nom de l'or chez ce courtier (XAUUSD, XAUUSD.a, GOLD, GOLDmicro…) et s'adapte à la taille de son contrat (100 oz, 10 oz, 1 oz…), visible dans chaque ordre. L'armée ne passe ses ordres que sur un compte **démo** : c'est une sécurité voulue.
 - **Binance** a cessé de servir les résidents de l'UE au 1er juillet 2026 (MiCA), et XAUUSDT n'y est pas ouvert aux Européens. Les flux publics restent lisibles depuis le serveur, ce qui suffit à l'armée, qui ne passe aucun ordre.
 - « Aucune erreur possible » n'existe pas. Ce qui existe : chaque erreur est isolée, relancée, comptée et signalée au chef, puis sur Telegram.
 

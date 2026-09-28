@@ -58,6 +58,21 @@ class ErreurPont(Exception):
     pass
 
 
+AUTRES_DEVISES = ("EUR", "GBP", "AUD", "CHF", "JPY", "CNH", "SGD", "CAD", "HKD", "TRY", "ZAR", "SILVER", "XAG")
+
+
+def choisir_or(noms):
+    """Symbole de l'or contre dollar parmi ceux du serveur : XAUUSD d'abord, puis ses variantes, puis GOLD."""
+    def rang(nom):
+        n = nom.upper()
+        for i, prefixe in enumerate(("XAUUSD", "GOLD")):
+            if n.startswith(prefixe) and not any(d in n[len(prefixe):] for d in AUTRES_DEVISES):
+                return (i, n != prefixe, len(n), n)
+        return None
+    candidats = sorted((r, nom) for nom in noms if (r := rang(nom)) is not None)
+    return candidats[0][1] if candidats else None
+
+
 class Pont:
     def __init__(self, mt5, reglages, dossier=None):
         self.mt5 = mt5
@@ -68,6 +83,7 @@ class Pont:
         self.symbole = reglages.get("OR_MT5_SYMBOLE") or "XAUUSD"
         self.derniere_connexion_ok = time.time()
         self.derniere_erreur = ""
+        self.symbole_verifie = False
 
     # ------------------------------------------------------------------ connexion
     def login(self):
@@ -85,6 +101,8 @@ class Pont:
         m = self.mt5
         if self.connecte():
             self.derniere_connexion_ok = time.time()
+            if not self.symbole_verifie:
+                self.choisir_symbole()
             return True
         m.shutdown()
         options = {"login": self.login(), "password": self.r.get("OR_MT5_MOT_DE_PASSE", ""),
@@ -100,7 +118,7 @@ class Pont:
                                         "« or mt5 compte », puis le mot de passe PRINCIPAL actuel")
             journal(self.derniere_erreur)
             return False
-        m.symbol_select(self.symbole, True)
+        self.choisir_symbole()
         if self.connecte():
             self.derniere_connexion_ok = time.time()
             self.derniere_erreur = ""
@@ -108,6 +126,22 @@ class Pont:
             return True
         self.derniere_erreur = "terminal lancé mais pas encore connecté au serveur"
         return False
+
+    def choisir_symbole(self):
+        """Chaque courtier nomme l'or à sa façon (XAUUSD, XAUUSD.a, GOLD, GOLDmicro…) : si le symbole réglé
+        n'existe pas sur ce serveur, prend l'or contre dollar proposé au compte."""
+        m = self.mt5
+        if m.symbol_info(self.symbole) is not None:
+            m.symbol_select(self.symbole, True)
+            self.symbole_verifie = True
+            return self.symbole
+        noms = [x.name for x in (m.symbols_get() or ())]
+        self.symbole_verifie = bool(noms)                      # liste vide : serveur pas encore prêt, on réessaiera
+        trouve = choisir_or(noms)
+        if trouve and m.symbol_select(trouve, True):
+            journal(f"symbole {self.symbole} absent chez ce courtier : l'or s'appelle ici {trouve}")
+            self.symbole = trouve
+        return self.symbole
 
     def exiger(self):
         if not self.connecter():
@@ -126,7 +160,7 @@ class Pont:
             compte = {k: getattr(a, k, None) for k in ("login", "server", "trade_mode", "balance", "equity", "margin",
                                                        "margin_free", "leverage", "currency", "trade_allowed")}
             compte["demo"] = a.trade_mode == DEMO
-        return {"connecte": ok, "erreur": self.derniere_erreur, "compte": compte,
+        return {"connecte": ok, "erreur": self.derniere_erreur, "compte": compte, "symbole": self.symbole,
                 "terminal": None if t is None else {k: getattr(t, k, None) for k in
                                                     ("connected", "trade_allowed", "build", "name", "ping_last")}}
 

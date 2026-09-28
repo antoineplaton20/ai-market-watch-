@@ -412,3 +412,23 @@ def test_identifiants_refuses_message_clair():
     pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": "5056598022", "OR_MT5_MOT_DE_PASSE": "x"})
     assert pont.connecter() is False
     assert "REFUSE le login …022" in pont.derniere_erreur and "or mt5 compte" in pont.derniere_erreur
+
+
+def test_nom_de_l_or_selon_le_courtier():
+    assert pont_mt5.choisir_or(["EURUSD", "XAUEUR", "XAUUSD", "XAUUSD.a"]) == "XAUUSD"
+    assert pont_mt5.choisir_or(["EURUSD", "XAUUSD.a", "XAGUSD"]) == "XAUUSD.a"
+    assert pont_mt5.choisir_or(["GOLDEURO", "GOLDmicro", "SILVER"]) == "GOLDmicro"          # compte Micro XM
+    assert pont_mt5.choisir_or(["GOLD", "GOLDm#"]) == "GOLD"
+    assert pont_mt5.choisir_or(["EURUSD", "US500"]) is None
+
+
+def test_le_pont_trouve_l_or_d_un_autre_courtier():
+    f = FauxMT5()
+    f.symbols_get = lambda: (NS(name="GOLDEURO"), NS(name="GOLDmicro"))
+    f.symbol_select = lambda s, v: s == "GOLDmicro"
+    f.symbol_info = lambda s: (NS(name=s, digits=2, point=0.01, volume_min=0.1, volume_step=0.01, volume_max=50.0,
+                                  trade_contract_size=1.0, filling_mode=2, trade_stops_level=0, trade_mode=4,
+                                  currency_profit="USD", spread=30) if s == "GOLDmicro" else None)
+    pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN), "OR_MT5_SYMBOLE": "XAUUSD"})
+    assert pont.connecter() and pont.symbole == "GOLDmicro"
+    assert pont.traiter({"op": "specs"})["r"]["trade_contract_size"] == 1.0

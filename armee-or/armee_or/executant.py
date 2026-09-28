@@ -121,7 +121,8 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
             suivi[str(p["ticket"])] = {"equipe": cle, "ouverture": time.time(), "fin": time.time() + eq["duree_h"] * 3600,
                                        "sens": sens, "volume": p["volume"], "prix": p["price_open"], "sl": p["sl"]}
     base.ecrire("mt5:suivi", suivi)
-    texte = (f"🤖 MT5 démo · {eq['nom']} : {'ACHAT' if sens > 0 else 'VENTE'} {lots:g} lot {config.MT5_SYMBOLE} à "
+    texte = (f"🤖 MT5 démo · {eq['nom']} : {'ACHAT' if sens > 0 else 'VENTE'} {lots:g} lot "
+             f"{specs.get('name') or config.MT5_SYMBOLE} ({lots * specs['trade_contract_size']:g} oz) à "
              f"{r.get('prix') or prix:.2f} · stop {stop:.2f} ({STOP_ATR:g} ATR) · fermeture prévue dans "
              f"{eq['duree_h']} h · {explication}")
     if not entrainement:

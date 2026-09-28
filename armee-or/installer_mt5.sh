@@ -67,8 +67,8 @@ if ! grep -q '^OR_MT5_LOGIN=' "$DOSSIER/.env" 2> /dev/null; then
   while [ -z "$MDP" ]; do
     read -r -s -p "Mot de passe PRINCIPAL (invisible pendant la frappe, collage possible) : " MDP || exit 1; echo
   done
-  read -r -p "Serveur [MetaQuotes-Demo] : " SERVEUR || SERVEUR=""
-  SERVEUR=${SERVEUR// /}
+  read -r -p "Serveur, nom exact donné par le courtier [MetaQuotes-Demo] : " SERVEUR || SERVEUR=""
+  SERVEUR=$(echo "$SERVEUR" | sed 's/^ *//;s/ *$//')
   sed -i '/^# MetaTrader 5/d;/^OR_MT5_/d' "$DOSSIER/.env" 2> /dev/null || true
   touch "$DOSSIER/.env"; chmod 600 "$DOSSIER/.env"
   cat >> "$DOSSIER/.env" <<ENV
