@@ -92,7 +92,12 @@ class Pont:
         if self.r.get("OR_MT5_TERMINAL"):
             options.update(path=self.r["OR_MT5_TERMINAL"], portable=True)
         if not m.initialize(**options):
-            self.derniere_erreur = f"connexion MT5 impossible : {m.last_error()}"
+            erreur = m.last_error()
+            self.derniere_erreur = f"connexion MT5 impossible : {erreur}"
+            if erreur and erreur[0] == -6:                       # « Authorization failed »
+                self.derniere_erreur = (f"le serveur {options['server']} REFUSE le login …{str(options['login'])[-3:]} "
+                                        "et son mot de passe (mot de passe changé ou mal tapé ?). Dans Termius : "
+                                        "« or mt5 compte », puis le mot de passe PRINCIPAL actuel")
             journal(self.derniere_erreur)
             return False
         m.symbol_select(self.symbole, True)

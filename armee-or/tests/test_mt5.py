@@ -402,3 +402,13 @@ def test_archive_de_l_historique_mt5_jusqu_au_debut_puis_en_continu(faux):
     archive_mt5.archiver(unites=("1d",))                                 # passage suivant : rien en double
     assert len(D.charger_lignes("MT5", "1d")) == len(lignes)
     assert "1d" in archive_mt5.resume() and chef.source_stats("1d") == "MT5"
+
+
+def test_identifiants_refuses_message_clair():
+    f = FauxMT5()
+    f.initialize = lambda **kw: False
+    f.last_error = lambda: (-6, "Terminal: Authorization failed")
+    f.terminal_info = lambda: None
+    pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": "5056598022", "OR_MT5_MOT_DE_PASSE": "x"})
+    assert pont.connecter() is False
+    assert "REFUSE le login …022" in pont.derniere_erreur and "or mt5 compte" in pont.derniere_erreur
