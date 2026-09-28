@@ -273,12 +273,20 @@ UNITE
 systemctl daemon-reload
 systemctl stop armee-or-mt5 2> /dev/null || true
 
-etape "Connexion au compte (jusqu'à 3 minutes)"
+etape "Connexion au compte (5 minutes au plus)"
 trap - ERR
 if [ "${VERIFIER_CONNEXION:-1}" = 1 ]; then
-  ecran bash -c "cd '$DOSSIER' && PYTHONIOENCODING=utf-8 timeout 300 wine '$PYWIN' \"\$(winepath -w '$DOSSIER/armee_or/pont_mt5.py')\" --verifier" 2>> "$JOURNAL" \
-    | tee -a "$JOURNAL" | grep -E '"(connecte|balance|currency|erreur|bid|ask)"' | sed 's/^/   /' || true
-  CONNECTE=$(grep -c '"connecte": true' "$JOURNAL" || true)
+  # Sortie dans un FICHIER (jamais un tube) : le terminal MT5 lancé par la vérification garde ses sorties
+  # ouvertes, un tube ne se fermerait jamais. Durée bornée pour tout le groupe (délai + arrêt forcé).
+  VERIF="$DOSSIER/runtime/verification_mt5.txt"
+  : > "$VERIF"; chown "$COMPTE:$COMPTE" "$VERIF"
+  timeout -k 15 "${DELAI_VERIF:-330}" runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all \
+    xvfb-run -a -s "-screen 0 1280x800x24" bash -c "cd '$DOSSIER' && PYTHONIOENCODING=utf-8 wine '$PYWIN' \"\$(winepath -w '$DOSSIER/armee_or/pont_mt5.py')\" --verifier > '$VERIF' 2>&1" \
+    < /dev/null > /dev/null 2>&1 || true
+  arreter_wine
+  cat "$VERIF" >> "$JOURNAL"
+  grep -E '"(connecte|balance|currency|erreur|leverage|bid|ask)"' "$VERIF" | sed 's/^/   /' || true
+  CONNECTE=$(grep -c '"connecte": true' "$VERIF" || true)
 else
   CONNECTE=0; echo "   (vérification de la connexion sautée)"
 fi

@@ -381,9 +381,8 @@ def main(argv=None):
     pont = Pont(mt5, reglages, dossier=ici)
     if "--verifier" in argv:
         lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
-        for _ in range(12):
-            if pont.connecter():
-                break
+        limite = time.time() + 240                              # 4 min au plus : l'installateur coupe à 5
+        while time.time() < limite and not pont.connecter():
             time.sleep(10)
         effacer_demarrage(reglages.get("OR_MT5_TERMINAL"))
         etat = pont.op_etat()
@@ -393,7 +392,7 @@ def main(argv=None):
         print(json.dumps({"cours": pont.traiter({"op": "tick"}), "symbole": pont.traiter({"op": "specs"})},
                          indent=1, default=str))
         mt5.shutdown()
-        return 0
+        os._exit(0)                                             # ne pas attendre le terminal lancé pour la vérification
     lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
     time.sleep(15)
     pont.connecter()
