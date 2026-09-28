@@ -397,6 +397,8 @@ def main(argv=None):
         print(json.dumps({"cours": pont.traiter({"op": "tick"}), "symbole": pont.traiter({"op": "specs"})},
                          indent=1, default=str))
         mt5.shutdown()
+        sys.stdout.flush()                                      # os._exit ne vide pas les tampons : résultat d'abord
+        sys.stderr.flush()
         os._exit(0)                                             # ne pas attendre le terminal lancé pour la vérification
     lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
     time.sleep(15)
