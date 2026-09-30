@@ -181,4 +181,13 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 | Mesure des frais réels | 1 h | Écart achat/vente, glissement (prix demandé contre prix obtenu), commissions et frais de nuit mesurés sur tes exécutions MT5. Ils remplacent progressivement l'estimation fixe dans la règle « avantage > 1,5 × coûts » (poids de la mesure = n / (n + 30)). |
 | Journal d'apprentissage | 1 fois / semaine | Poids des pronostiqueurs et leur évolution, score **en direct** sur 7 jours, signaux admis ou rejetés, frais réels, chandeliers fiables, résultats MT5. |
 
+### Vérifier (`/or_verif` ou `or verif`)
+- **Mémoire** : chaque compteur de la base (bougies, bougies du courtier, observations, pronostics émis et jugés, décisions, ordres MT5) avec ce qui a été gagné en 24 h et en 7 jours. Un relevé est pris chaque heure.
+- **Diagnostic des trades MT5** :
+  - par équipe : nombre de trades, gagnants, résultat net ;
+  - 1re moitié contre 2e moitié des trades ;
+  - décomposition du résultat : mouvement du marché, écart achat/vente, commissions et nuits ;
+  - taux de « bon sens » avant frais, comparé au pile ou face (z), et verdict : hasard, avantage ou désavantage.
+- Un trade gagné ou perdu **ne change pas** les poids des pronostiqueurs : ils sont notés sur chaque bougie, soit beaucoup plus de données que quelques dizaines de trades. Les trades servent à mesurer les **frais réels**.
+
 Premier examen réel (sept. 2026) : 80 807 observations, 47 tests, seuil z ≥ 3,07, **aucun signal admis**. Le meilleur est la variation du pétrole sur 5 jours en 4 h (z = +0,74). Les signaux publics gratuits ne prédisent pas l'or mieux que le hasard une fois correctement mesurés. L'examen les tient donc à l'écart, et les réexamine chaque jour à mesure que l'historique s'allonge.

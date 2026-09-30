@@ -12,6 +12,7 @@ par équipe, « or mt5 fermer » ferme tout et suspend les ordres.
 """
 from __future__ import annotations
 
+import math
 import time
 
 import numpy as np
@@ -262,6 +263,86 @@ def etat_installation():
         return None
     return {"échec": f"installation arrêtée à l'étape « {detail} »", "en cours": f"installation en cours ({detail})",
             "installé": "installé, connexion en attente", "ok": "installation réussie"}.get(statut, statut)
+
+
+def analyser_trades(deals, taille_contrat=100.0, ecart=None, taux=1.0):
+    """Positions fermées de l'armée, dans l'ordre du temps : résultat net décomposé en mouvement du marché,
+    écart achat/vente (estimé avec l'écart médian mesuré) et frais (commission, nuit), devise du compte."""
+    pos = {}
+    for d in deals:
+        k = PAR_MAGIC.get(d["magic"])
+        if not k:
+            continue
+        p = pos.setdefault(d["position_id"], {"equipe": k, "brut": 0.0, "frais": 0.0, "notionnel": 0.0, "t": 0,
+                                              "ferme": False})
+        p["brut"] += d["profit"]
+        p["frais"] += d["commission"] + d["swap"] + d["fee"]
+        if d["entry"] == 0:
+            p["notionnel"] = d["volume"] * taille_contrat * d["price"]
+        elif d["entry"] in (1, 3):
+            p["ferme"], p["t"] = True, max(p["t"], d["time"])
+    fermees = sorted((p for p in pos.values() if p["ferme"]), key=lambda p: p["t"])
+    for p in fermees:
+        p["ecart"] = (ecart or 0.0) * p["notionnel"] / (taux or 1.0)    # payé à l'aller-retour, déjà dans « brut »
+        p["mouvement"] = p["brut"] + p["ecart"]
+        p["net"] = p["brut"] + p["frais"]
+    return fermees
+
+
+def texte_trades(fermees, devise=""):
+    if not fermees:
+        return "🔎 Trades MT5 : aucune position fermée pour l'instant."
+    lignes = ["🔎 Diagnostic des trades MT5 (positions fermées de l'armée)"]
+    for k, eq in EQUIPES.items():
+        t = [p for p in fermees if p["equipe"] == k]
+        if t:
+            g = sum(p["net"] > 0 for p in t)
+            lignes.append(f"• {eq['nom']} : {len(t)} trades · {g} gagnants ({100 * g / len(t):.0f} %) · net "
+                          f"{sum(p['net'] for p in t):+.2f} {devise} ({sum(p['net'] for p in t) / len(t):+.2f} par trade)")
+    n = len(fermees)
+    if n >= 4:
+        m = n // 2
+        lignes.append(f"Évolution : 1re moitié ({m} trades) {sum(p['net'] for p in fermees[:m]):+.2f} · 2e moitié "
+                      f"({n - m} trades) {sum(p['net'] for p in fermees[m:]):+.2f} {devise}")
+    mouv, ecart, frais = (sum(p[c] for p in fermees) for c in ("mouvement", "ecart", "frais"))
+    lignes.append(f"D'où vient le résultat : mouvement du marché dans le sens choisi {mouv:+.2f} · écart achat/vente "
+                  f"≈ {-ecart:+.2f} · commissions et nuits {frais:+.2f} = net {mouv - ecart + frais:+.2f} {devise}")
+    bons = sum(p["mouvement"] > 0 for p in fermees)
+    z = (bons - n / 2) / math.sqrt(n / 4)
+    lignes.append(f"Bon sens (avant frais) : {bons}/{n} ({100 * bons / n:.0f} %) · écart au pile ou face : z = {z:+.2f}"
+                  f" · avec {n} trades, seul un taux hors de 50 ± {100 / math.sqrt(n):.0f} % se distingue du hasard")
+    if abs(z) < 2:
+        verdict = ("aucune preuve d'avantage ni de désavantage : les séries gagnantes puis perdantes sont compatibles "
+                   "avec le hasard")
+        if mouv - ecart + frais < 0:
+            verdict += "; ce qui est sûr, ce sont les frais, payés à chaque trade"
+    elif z > 0:
+        verdict = "le sens choisi est juste plus souvent que le hasard (à confirmer sur plus de trades)"
+    else:
+        verdict = "le sens choisi est faux plus souvent que le hasard : les pronostics sont à revoir"
+    lignes.append("Verdict : " + verdict + ".")
+    lignes.append("Ce que l'armée en apprend : les frais réels (écart, glissement, commissions, nuits) remplacent "
+                  "l'estimation dans la règle « avantage > 1,5 × coûts ». Le gain ou la perte d'un trade ne change PAS "
+                  "les poids : ils suivent les pronostics jugés à chaque bougie, bien plus nombreux (voir /or_apprentissage).")
+    return "\n".join(lignes)
+
+
+def rapport_trades():
+    if not config.MT5_ACTIF:
+        return "🔎 Trades MT5 : MT5 non branché."
+    try:
+        deals = mt5.appel("historique", depuis=base.lire("mt5:depuis") or time.time() - 30 * 86400)
+        specs = mt5.appel("specs")
+    except mt5.ErreurMT5 as ex:
+        return f"🔎 Trades MT5 : pont injoignable ({ex})."
+    compte = (base.lire("mt5:etat") or {}).get("compte") or {}
+    try:
+        taux = _taux_usd(compte.get("currency"))
+    except mt5.ErreurMT5:
+        taux = 1.0
+    ecart = (base.lire("apprentissage:couts") or {}).get("ecart")
+    fermees = analyser_trades(deals, specs["trade_contract_size"], ecart, taux)
+    return texte_trades(fermees, compte.get("currency") or "")
 
 
 def rapport_mt5():

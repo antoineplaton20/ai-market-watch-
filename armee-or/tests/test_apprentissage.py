@@ -125,3 +125,15 @@ def test_journal_et_bots_d_apprentissage():
     fake = type("Chef", (), {"pause": False})()
     assert "en attente" in chef.bot_examen(fake)
     assert "24 h" in chef.bot_journal(fake) and "prochain journal" in chef.bot_journal(fake)
+
+
+def test_croissance_de_la_memoire_relevee_chaque_heure():
+    t = 1_900_000_000
+    A.releve_memoire(t - 8 * 86400)
+    A.releve_memoire(t - 86400)
+    A.enregistrer("veille:acheteurs_pct", [(t + i, 1.0) for i in range(25)])
+    assert len(A.releve_memoire(t - 86400 + 60)) == 2                     # moins d'une heure : pas de nouveau relevé
+    texte = A.texte_memoire(t)
+    assert "observations de veille : 25 · +25 · +25" in texte and "pronostics jugés" in texte
+    base.ecrire("memoire:releves", [])
+    assert "pas encore de relevé" in A.texte_memoire(t)

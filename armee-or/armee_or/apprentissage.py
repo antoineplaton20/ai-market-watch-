@@ -343,6 +343,59 @@ def score_en_direct(jours=7):
     return out
 
 
+# ============================================================================ croissance de la mémoire
+MEMOIRE = {                                                   # ce que l'armée accumule, compté dans sa base
+    "bougies (toutes sources)": "SELECT COUNT(*) FROM bougies",
+    "bougies du courtier MT5": "SELECT COUNT(*) FROM bougies WHERE source='MT5'",
+    "observations de veille": "SELECT COUNT(*) FROM observations",
+    "pronostics émis": "SELECT COUNT(*) FROM pronostics",
+    "pronostics jugés (notés)": "SELECT COUNT(*) FROM pronostics WHERE issue IS NOT NULL",
+    "décisions du chef": "SELECT COUNT(*) FROM decisions",
+    "ordres MT5 journalisés": "SELECT COUNT(*) FROM ordres_mt5",
+    "trades papier": "SELECT COUNT(*) FROM trades",
+}
+GARDE_RELEVES_S = 35 * 86400
+
+
+def compter_memoire():
+    with base.connexion() as c:
+        return {nom: c.execute(sql).fetchone()[0] for nom, sql in MEMOIRE.items()}
+
+
+def releve_memoire(maintenant=None, pas=3600):
+    """Un relevé des compteurs par heure (35 jours gardés) : la croissance se lit en comparant les relevés."""
+    maintenant = maintenant or time.time()
+    releves = base.lire("memoire:releves") or []
+    if releves and maintenant - releves[-1]["ts"] < pas:
+        return releves
+    releves = [r for r in releves if maintenant - r["ts"] <= GARDE_RELEVES_S]
+    releves.append({"ts": maintenant, "n": compter_memoire()})
+    base.ecrire("memoire:releves", releves)
+    return releves
+
+
+def texte_memoire(maintenant=None):
+    maintenant = maintenant or time.time()
+    actuel = compter_memoire()
+    releves = base.lire("memoire:releves") or []
+
+    def il_y_a(secondes):
+        anciens = [r for r in releves if r["ts"] <= maintenant - secondes + 1800]
+        return anciens[-1]["n"] if anciens else None
+
+    j1, j7 = il_y_a(86400), il_y_a(7 * 86400)
+    lignes = ["📈 Mémoire de l'armée (total · gagné en 24 h · en 7 j)"]
+
+    def ecart(n, avant, nom):
+        return f"{n - avant[nom]:+,}".replace(",", " ") if avant and nom in avant else "—"
+
+    for nom, n in actuel.items():
+        lignes.append(f"• {nom} : {n:,} · {ecart(n, j1, nom)} · {ecart(n, j7, nom)}".replace(",", " "))
+    if not j1:
+        lignes.append("(« — » : pas encore de relevé assez ancien ; un relevé par heure depuis cette version)")
+    return "\n".join(lignes)
+
+
 def journal():
     lignes = ["🧠 Journal d'apprentissage de l'armée de l'or"]
     obs = cles()

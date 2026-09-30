@@ -432,3 +432,30 @@ def test_le_pont_trouve_l_or_d_un_autre_courtier():
     pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN), "OR_MT5_SYMBOLE": "XAUUSD"})
     assert pont.connecter() and pont.symbole == "GOLDmicro"
     assert pont.traiter({"op": "specs"})["r"]["trade_contract_size"] == 1.0
+
+
+def _deal(pos, entry, profit, t, magic=770001, commission=-0.1, swap=0.0):
+    return {"position_id": pos, "entry": entry, "profit": profit, "commission": commission, "swap": swap, "fee": 0.0,
+            "time": t, "volume": 0.01, "price": 4000.0, "magic": magic, "type": 0}
+
+
+def test_diagnostic_des_trades_separe_marche_et_frais():
+    deals = []
+    for i, gain in enumerate([3.0, 2.0, -1.0, -2.0, -3.0, -1.5]):
+        deals += [_deal(i, 0, 0.0, 10 * i), _deal(i, 1, gain, 10 * i + 5)]
+    deals.append(_deal(99, 0, 0.0, 100))                                  # position encore ouverte : ignorée
+    deals.append({**_deal(50, 1, 7.0, 3), "magic": 123})                  # ordre manuel : ignoré
+    f = executant.analyser_trades(deals, 100.0, ecart=0.0001, taux=1.0)
+    assert len(f) == 6 and abs(f[0]["ecart"] - 0.4) < 1e-9 and abs(f[0]["net"] - 2.8) < 1e-9
+    texte = executant.texte_trades(f, "EUR")
+    assert "6 trades" in texte and "1re moitié (3 trades) +3.40" in texte and "2e moitié (3 trades) -7.10" in texte
+    assert "hasard" in texte and "ne change PAS" in texte
+    assert "aucune position" in executant.texte_trades([])
+
+
+def test_rapport_trades_via_le_pont(faux):
+    executant._ouvrir("entrainement", 1, mt5.appel("etat")["compte"], set(), entrainement=True)
+    faux.prix += 5
+    executant.fermer_tout()
+    texte = executant.rapport_trades()
+    assert "entraînement 1 h : 1 trades" in texte and "1/1" in texte

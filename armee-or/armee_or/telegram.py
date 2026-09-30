@@ -63,6 +63,7 @@ def alerte_rare(cle, texte, fenetre_s=3600, important=False):
 
 MENU = [("or", "Rapport complet"), ("or_veille", "Veille : tendances, niveaux, flux, COT, annonces, actus"),
         ("or_apprentissage", "Ce que l'armée a appris (journal)"),
+        ("or_verif", "Vérifier : croissance de la mémoire et diagnostic des trades"),
         ("or_calendrier", "Annonces économiques à fort impact"), ("or_niveaux", "Niveaux clés (supports, résistances)"),
         ("or_actus", "Derniers titres sur l'or"), ("or_mt5", "Compte MT5 démo et équipes"),
         ("or_mt5_fermer", "Fermer les positions de l'armée et suspendre"), ("or_mt5_reprendre", "Reprendre les ordres MT5"),

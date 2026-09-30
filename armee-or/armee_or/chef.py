@@ -185,7 +185,9 @@ def bot_cot(chef):
 
 
 def bot_archive_veille(chef):
-    return f"{apprentissage.archiver_veille()} observations archivées"
+    n = apprentissage.archiver_veille()
+    apprentissage.releve_memoire()                            # compteurs de la base, une fois par heure
+    return f"{n} observations archivées"
 
 
 def bot_rattrapage(chef):
@@ -470,6 +472,9 @@ def bot_commandes(chef):
             telegram.envoyer(veille.texte_veille())
         elif c in ("/or_apprentissage", "apprentissage"):
             telegram.envoyer(apprentissage.journal())
+        elif c in ("/or_verif", "verif"):
+            telegram.envoyer(apprentissage.texte_memoire())
+            telegram.envoyer(executant.rapport_trades())
         elif c in ("/or_calendrier", "calendrier"):
             telegram.envoyer(veille.texte_calendrier(10))
         elif c in ("/or_niveaux", "niveaux"):
