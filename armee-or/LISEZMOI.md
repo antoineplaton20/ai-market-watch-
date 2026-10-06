@@ -190,4 +190,12 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
   - taux de « bon sens » avant frais, comparé au pile ou face (z), et verdict : hasard, avantage ou désavantage.
 - Un trade gagné ou perdu **ne change pas** les poids des pronostiqueurs : ils sont notés sur chaque bougie, soit beaucoup plus de données que quelques dizaines de trades. Les trades servent à mesurer les **frais réels**.
 
+### Sans terminal
+- `/or_maj` : met l'armée à jour depuis Telegram. Un petit service root installé par `or maj` lance la même mise à jour (version publiée sur GitHub uniquement) et envoie le résultat. Une première fois `or maj` dans un terminal reste nécessaire pour l'installer.
+- `/or_journal` : les 25 dernières lignes du journal.
+
+### Fermetures et week-end
+- Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
+- Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).
+
 Premier examen réel (sept. 2026) : 80 807 observations, 47 tests, seuil z ≥ 3,07, **aucun signal admis**. Le meilleur est la variation du pétrole sur 5 jours en 4 h (z = +0,74). Les signaux publics gratuits ne prédisent pas l'or mieux que le hasard une fois correctement mesurés. L'examen les tient donc à l'écart, et les réexamine chaque jour à mesure que l'historique s'allonge.

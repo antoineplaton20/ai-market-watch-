@@ -520,10 +520,43 @@ def bot_commandes(chef):
         elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c in ("/or_maj", "maj"):
+            telegram.envoyer(demander_maj())
+        elif c in ("/or_journal", "journal"):
+            telegram.envoyer(fin_du_journal())
         elif c in ("/or_aide", "/start", "aide"):
             telegram.envoyer("🟡 Commandes (touche-les) :\n" + "\n".join(f"/{n} — {d}" for n, d in telegram.MENU))
         faites.append(c)
     return ("commandes : " + ", ".join(faites)) if faites else "aucune commande"
+
+
+UNITE_MAJ = "/etc/systemd/system/armee-or-maj.path"             # installée par installer_or.sh (service root)
+
+
+def demander_maj():
+    """Mise à jour sans terminal : un service root surveille ce fichier et lance « or maj » (code publié sur
+    GitHub uniquement, rien n'est lu dans le fichier)."""
+    import os
+    if not os.path.exists(UNITE_MAJ):
+        return ("⚠️ Mise à jour depuis Telegram pas encore installée : une dernière fois « or maj » dans un terminal "
+                "(Termius gratuit ou console Hetzner). Ensuite, /or_maj suffira.")
+    drapeau = config.RACINE / "runtime" / "demande_maj"
+    if drapeau.exists():
+        return "⏳ Mise à jour déjà demandée : le résultat arrive ici."
+    drapeau.parent.mkdir(parents=True, exist_ok=True)
+    drapeau.touch()
+    return ("🔄 Mise à jour demandée : téléchargement de la dernière version, tests, redémarrage de l'armée (5 à 15 "
+            "min). Le résultat arrive ici. Les positions MT5 restent en place, stops compris.")
+
+
+def fin_du_journal(n=25):
+    try:
+        with open(config.JOURNAL, encoding="utf-8", errors="replace") as f:
+            lignes = f.readlines()[-n:]
+    except OSError:
+        return "Journal vide."
+    texte = "".join(f"{l[11:19]} {l.split(' | ', 1)[1]}" if " | " in l else l for l in lignes)   # heure seule
+    return "📜 Fin du journal de l'armée\n" + texte[-3500:]
 
 
 def bot_rapporteur(chef):

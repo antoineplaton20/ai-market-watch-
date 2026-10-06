@@ -83,7 +83,8 @@ etape "6/8 MetaTrader 5 (compte DÉMO, ordres automatiques)"
 if grep -q '^OR_MT5_LOGIN=' "$DOSSIER/.env"; then
   DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
 else
-  read -r -p "Brancher ton compte DÉMO MetaTrader 5 pour que l'armée s'entraîne avec de vrais ordres ? [O/n] " REP
+  read -r -p "Brancher ton compte DÉMO MetaTrader 5 pour que l'armée s'entraîne avec de vrais ordres ? [O/n] " REP \
+    || REP=n                                         # sans clavier (mise à jour depuis Telegram) : on n'installe pas
   if [[ ! "${REP:-O}" =~ ^[nN] ]]; then
     DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
   fi
@@ -118,8 +119,31 @@ Environment=PYTHONUNBUFFERED=1
 WantedBy=multi-user.target
 UNITE
 done
+# Mise à jour depuis Telegram (/or_maj) : le chef dépose un fichier, ce service root lance « or maj ».
+# Rien n'est lu dans ce fichier : seule la version publiée sur GitHub est installée.
+cat > /etc/systemd/system/armee-or-maj.service <<UNITE
+[Unit]
+Description=Armée de l'or : mise à jour demandée depuis Telegram
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/rm -f $DOSSIER/runtime/demande_maj
+ExecStart=/usr/local/bin/or maj-auto
+TimeoutStartSec=3600
+UNITE
+cat > /etc/systemd/system/armee-or-maj.path <<UNITE
+[Unit]
+Description=Armée de l'or : surveille les demandes de mise à jour Telegram
+
+[Path]
+PathExists=$DOSSIER/runtime/demande_maj
+
+[Install]
+WantedBy=multi-user.target
+UNITE
 install -m 755 "$DOSSIER/or" /usr/local/bin/or
 systemctl daemon-reload
+systemctl enable --now armee-or-maj.path > /dev/null 2>&1 || true
 systemctl enable armee-or-flux armee-or-chef > /dev/null 2>&1
 systemctl restart armee-or-flux armee-or-chef
 
@@ -130,7 +154,7 @@ for NOM in $NOMS; do
   systemctl is-active --quiet armee-or-$NOM && echo -e "${V}● armee-or-$NOM en marche${N}" || echo -e "${R}● armee-or-$NOM arrêté${N} (or journal)"
 done
 echo -e "\n${V}✔ Armée de l'or installée.${N} Tes autres bots n'ont pas été touchés."
-echo "  Termius : or etat · or mt5 · or maj (mise à jour) · or journal · or aide — Telegram : bouton Menu"
+echo "  Telegram : bouton Menu (/or_maj met à jour l'armée sans terminal) — terminal : or etat · or maj · or aide"
 if grep -q '^OR_MT5_ACTIF=1' "$DOSSIER/.env"; then
   echo "  MT5 démo : ordres automatiques (profil « pro 1 % risqué », or mt5 profil x20 pour changer) + équipe d'entraînement."
   echo "  Ouvre l'app MetaTrader 5 sur ton iPhone avec le même compte démo pour voir les positions en direct."

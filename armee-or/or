@@ -42,7 +42,14 @@ case "${1:-aide}" in
     curl -fsSL --retry 3 "$URL" | tar -xz -C "$TMP" || { echo "Téléchargement impossible (réseau ?). Réessaie : or maj"; rm -rf "$TMP"; exit 1; }
     NOUVEAU=$(dirname "$(find "$TMP" -path '*/armee-or/installer_or.sh' | head -n 1)")
     [ -f "$NOUVEAU/installer_or.sh" ] || { echo "Version téléchargée incomplète."; rm -rf "$TMP"; exit 1; }
-    bash "$NOUVEAU/installer_or.sh"; rm -rf "$TMP" ;;
+    RC=0; bash "$NOUVEAU/installer_or.sh" || RC=$?; rm -rf "$TMP"; exit $RC ;;
+  maj-auto)
+    # lancée par le service armee-or-maj (demande /or_maj sur Telegram) : même mise à jour, résultat sur Telegram
+    LOG=/var/log/armee-or-maj.log                    # journal root, hors du dossier modifiable par « bots »
+    if "$0" maj < /dev/null > "$LOG" 2>&1; then RES="✅ Mise à jour installée."; else RES="❌ Mise à jour échouée : envoie-moi ce message."; fi
+    FIN=$(tail -n 12 "$LOG" | sed 's/\x1b\[[0-9;]*m//g')
+    runuser -u bots -- bash -c 'cd "$1" && .venv/bin/python -c "import sys; from armee_or import telegram; telegram.envoyer(sys.argv[1], True)" "$2"' \
+      _ "$DOSSIER" "$RES"$'\n'"$FIN" || true ;;
   mettre-a-jour)
     [ -f "${2:-}" ] || { echo "Usage : or mettre-a-jour /root/armee-or-vX.zip"; exit 1; }
     TMP=$(mktemp -d); unzip -q "$2" -d "$TMP" || { echo "Zip illisible."; exit 1; }

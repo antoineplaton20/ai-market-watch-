@@ -12,6 +12,7 @@ par équipe, « or mt5 fermer » ferme tout et suspend les ordres.
 """
 from __future__ import annotations
 
+import datetime as dt
 import math
 import time
 
@@ -57,6 +58,34 @@ def _atr(tf):
 
 MARCHE_FERME = 10018                                      # TRADE_RETCODE_MARKET_CLOSED
 SILENCE_MARCHE_S = 900                                    # plus aucun cours MT5 depuis 15 min : marché fermé
+
+
+FERMETURE_VENDREDI_UTC = 20                              # l'or ferme vers 21 h UTC le vendredi (22 h en hiver)
+
+
+def ferme_avant_le_week_end(duree_h, maintenant=None):
+    """Une position courte (≤ 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi :
+    sinon elle resterait ouverte tout le week-end, exposée à l'écart de prix du lundi."""
+    if duree_h > 24:
+        return True                                         # décisions 1 j : le week-end fait partie de l'horizon
+    t = dt.datetime.fromtimestamp(maintenant or time.time(), dt.timezone.utc)
+    if t.weekday() >= 5:
+        return False
+    vendredi = (t + dt.timedelta(days=4 - t.weekday())).replace(hour=FERMETURE_VENDREDI_UTC, minute=0, second=0,
+                                                                microsecond=0)
+    return t + dt.timedelta(hours=duree_h) <= vendredi
+
+
+def nettoyer_journal_ordres():
+    """Une fois : les anciennes versions notaient chaque essai de fermeture refusé (marché fermé) toutes les 5 s.
+    On garde le dernier échec de chaque position."""
+    if base.lire("mt5:nettoyage_fermetures"):
+        return 0
+    with base.connexion() as c:
+        n = c.execute("DELETE FROM ordres_mt5 WHERE action='fermeture' AND ok=0 AND id NOT IN "
+                      "(SELECT MAX(id) FROM ordres_mt5 WHERE action='fermeture' AND ok=0 GROUP BY ticket)").rowcount
+    base.ecrire("mt5:nettoyage_fermetures", time.time())
+    return n
 
 
 def marche_ferme():
@@ -174,6 +203,7 @@ def bot_mt5(chef):
         return "MT5 non configuré"
     if not base.lire("mt5:depuis"):
         base.ecrire("mt5:depuis", time.time())
+    nettoyer_journal_ordres()
     inst = etat_installation()
     if inst and not inst.startswith(("installation réussie", "installé")):
         return f"MT5 pas encore installé ({inst})"          # pas d'alerte à répétition : /or_mt5 donne l'état
@@ -209,10 +239,13 @@ def bot_mt5(chef):
             _noter(s["equipe"], "sortie", int(t), s["sens"], s["volume"], 0, s["sl"], True, "stop touché ou fermée à la main")
             suivi.pop(t)
             msgs.append(f"{EQUIPES[s['equipe']]['nom']} : position {t} sortie (stop ou manuel)")
-        elif time.time() >= s["fin"]:
+        elif time.time() >= s["fin"] and not marche_ferme():   # marché fermé : on réessaie à la réouverture
             r = mt5.appel("fermer", ticket=int(t), commentaire=f"armee-or fin {s['equipe']}")
-            _noter(s["equipe"], "fermeture", int(t), s["sens"], s["volume"], r.get("prix") or 0, s["sl"], r["ok"],
-                   f"horizon atteint · {r['retcode']} {r['commentaire']}")
+            if r["ok"] or (r["retcode"] != MARCHE_FERME and time.time() - s.get("echec", 0) > 600):
+                _noter(s["equipe"], "fermeture", int(t), s["sens"], s["volume"], r.get("prix") or 0, s["sl"], r["ok"],
+                       f"horizon atteint · {r['retcode']} {r['commentaire']}")   # un échec noté au plus toutes les 10 min
+            if not r["ok"]:
+                s["echec"] = time.time()
             if r["ok"]:
                 suivi.pop(t)
                 p = positions[int(t)]
@@ -246,8 +279,12 @@ def bot_mt5(chef):
         if cle in ouvertes:
             msgs.append(f"{EQUIPES[cle]['nom']} : position déjà ouverte, décision ignorée")
             continue
+        if not ferme_avant_le_week_end(EQUIPES[cle]["duree_h"]):
+            msgs.append(f"{EQUIPES[cle]['nom']} : horizon après la fermeture du vendredi, décision ignorée")
+            continue
         msgs.append(_ouvrir(cle, int(p["sens"]), compte, set(positions)))
-    if entrainement_actif() and "entrainement" not in ouvertes:
+    if entrainement_actif() and "entrainement" not in ouvertes \
+            and ferme_avant_le_week_end(EQUIPES["entrainement"]["duree_h"]):
         p = base.lire("prono:1h")
         if p and _frais(p, "1h", maintenant_ms) and base.lire("mt5:fait:entrainement") != p["ts"] and p["p"] != 0.5:
             base.ecrire("mt5:fait:entrainement", p["ts"])
@@ -274,11 +311,12 @@ def analyser_trades(deals, taille_contrat=100.0, ecart=None, taux=1.0):
         if not k:
             continue
         p = pos.setdefault(d["position_id"], {"equipe": k, "brut": 0.0, "frais": 0.0, "notionnel": 0.0, "t": 0,
-                                              "ferme": False})
+                                              "ferme": False, "sens": 0})
         p["brut"] += d["profit"]
         p["frais"] += d["commission"] + d["swap"] + d["fee"]
         if d["entry"] == 0:
             p["notionnel"] = d["volume"] * taille_contrat * d["price"]
+            p["sens"] = 1 if d["type"] == 0 else -1                        # 0 = achat, 1 = vente
         elif d["entry"] in (1, 3):
             p["ferme"], p["t"] = True, max(p["t"], d["time"])
     fermees = sorted((p for p in pos.values() if p["ferme"]), key=lambda p: p["t"])
@@ -307,6 +345,14 @@ def texte_trades(fermees, devise=""):
     mouv, ecart, frais = (sum(p[c] for p in fermees) for c in ("mouvement", "ecart", "frais"))
     lignes.append(f"D'où vient le résultat : mouvement du marché dans le sens choisi {mouv:+.2f} · écart achat/vente "
                   f"≈ {-ecart:+.2f} · commissions et nuits {frais:+.2f} = net {mouv - ecart + frais:+.2f} {devise}")
+    cote = []
+    for sens, nom in ((1, "Achats"), (-1, "Ventes")):
+        t = [p for p in fermees if p["sens"] == sens]
+        if t:
+            cote.append(f"{nom} : {len(t)} · bon sens {sum(p['mouvement'] > 0 for p in t)}/{len(t)} · net "
+                        f"{sum(p['net'] for p in t):+.2f}")
+    if cote:
+        lignes.append(" · ".join(cote) + f" {devise}")
     bons = sum(p["mouvement"] > 0 for p in fermees)
     z = (bons - n / 2) / math.sqrt(n / 4)
     lignes.append(f"Bon sens (avant frais) : {bons}/{n} ({100 * bons / n:.0f} %) · écart au pile ou face : z = {z:+.2f}"

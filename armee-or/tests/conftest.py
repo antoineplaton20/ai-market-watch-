@@ -34,6 +34,8 @@ def isolement(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "MT5_ACTIF", False)          # jamais le vrai compte MT5 pendant les tests
     from armee_or import strategie
     monkeypatch.setattr(strategie, "COUTS_REELS", None)          # frais estimés, jamais ceux appris ailleurs
+    from armee_or import executant
+    monkeypatch.setattr(executant, "ferme_avant_le_week_end", lambda *a, **k: True)   # tests valables le week-end aussi
     (tmp_path / "runtime").mkdir()
     yield
 

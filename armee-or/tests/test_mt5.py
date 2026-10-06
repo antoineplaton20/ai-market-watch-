@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 from armee_or import base, chef, config, donnees as D, executant, flux, mt5, pont_mt5
+from armee_or.executant import ferme_avant_le_week_end as _avant_week_end   # sans le remplacement des tests
 
 LOGIN = 5550001
 
@@ -449,7 +450,7 @@ def test_diagnostic_des_trades_separe_marche_et_frais():
     assert len(f) == 6 and abs(f[0]["ecart"] - 0.4) < 1e-9 and abs(f[0]["net"] - 2.8) < 1e-9
     texte = executant.texte_trades(f, "EUR")
     assert "6 trades" in texte and "1re moitié (3 trades) +3.40" in texte and "2e moitié (3 trades) -7.10" in texte
-    assert "hasard" in texte and "ne change PAS" in texte
+    assert "hasard" in texte and "ne change PAS" in texte and "Achats : 6 · bon sens" in texte
     assert "aucune position" in executant.texte_trades([])
 
 
@@ -459,3 +460,45 @@ def test_rapport_trades_via_le_pont(faux):
     executant.fermer_tout()
     texte = executant.rapport_trades()
     assert "entraînement 1 h : 1 trades" in texte and "1/1" in texte
+
+
+
+def test_pas_de_position_courte_a_cheval_sur_le_week_end():
+    import calendar
+    def ts(j, h):                                                         # octobre 2026 : le 9 est un vendredi
+        return calendar.timegm((2026, 10, j, h, 0, 0))
+    assert _avant_week_end(4, ts(6, 10))                                  # mardi 10 h
+    assert _avant_week_end(4, ts(9, 16)) and not _avant_week_end(4, ts(9, 17))   # vendredi : horizon avant 20 h UTC
+    assert not _avant_week_end(24, ts(8, 21))                             # jeudi soir, 24 h : fermerait samedi
+    assert not _avant_week_end(4, ts(10, 12)) and not _avant_week_end(4, ts(11, 23))
+    assert _avant_week_end(120, ts(9, 19))                                # décisions 1 j : le week-end est prévu
+
+
+def test_fermeture_refusee_marche_ferme_ni_spam_ni_perte_de_suivi(faux):
+    executant._ouvrir("entrainement", 1, mt5.appel("etat")["compte"], set(), entrainement=True)
+    suivi = base.lire("mt5:suivi")
+    for s in suivi.values():
+        s["fin"] = time.time() - 1
+    base.ecrire("mt5:suivi", suivi)
+    base.ecrire("mt5:entrainement", False)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    orig = faux.order_send
+    faux.order_send = lambda d: NS(retcode=10018, comment="Market closed", order=0, deal=0, price=0.0, volume=0.0)
+    for _ in range(5):
+        executant.bot_mt5(_chef())
+    with base.connexion() as c:
+        assert c.execute("SELECT COUNT(*) FROM ordres_mt5 WHERE action='fermeture'").fetchone()[0] == 0
+    assert len(base.lire("mt5:suivi")) == 1                              # toujours suivie, refermée à la réouverture
+    faux.order_send = orig
+    executant.bot_mt5(_chef())
+    assert base.lire("mt5:suivi") == {} and not faux.positions
+
+
+def test_nettoyage_des_essais_de_fermeture_repetes():
+    for i in range(50):
+        executant._noter("entrainement", "fermeture", 7, 1, 0.01, 0, 0, False, "horizon atteint · 10018 Market closed")
+    executant._noter("entrainement", "fermeture", 7, 1, 0.01, 4000, 0, True, "horizon atteint · 10009")
+    executant._noter("entrainement", "ouverture", 8, 1, 0.01, 4000, 0, True, "ok")
+    assert executant.nettoyer_journal_ordres() == 49 and executant.nettoyer_journal_ordres() == 0
+    with base.connexion() as c:
+        assert c.execute("SELECT COUNT(*) FROM ordres_mt5").fetchone()[0] == 3

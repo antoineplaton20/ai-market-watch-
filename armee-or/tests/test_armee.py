@@ -337,3 +337,19 @@ def test_rapport_des_bougies(historique):
     chef.bot_chandeliers(type("Chef", (), {"pause": False})())
     texte = chef.rapport_bougies("4h")
     assert "40 motifs" in texte and "3.23" in texte and "Motifs fiables" in texte
+
+
+def test_mise_a_jour_et_journal_depuis_telegram(monkeypatch, tmp_path):
+    from armee_or import chef, config
+    monkeypatch.setattr(config, "RACINE", tmp_path)
+    monkeypatch.setattr(chef, "UNITE_MAJ", str(tmp_path / "absente.path"))
+    assert "terminal" in chef.demander_maj() and not (tmp_path / "runtime" / "demande_maj").exists()
+    (tmp_path / "armee-or-maj.path").write_text("")
+    monkeypatch.setattr(chef, "UNITE_MAJ", str(tmp_path / "armee-or-maj.path"))
+    assert "demandée" in chef.demander_maj() and (tmp_path / "runtime" / "demande_maj").exists()
+    assert "déjà" in chef.demander_maj()
+    journal = tmp_path / "or.log"
+    journal.write_text("".join(f"2026-10-06 10:00:{i:02d} | chef | ligne {i}\n" for i in range(40)))
+    monkeypatch.setattr(config, "JOURNAL", journal)
+    texte = chef.fin_du_journal()
+    assert "10:00:39 chef | ligne 39" in texte and "ligne 14" not in texte and "2026-10-06" not in texte
