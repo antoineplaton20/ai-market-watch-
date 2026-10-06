@@ -738,7 +738,9 @@ def main():
     chef = Chef()
     notifier("READY=1")
     telegram.envoyer(f"🎼 Chef d'orchestre en poste : {len(chef.bots)} bots de l'armée de l'or au travail. "
-                     "Rapport toutes les " f"{config.RAPPORT_HEURES:g} h. Tout est simulé sur papier.")
+                     "Rapport toutes les " f"{config.RAPPORT_HEURES:g} h. "
+                     + ("Ordres automatiques sur ton compte MT5 DÉMO (aucun compte réel), comptes papier en parallèle."
+                        if config.MT5_ACTIF else "Tout est simulé sur papier."))
     while True:
         try:
             chef.tour()
