@@ -520,6 +520,22 @@ def bot_commandes(chef):
         elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c in ("/or_gain", "mt5_gain"):
+            g = executant.gain_minimum()
+            telegram.envoyer(f"💶 Prise de gain : {f'dès +{g:g} €' if g else 'arrêtée'}. Toute position de l'armée "
+                             "est fermée dès que son gain atteint ce montant (stop et horizon gardés). Touche :\n"
+                             "/or_gain_1  /or_gain_2  /or_gain_3  /or_gain_5  /or_gain_10  /or_gain_off")
+        elif c.startswith(("/or_gain_", "mt5_gain ")):
+            v = c.replace("/or_gain_", " ").split(" ", 1)[1].strip()
+            try:
+                montant = 0.0 if v == "off" else float(v.replace(",", "."))
+            except ValueError:
+                montant = -1.0
+            if 0 <= montant <= 1000:
+                base.ecrire("mt5:gain_min", montant)
+                telegram.envoyer(f"💶 MT5 : prise de gain {f'dès +{montant:g} €' if montant else 'arrêtée'}.")
+            else:
+                telegram.envoyer("Montant inconnu : /or_gain_3 (en euros) ou /or_gain_off.")
         elif c in ("/or_maj", "maj"):
             telegram.envoyer(demander_maj())
         elif c in ("/or_journal", "journal"):

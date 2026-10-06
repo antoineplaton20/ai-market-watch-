@@ -35,6 +35,14 @@ def profil_actif():
     return mt5.nom_profil(base.lire("mt5:profil") or config.MT5_PROFIL) or "pro 1 % risqué"
 
 
+def gain_minimum():
+    """Prise de bénéfice imposée : toute position de l'armée dont le gain (après écart, nuits comprises) atteint ce
+    montant est fermée tout de suite. None = règle arrêtée. Le stop et l'horizon restent en place."""
+    v = base.lire("mt5:gain_min")
+    v = config.MT5_GAIN_MIN if v is None else v
+    return float(v) if v and float(v) > 0 else None
+
+
 def entrainement_actif():
     v = base.lire("mt5:entrainement")
     return config.MT5_ENTRAINEMENT if v is None else bool(v)
@@ -228,6 +236,7 @@ def bot_mt5(chef):
     positions = {p["ticket"]: p for p in mt5.appel("positions")}
     suivi = base.lire("mt5:suivi", {}) or {}
     msgs = []
+    seuil = gain_minimum()
     for t, p in positions.items():
         if str(t) not in suivi:
             cle = PAR_MAGIC.get(p["magic"], "entrainement")
@@ -239,20 +248,27 @@ def bot_mt5(chef):
             _noter(s["equipe"], "sortie", int(t), s["sens"], s["volume"], 0, s["sl"], True, "stop touché ou fermée à la main")
             suivi.pop(t)
             msgs.append(f"{EQUIPES[s['equipe']]['nom']} : position {t} sortie (stop ou manuel)")
-        elif time.time() >= s["fin"] and not marche_ferme():   # marché fermé : on réessaie à la réouverture
-            r = mt5.appel("fermer", ticket=int(t), commentaire=f"armee-or fin {s['equipe']}")
+        elif marche_ferme():                                   # marché fermé : on réessaie à la réouverture
+            continue
+        else:
+            p = positions[int(t)]
+            gain = (p["profit"] or 0) + (p["swap"] or 0)
+            motif = ("horizon atteint" if time.time() >= s["fin"] else
+                     "gain pris" if seuil is not None and gain >= seuil else None)
+            if not motif:
+                continue
+            r = mt5.appel("fermer", ticket=int(t), commentaire=f"armee-or {'fin' if motif[0] == 'h' else 'gain'} "
+                                                                 f"{s['equipe']}")
             if r["ok"] or (r["retcode"] != MARCHE_FERME and time.time() - s.get("echec", 0) > 600):
                 _noter(s["equipe"], "fermeture", int(t), s["sens"], s["volume"], r.get("prix") or 0, s["sl"], r["ok"],
-                       f"horizon atteint · {r['retcode']} {r['commentaire']}")   # un échec noté au plus toutes les 10 min
+                       f"{motif} · {r['retcode']} {r['commentaire']}")   # un échec noté au plus toutes les 10 min
             if not r["ok"]:
                 s["echec"] = time.time()
             if r["ok"]:
                 suivi.pop(t)
-                p = positions[int(t)]
-                gain = p["profit"] + p["swap"]
-                msgs.append(f"{EQUIPES[s['equipe']]['nom']} : fermée à l'horizon ({gain:+.2f} {compte['currency']})")
+                msgs.append(f"{EQUIPES[s['equipe']]['nom']} : fermée ({motif}, {gain:+.2f} {compte['currency']})")
                 if s["equipe"] != "entrainement":
-                    telegram.envoyer(f"🤖 MT5 démo · {EQUIPES[s['equipe']]['nom']} : position fermée à l'horizon, "
+                    telegram.envoyer(f"🤖 MT5 démo · {EQUIPES[s['equipe']]['nom']} : position fermée ({motif}), "
                                      f"{gain:+.2f} {compte['currency']}.")
     base.ecrire("mt5:suivi", suivi)
 
@@ -404,7 +420,10 @@ def rapport_mt5():
     lignes = [f"MT5 {'DÉMO' if c['demo'] else 'RÉEL (aucun ordre)'} · compte …{str(c['login'])[-3:]} · solde "
               f"{c['balance']:.2f} · équité {c['equity']:.2f} {c['currency']} · levier du compte 1:{c['leverage']}"
               + (" · ⏸ ordres en pause" if base.lire("mt5:pause") else "")]
-    lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}")
+    g = gain_minimum()
+    regle = f"gain pris dès +{g:g} {c['currency']}" if g else "prise de gain arrêtée"
+    lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
+                  f" · {regle}")
     for t, s in (base.lire("mt5:suivi", {}) or {}).items():
         reste = max(0, s["fin"] - time.time()) / 3600
         lignes.append(f"• {EQUIPES[s['equipe']]['nom']} : {'ACHAT' if s['sens'] > 0 else 'VENTE'} {s['volume']:g} lot à "

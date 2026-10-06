@@ -194,6 +194,19 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 - `/or_maj` : met l'armée à jour depuis Telegram. Un petit service root installé par `or maj` lance la même mise à jour (version publiée sur GitHub uniquement) et envoie le résultat. Une première fois `or maj` dans un terminal reste nécessaire pour l'installer.
 - `/or_journal` : les 25 dernières lignes du journal.
 
+### Prise de gain (`/or_gain`)
+- Règle demandée : toute position de l'armée est fermée dès que son gain (écart et nuits compris) atteint **+3 €** par défaut. Réglable avec `/or_gain_1`, `_2`, `_3`, `_5`, `_10`, ou `/or_gain_off` (terminal : `or mt5 gain 3`).
+- Le stop (3 ATR) et l'horizon restent en place : une position qui ne passe jamais en gain est fermée comme avant.
+- Mesure sur PAXG 2024-2026, 0,01 lot (1 once), sens au hasard, écart 0,35 $ :
+
+| Règle | Gagnants | Gain moyen | Perte moyenne | Moyenne par trade |
+|---|---|---|---|---|
+| Horizon 4 h + stop | 47 % | +9,11 € | −8,91 € | −0,46 € |
+| Gain pris dès +1 € | 89 % | +1,00 € | −10,74 € | −0,26 € (2,5 fois plus de trades) |
+| Gain pris dès +3 € | 77 % | +2,93 € | −9,92 € | −0,09 € |
+
+- La règle **augmente le nombre de trades gagnants**, mais ne rend pas le compte positif. Les pertes restent plus grosses que les gains, et chaque trade paie l'écart. Seul un vrai avantage dans le choix du sens peut rendre le résultat positif.
+
 ### Fermetures et week-end
 - Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
 - Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).

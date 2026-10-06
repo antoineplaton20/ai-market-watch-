@@ -502,3 +502,34 @@ def test_nettoyage_des_essais_de_fermeture_repetes():
     assert executant.nettoyer_journal_ordres() == 49 and executant.nettoyer_journal_ordres() == 0
     with base.connexion() as c:
         assert c.execute("SELECT COUNT(*) FROM ordres_mt5").fetchone()[0] == 3
+
+
+def test_prise_de_gain_imposee(faux):
+    base.ecrire("mt5:entrainement", False)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    executant._ouvrir("entrainement", 1, mt5.appel("etat")["compte"], set(), entrainement=True)
+    assert executant.gain_minimum() == 3.0                               # réglage par défaut : dès +3 €
+    faux.positions[0].profit = 2.9
+    executant.bot_mt5(_chef())
+    assert len(faux.positions) == 1                                       # pas encore assez
+    faux.positions[0].profit, faux.prix = 3.1, faux.prix + 3.2
+    assert "gain pris" in executant.bot_mt5(_chef()) and not faux.positions and base.lire("mt5:suivi") == {}
+    with base.connexion() as c:
+        assert c.execute("SELECT message FROM ordres_mt5 WHERE action='fermeture'").fetchone()[0].startswith("gain pris")
+
+
+def test_prise_de_gain_reglable_depuis_telegram(faux, monkeypatch):
+    envois = []
+    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_gain_off"])
+    chef.bot_commandes(_chef())
+    assert executant.gain_minimum() is None and "arrêtée" in envois[-1]
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_gain_5", "/or_gain_abc"])
+    chef.bot_commandes(_chef())
+    assert executant.gain_minimum() == 5.0 and "Montant inconnu" in envois[-1]
+    executant._ouvrir("entrainement", 1, mt5.appel("etat")["compte"], set(), entrainement=True)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    base.ecrire("mt5:entrainement", False)
+    faux.positions[0].profit = 4.0
+    executant.bot_mt5(_chef())
+    assert len(faux.positions) == 1 and "gain pris dès +5" in executant.rapport_mt5()
