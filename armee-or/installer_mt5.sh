@@ -293,7 +293,8 @@ fi
 arreter_wine
 systemctl enable armee-or-mt5 > /dev/null 2>&1
 systemctl restart armee-or-mt5
-for s in armee-or-flux armee-or-chef; do systemctl is-enabled --quiet "$s" 2> /dev/null && systemctl restart "$s"; done
+# appelé par installer_or.sh : il relance lui-même flux et chef juste après (un seul message de démarrage)
+[ -n "${DANS_INSTALLATION:-}" ] || for s in armee-or-flux armee-or-chef; do systemctl is-enabled --quiet "$s" 2> /dev/null && systemctl restart "$s"; done
 chown "$COMPTE:$COMPTE" "$JOURNAL" "$ETAT" 2> /dev/null || true
 if [ "${CONNECTE:-0}" -gt 0 ]; then
   echo "ok|connecté" > "$ETAT"

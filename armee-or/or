@@ -31,8 +31,8 @@ case "${1:-aide}" in
       gain) [[ "${3:-}" =~ ^([0-9]+([.,][0-9]+)?|off)$ ]] || { echo "Usage : or mt5 gain 3 (euros) | off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_gain $3" ;;
       entrainement) [[ "${3:-}" =~ ^(on|off)$ ]] || { echo "Usage : or mt5 entrainement on|off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_entrainement $3" ;;
       journal) journalctl -u armee-or-mt5 -n 80 -f ;;
-      compte) sed -i '/^# MetaTrader 5/d;/^OR_MT5_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_mt5.sh" && systemctl restart armee-or-flux armee-or-chef ;;
-      installer) bash "$DOSSIER/installer_mt5.sh" && systemctl restart armee-or-flux armee-or-chef ;;
+      compte) sed -i '/^# MetaTrader 5/d;/^OR_MT5_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_mt5.sh" ;;   # il relance lui-même flux et chef
+      installer) bash "$DOSSIER/installer_mt5.sh" ;;   # il relance lui-même flux et chef
       *) echo "or mt5 [etat|fermer|reprendre|profil X|entrainement on|off|gain X|off|tendance on|off|journal|compte|installer]" ;;
     esac ;;
   config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;

@@ -81,12 +81,12 @@ runuser -u $COMPTE -- bash -c "cd '$DOSSIER' && .venv/bin/python -m armee_or imp
 
 etape "6/8 MetaTrader 5 (compte DÉMO, ordres automatiques)"
 if grep -q '^OR_MT5_LOGIN=' "$DOSSIER/.env"; then
-  DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
+  DANS_INSTALLATION=1 DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
 else
   read -r -p "Brancher ton compte DÉMO MetaTrader 5 pour que l'armée s'entraîne avec de vrais ordres ? [O/n] " REP \
     || REP=n                                         # sans clavier (mise à jour depuis Telegram) : on n'installe pas
   if [[ ! "${REP:-O}" =~ ^[nN] ]]; then
-    DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
+    DANS_INSTALLATION=1 DOSSIER=$DOSSIER COMPTE=$COMPTE bash "$DOSSIER/installer_mt5.sh" || echo -e "${J}⚠ MT5 non branché pour l'instant (or mt5 installer pour réessayer).${N}"
   fi
 fi
 
