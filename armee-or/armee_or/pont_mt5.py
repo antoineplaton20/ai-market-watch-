@@ -230,9 +230,12 @@ class Pont:
         debut = dt.datetime.fromtimestamp(max(0, float(depuis) - 2 * 86400))
         fin = dt.datetime.fromtimestamp(time.time() + 2 * 86400)
         deals = self.mt5.history_deals_get(debut, fin) or ()
+        # positions de l'armée : celles qu'elle a ouvertes ; leur sortie compte même si elle porte un autre numéro
+        # magique (fermeture à la main dans l'app, stop, coupure du courtier)
+        armee = {x.position_id for x in deals if MAGIQUE_MIN <= x.magic <= MAGIQUE_MAX}
         return [{k: getattr(x, k, 0) for k in ("ticket", "order", "position_id", "time", "type", "entry", "volume",
                                                "price", "profit", "commission", "swap", "fee", "magic", "comment")}
-                for x in deals if MAGIQUE_MIN <= x.magic <= MAGIQUE_MAX]
+                for x in deals if x.position_id in armee]
 
     # ------------------------------------------------------------------ ordres (démo seulement)
     def _remplissages(self, info):

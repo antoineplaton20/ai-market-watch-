@@ -207,6 +207,21 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 
 - La règle **augmente le nombre de trades gagnants**, mais ne rend pas le compte positif. Les pertes restent plus grosses que les gains, et chaque trade paie l'écart. Seul un vrai avantage dans le choix du sens peut rendre le résultat positif.
 
+### Filtre de tendance (`/or_tendance`)
+- Aucune position MT5 **contre la tendance** (EMA 20 contre EMA 100 des bougies fermées du courtier) pour l'entraînement (1 h) et les décisions 4 h. Activé par défaut ; `/or_tendance_off` pour l'arrêter.
+- Pourquoi (PAXG, tout l'historique, consensus sans regard vers le futur, 2 moitiés) :
+
+| Cas | Justes | Moyenne par trade | z |
+|---|---|---|---|
+| 1 h dans le sens de la tendance | 52,2 % / 52,2 % | +0,6 / +2,4 pb | +3,9 / +4,1 |
+| 1 h contre la tendance | 51,7 % / 49,1 % | +0,7 / −1,5 pb | +4,1 / −2,1 |
+| 4 h contre la tendance | 47,8 % / 48,5 % | −1,9 / −4,8 pb | −2,4 / −1,8 |
+| 4 h contre une tendance forte (> 2 ATR) | 47,4 % / 46,0 % | +1,7 / −9,9 pb | −1,6 / −3,2 |
+
+- En direct (oct. 2026), 31 trades sur 36 étaient des ventes pendant la hausse de l'or.
+- L'avantage restant (environ +2 pb en 1 h dans le sens de la tendance) est tout juste au-dessus de l'écart réel mesuré sur MT5 (environ 1 pb) : c'est mince.
+- Le 1 j n'est pas filtré (pas assez d'historique pour le mesurer).
+
 ### Fermetures et week-end
 - Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
 - Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).

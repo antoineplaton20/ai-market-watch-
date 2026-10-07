@@ -533,3 +533,41 @@ def test_prise_de_gain_reglable_depuis_telegram(faux, monkeypatch):
     faux.positions[0].profit = 4.0
     executant.bot_mt5(_chef())
     assert len(faux.positions) == 1 and "gain pris dès +5" in executant.rapport_mt5()
+
+
+
+def test_sortie_a_la_main_comptee_dans_les_resultats(faux):
+    executant._ouvrir("entrainement", -1, mt5.appel("etat")["compte"], set(), entrainement=True)
+    pos = faux.positions.pop()
+    faux.deals.append(NS(ticket=9999, order=9999, position_id=pos.ticket, time=0, type=0, entry=1, volume=pos.volume,
+                         price=pos.price_open + 20, profit=-20.0, commission=0.0, swap=0.0, fee=0.0, magic=0,
+                         comment="fermée dans l'app"))                       # fermeture manuelle : magique 0
+    faux.deals.append(NS(ticket=9998, order=9998, position_id=4242, time=0, type=0, entry=0, volume=1.0,
+                         price=4000.0, profit=0.0, commission=0.0, swap=0.0, fee=0.0, magic=0, comment="manuel"))
+    deals = mt5.appel("historique", depuis=0)
+    assert {d["position_id"] for d in deals} == {pos.ticket}                 # ordres manuels toujours ignorés
+    r = executant.resultats(force=True)["equipes"]["entrainement"]
+    assert r["trades"] == 1 and r["pnl"] < -20
+    assert "entraînement 1 h : 1 trades" in executant.rapport_trades()
+
+
+def test_filtre_de_tendance(faux):
+    def hausse(s, tf, debut, n):
+        r = np.zeros(n, dtype=[("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"), ("close", "f8"),
+                               ("tick_volume", "i8")])
+        r["time"] = np.arange(n) * 3600
+        r["close"] = r["open"] = 3800 + np.arange(n) * 2.0               # or en hausse régulière
+        r["high"], r["low"] = r["close"] + 3, r["close"] - 3
+        return r
+    plat = faux.copy_rates_from_pos
+    assert executant.tendance("1h") == 0 and not executant.contre_tendance("1h", -1)   # pas de tendance : rien filtré
+    faux.copy_rates_from_pos = hausse
+    assert executant.tendance("1h") == 1
+    assert executant.contre_tendance("1h", -1) and not executant.contre_tendance("1h", 1)
+    assert not executant.contre_tendance("1d", -1)                         # 1 j : pas mesuré, pas filtré
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    _prono("1h", 0, p=0.40)                                                # entraînement : vendrait
+    assert "contre la tendance" in executant.bot_mt5(_chef()) and not faux.envois
+    base.ecrire("mt5:filtre_tendance", False)
+    assert not executant.contre_tendance("1h", -1)
+    faux.copy_rates_from_pos = plat

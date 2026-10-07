@@ -18,7 +18,7 @@ import time
 
 import numpy as np
 
-from . import base, config, indicateurs as I, mt5, strategie as S, telegram, veille
+from . import base, config, indicateurs as I, mt5, pronostiqueurs as P, strategie as S, telegram, veille
 
 EQUIPES = {
     "4h": {"magic": 770004, "tf": "4h", "nom": "décisions 4 h", "duree_h": S.UNITES["4h"][0] * S.UNITES["4h"][1]},
@@ -53,6 +53,30 @@ def _noter(equipe, action, ticket=None, sens=0, volume=0.0, prix=0.0, sl=0.0, ok
         c.execute("INSERT INTO ordres_mt5(ts, equipe, action, ticket, sens, volume, prix, sl, ok, message) "
                   "VALUES(?,?,?,?,?,?,?,?,?,?)", (time.time(), equipe, action, ticket, sens, volume, prix, sl, int(ok),
                                                   str(message)[:300]))
+
+
+FILTRE_TENDANCE_TF = ("1h", "4h")                        # mesuré sur l'historique (voir LISEZMOI)
+
+
+def filtre_tendance_actif():
+    v = base.lire("mt5:filtre_tendance")
+    return True if v is None else bool(v)
+
+
+def tendance(tf):
+    """Sens de la tendance sur les bougies FERMÉES du courtier : EMA 20 contre EMA 100, en ATR. 0 = indécis."""
+    rates = np.array(mt5.appel("bougies", tf=tf, n=300), dtype=float)
+    if len(rates) < 130:
+        return 0
+    r = rates[:-1]
+    s = P.score_tendance({"h": r[:, 2], "l": r[:, 3], "c": r[:, 4]})[-1]
+    return 0 if not np.isfinite(s) or s == 0 else int(np.sign(s))
+
+
+def contre_tendance(tf, sens):
+    """Sur l'or, les paris CONTRE la tendance perdent (4 h contre une tendance forte : 46 % justes, z = -3,2) ;
+    ceux dans son sens font un peu mieux que le hasard (1 h : 52 %, z = +4 sur les deux moitiés)."""
+    return filtre_tendance_actif() and tf in FILTRE_TENDANCE_TF and tendance(tf) == -sens
 
 
 def _atr(tf):
@@ -179,6 +203,16 @@ def fermer_tout(motif="demande"):
     return faits
 
 
+def equipes_des_positions(deals):
+    """Équipe de chaque position, d'après le numéro magique de son ouverture (la sortie peut en porter un autre)."""
+    out = {}
+    for d in deals:
+        k = PAR_MAGIC.get(d["magic"])
+        if k and (d["entry"] == 0 or d["position_id"] not in out):
+            out[d["position_id"]] = k
+    return out
+
+
 def resultats(force=False):
     """Résultats réalisés par équipe depuis le branchement (bénéfice + commissions + swap), mis en cache 5 min."""
     r = base.lire("mt5:resultats")
@@ -187,8 +221,10 @@ def resultats(force=False):
     depuis = base.lire("mt5:depuis") or time.time()
     out = {k: {"pnl": 0.0, "trades": 0, "gagnants": 0} for k in EQUIPES}
     par_position = {}
-    for d in mt5.appel("historique", depuis=depuis):
-        k = PAR_MAGIC.get(d["magic"])
+    deals = mt5.appel("historique", depuis=depuis)
+    equipes = equipes_des_positions(deals)
+    for d in deals:
+        k = equipes.get(d["position_id"])
         if not k:
             continue
         net = d["profit"] + d["commission"] + d["swap"] + d["fee"]
@@ -298,13 +334,21 @@ def bot_mt5(chef):
         if not ferme_avant_le_week_end(EQUIPES[cle]["duree_h"]):
             msgs.append(f"{EQUIPES[cle]['nom']} : horizon après la fermeture du vendredi, décision ignorée")
             continue
+        if contre_tendance(EQUIPES[cle]["tf"], int(p["sens"])):
+            _noter(cle, "refus", sens=int(p["sens"]), ok=False, message="contre la tendance")
+            msgs.append(f"{EQUIPES[cle]['nom']} : décision contre la tendance, ignorée")
+            continue
         msgs.append(_ouvrir(cle, int(p["sens"]), compte, set(positions)))
     if entrainement_actif() and "entrainement" not in ouvertes \
             and ferme_avant_le_week_end(EQUIPES["entrainement"]["duree_h"]):
         p = base.lire("prono:1h")
         if p and _frais(p, "1h", maintenant_ms) and base.lire("mt5:fait:entrainement") != p["ts"] and p["p"] != 0.5:
             base.ecrire("mt5:fait:entrainement", p["ts"])
-            msgs.append(_ouvrir("entrainement", 1 if p["p"] > 0.5 else -1, compte, set(positions), entrainement=True))
+            sens = 1 if p["p"] > 0.5 else -1
+            if contre_tendance("1h", sens):
+                msgs.append("entraînement : sens contre la tendance, pas d'ordre cette heure")
+            else:
+                msgs.append(_ouvrir("entrainement", sens, compte, set(positions), entrainement=True))
     return "; ".join(msgs) or f"{len(positions)} position(s), équité {compte['equity']:.2f} {compte['currency']}"
 
 
@@ -322,8 +366,9 @@ def analyser_trades(deals, taille_contrat=100.0, ecart=None, taux=1.0):
     """Positions fermées de l'armée, dans l'ordre du temps : résultat net décomposé en mouvement du marché,
     écart achat/vente (estimé avec l'écart médian mesuré) et frais (commission, nuit), devise du compte."""
     pos = {}
+    equipes = equipes_des_positions(deals)
     for d in deals:
-        k = PAR_MAGIC.get(d["magic"])
+        k = equipes.get(d["position_id"])
         if not k:
             continue
         p = pos.setdefault(d["position_id"], {"equipe": k, "brut": 0.0, "frais": 0.0, "notionnel": 0.0, "t": 0,
@@ -423,7 +468,7 @@ def rapport_mt5():
     g = gain_minimum()
     regle = f"gain pris dès +{g:g} {c['currency']}" if g else "prise de gain arrêtée"
     lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
-                  f" · {regle}")
+                  f" · {regle} · filtre de tendance {'actif' if filtre_tendance_actif() else 'arrêté'}")
     for t, s in (base.lire("mt5:suivi", {}) or {}).items():
         reste = max(0, s["fin"] - time.time()) / 3600
         lignes.append(f"• {EQUIPES[s['equipe']]['nom']} : {'ACHAT' if s['sens'] > 0 else 'VENTE'} {s['volume']:g} lot à "

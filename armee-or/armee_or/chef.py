@@ -455,11 +455,12 @@ def bot_commandes(chef):
         if c in ("/or_pause", "pause"):
             chef.pause = True
             base.ecrire("pause", True)
-            telegram.envoyer("⏸ Nouvelles positions papier en pause. L'analyse continue.")
+            telegram.envoyer("⏸ Nouvelles positions en pause (papier ET MT5 ; les positions ouvertes gardent stop, "
+                             "prise de gain et horizon). L'analyse continue. /or_reprise pour reprendre.")
         elif c in ("/or_reprise", "reprise"):
             chef.pause = False
             base.ecrire("pause", False)
-            telegram.envoyer("▶️ Positions papier reprises.")
+            telegram.envoyer("▶️ Nouvelles positions reprises (papier et MT5).")
         elif c in ("/or", "/or_rapport", "rapport"):
             telegram.envoyer(rapport(chef))
         elif c in ("/or_levier", "levier"):
@@ -520,6 +521,13 @@ def bot_commandes(chef):
         elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c == "/or_tendance":
+            telegram.envoyer(f"🧭 Filtre de tendance {'actif' if executant.filtre_tendance_actif() else 'arrêté'} : "
+                             "aucune position MT5 contre la tendance (1 h et 4 h). Touche : /or_tendance_on  ou  "
+                             "/or_tendance_off")
+        elif c in ("/or_tendance_on", "/or_tendance_off", "mt5_tendance on", "mt5_tendance off"):
+            base.ecrire("mt5:filtre_tendance", c.endswith("on"))
+            telegram.envoyer(f"🧭 MT5 : filtre de tendance {'actif' if c.endswith('on') else 'arrêté'}.")
         elif c in ("/or_gain", "mt5_gain"):
             g = executant.gain_minimum()
             telegram.envoyer(f"💶 Prise de gain : {f'dès +{g:g} €' if g else 'arrêtée'}. Toute position de l'armée "
