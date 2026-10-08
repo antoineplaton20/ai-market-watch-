@@ -3,9 +3,11 @@
 Trois équipes, chacune avec son numéro magique (ses positions ne se mélangent jamais, ni avec tes ordres manuels) :
 - « décisions 4 h » et « décisions 1 j » : exécutent les décisions du chef d'orchestre (seulement quand l'avantage
   attendu dépasse les coûts), taille selon le profil de levier choisi, stop à 3 ATR, fermeture à l'horizon ;
-- « entraînement 1 h » : à chaque bougie d'une heure, prend le sens du consensus au lot MINIMUM, même quand
-  l'avantage est inférieur aux coûts. Elle sert à mesurer en conditions réelles (écart achat/vente, exécution,
-  glissement) ce que valent les pronostics : elle perdra probablement un peu, c'est son rôle de le mesurer.
+- « entraînement 1 h » : à chaque bougie d'une heure, prend le sens du consensus au lot MINIMUM.
+
+« Que du prouvé » (choix du propriétaire) : AUCUNE équipe ne trade sans PERMIS. Toutes les 6 h, la règle de chaque
+équipe est rejouée sur tout l'historique, sans regarder le futur, avec les frais réels et le filtre de tendance ;
+le permis n'est accordé que si elle gagne sur les deux moitiés de l'historique.
 
 Garde-fous : aucun ordre si le compte n'est pas un compte démo (vérifié ici ET dans le pont), une seule position
 par équipe, « or mt5 fermer » ferme tout et suspend les ordres.
@@ -334,7 +336,7 @@ def bot_mt5(chef):
         if not ferme_avant_le_week_end(EQUIPES[cle]["duree_h"]):
             msgs.append(f"{EQUIPES[cle]['nom']} : horizon après la fermeture du vendredi, décision ignorée")
             continue
-        if not ((base.lire("mt5:permis") or {}).get(cle) or {}).get("ok"):
+        if not a_le_permis(EQUIPES[cle]["tf"]):
             _noter(cle, "refus", sens=int(p["sens"]), ok=False, message="pas de permis de trader")
             msgs.append(f"{EQUIPES[cle]['nom']} : pas de permis de trader (règle perdante sur l'historique avec les "
                         "frais actuels), décision ignorée")
@@ -350,7 +352,9 @@ def bot_mt5(chef):
         if p and _frais(p, "1h", maintenant_ms) and base.lire("mt5:fait:entrainement") != p["ts"] and p["p"] != 0.5:
             base.ecrire("mt5:fait:entrainement", p["ts"])
             sens = 1 if p["p"] > 0.5 else -1
-            if contre_tendance("1h", sens):
+            if not a_le_permis("1h"):
+                msgs.append("entraînement : pas de permis de trader (rien de prouvé gagnant), pas d'ordre")
+            elif contre_tendance("1h", sens):
                 msgs.append("entraînement : sens contre la tendance, pas d'ordre cette heure")
             else:
                 msgs.append(_ouvrir("entrainement", sens, compte, set(positions), entrainement=True))
@@ -483,12 +487,17 @@ def rapport_trades():
     return texte_trades(fermees, compte.get("currency") or "")
 
 
+def a_le_permis(tf):
+    """« Que du prouvé » : aucun ordre sans permis (voir chef.permis_de_trader)."""
+    return bool(((base.lire("mt5:permis") or {}).get(tf) or {}).get("ok"))
+
+
 def texte_permis(permis=None):
     permis = permis if permis is not None else base.lire("mt5:permis")
     if not permis:
-        return "Permis de trader : en cours de calcul (aucun ordre des équipes de décisions en attendant)"
+        return "Permis de trader : en cours de calcul (aucun ordre MT5 en attendant)"
     parts = []
-    for tf, nom in (("4h", "4 h"), ("1d", "1 j")):
+    for tf, nom in (("1h", "entraînement 1 h"), ("4h", "4 h"), ("1d", "1 j")):
         x = permis.get(tf) or {}
         if "moities" not in x:
             parts.append(f"{nom} ✖ ({x.get('raison', '?')})")

@@ -132,7 +132,7 @@ def faux(monkeypatch):
     monkeypatch.setattr(config, "MT5_ACTIF", True)
     monkeypatch.setattr(config, "MT5_PROFIL", "pro 1 % risqué")
     monkeypatch.setattr(config, "MT5_ENTRAINEMENT", True)
-    base.ecrire("mt5:permis", {"4h": {"ok": True}, "1d": {"ok": True}})    # permis accordé (testé à part)
+    base.ecrire("mt5:permis", {"1h": {"ok": True}, "4h": {"ok": True}, "1d": {"ok": True}})   # permis (testé à part)
     yield f
     serveur.shutdown()
     serveur.server_close()
@@ -586,6 +586,19 @@ def test_pas_de_permis_pas_d_ordre(faux):
     assert "4 h ✖ (-3.5 pb (80) / +1.0 pb (90))" in texte and "1 j ✖ (historique trop court)" in texte
     base.ecrire("mt5:permis", None)
     assert "en cours de calcul" in executant.texte_permis()
+
+
+def test_que_du_prouve_l_entrainement_aussi(faux):
+    base.ecrire("mt5:permis", {"1h": {"ok": False, "moities": [{"n": 9000, "net_pb": -3.1}, {"n": 9000, "net_pb": 0.4}]},
+                               "4h": {"ok": True}, "1d": {"ok": True}})
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    _prono("1h", 0, p=0.60)
+    assert "entraînement : pas de permis" in executant.bot_mt5(_chef()) and not faux.envois
+    assert "entraînement 1 h ✖ (-3.1 pb (9000) / +0.4 pb (9000))" in executant.rapport_mt5()
+    base.ecrire("mt5:permis", {"1h": {"ok": True}})
+    _prono("1h", 0, p=0.61)
+    executant.bot_mt5(_chef())
+    assert len(faux.envois) == 1
 
 
 def test_sorties_et_taux_de_reussite_necessaire():

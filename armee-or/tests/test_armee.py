@@ -292,7 +292,7 @@ def test_bilan_historique(historique):
 
 def test_permis_de_trader_sur_l_historique(historique):
     permis = chef.permis_de_trader()
-    for tf in ("4h", "1d"):
+    for tf in ("1h", "4h", "1d"):
         assert len(permis[tf]["moities"]) == 2 and permis[tf]["ok"] == all(
             m["n"] >= chef.PERMIS_MIN_DECISIONS and m["net_pb"] > 0 for m in permis[tf]["moities"])
     assert "Permis de trader" in executant.texte_permis(permis)

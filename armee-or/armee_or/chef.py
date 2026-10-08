@@ -440,20 +440,25 @@ PERMIS_MIN_DECISIONS = 30
 
 
 def permis_de_trader(chemin=None):
-    """Une équipe de décisions n'a le droit de trader sur MT5 que si sa règle, rejouée sur tout l'historique sans
+    """« Que du prouvé » : une équipe (entraînement 1 h, décisions 4 h et 1 j) n'a le droit de trader sur MT5 que si
+    sa règle, rejouée sur tout l'historique sans
     regarder le futur, AVEC LES FRAIS ACTUELS (ceux mesurés sur MT5 dès qu'il y en a) et le filtre de tendance quand
     il s'applique, gagne en moyenne sur les DEUX moitiés de l'historique. Quand les frais mesurés baissent, la règle
     laisse passer beaucoup plus de décisions : ce permis vérifie qu'elles valent encore quelque chose."""
     out = {"ts": time.time()}
-    for tf in ("4h", "1d"):
+    for tf in ("1h", "4h", "1d"):
         b = donnees.charger(SOURCE_DECISION, tf, chemin=chemin)
         h, hb = S.UNITES[tf]
         if len(b["c"]) < P.MIN_CALIB + 200:
             out[tf] = {"ok": False, "raison": "historique trop court"}
             continue
         probas, naif, y = P.tout_calculer(b, h)
+        probas.update(apprentissage.probas_admis(b, tf, h, y))  # le même consensus qu'en direct
         cons, _ = P.consensus(probas, naif, y, h)
-        d = S.decisions(cons, b, tf)
+        if tf == "1h":                                          # entraînement : le sens du consensus à chaque heure
+            d = np.where(np.isfinite(cons), np.sign(cons - 0.5), 0).astype(int)
+        else:
+            d = S.decisions(cons, b, tf)
         if executant.filtre_tendance_actif() and tf in executant.FILTRE_TENDANCE_TF:
             d[d == -np.sign(P.score_tendance(b))] = 0
         c, n = b["c"], len(b["c"])
@@ -475,7 +480,7 @@ def bot_permis(chef):
     avant = base.lire("mt5:permis") or {}
     permis = permis_de_trader()
     base.ecrire("mt5:permis", permis)
-    for tf, nom in (("4h", "décisions 4 h"), ("1d", "décisions 1 j")):
+    for tf, nom in (("1h", "entraînement 1 h"), ("4h", "décisions 4 h"), ("1d", "décisions 1 j")):
         etait, est = bool((avant.get(tf) or {}).get("ok")), bool(permis[tf]["ok"])
         if avant and etait != est:
             telegram.envoyer(f"🪪 MT5 · {nom} : permis de trader {'ACCORDÉ' if est else 'RETIRÉ'}. "

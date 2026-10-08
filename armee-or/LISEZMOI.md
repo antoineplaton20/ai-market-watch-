@@ -222,17 +222,21 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 - L'avantage restant (environ +2 pb en 1 h dans le sens de la tendance) est tout juste au-dessus de l'écart réel mesuré sur MT5 (environ 1 pb) : c'est mince.
 - Le 1 j n'est pas filtré (pas assez d'historique pour le mesurer).
 
-### Permis de trader (équipes de décisions 4 h et 1 j)
-- Les frais réels mesurés sur MT5 sont bien plus bas que l'estimation de départ (écart ≈ 0,009 % contre 0,14 %). La règle « avantage > 1,5 × frais » laisse donc passer de plus en plus de décisions.
-- Avant chaque ordre, l'équipe doit avoir son **permis**. Toutes les 6 h, sa règle est rejouée sur tout l'historique, sans regarder le futur, avec les frais actuels et le filtre de tendance. Le permis n'est accordé que si le résultat net moyen par décision est **positif sur les deux moitiés** de l'historique (au moins 30 décisions dans chacune).
+### « Que du prouvé » : permis de trader (toutes les équipes MT5)
+- Ton choix : aucune équipe, **entraînement compris**, ne passe d'ordre MT5 sans **permis**.
+- Toutes les 6 h, la règle de chaque équipe (entraînement 1 h, décisions 4 h et 1 j) est rejouée sur tout l'historique. On ne regarde jamais le futur, on applique les frais réels du courtier et le filtre de tendance, et on utilise le même consensus qu'en direct, signaux admis compris.
+- Le permis n'est accordé que si le résultat net moyen par décision est **positif sur les deux moitiés** de l'historique, avec au moins 30 décisions dans chacune.
+- Chaque changement est annoncé sur Telegram (🪪). L'état est visible dans `/or_mt5`.
 - Mesure d'octobre 2026 (PAXG, net par décision, 1re / 2e moitié) :
 
-| Frais | 4 h (avec filtre) | 1 j |
-|---|---|---|
-| 0,0565 % (aujourd'hui) | −21,1 / −10,6 pb | −68,9 / +33,6 pb |
-| 0,015 % (bientôt) | −3,9 / −3,5 pb | −26,8 / +23,2 pb |
+| Frais aller-retour | Entraînement 1 h | Décisions 4 h | Décisions 1 j |
+|---|---|---|---|
+| 0,0565 % (aujourd'hui) | −5,6 / −3,4 pb | −21,1 / −10,6 pb | −68,9 / +33,6 pb |
+| 0,015 % (bientôt) | −1,4 / +0,7 pb | −3,9 / −3,5 pb | −26,8 / +23,2 pb |
+| 0,01 % | −0,9 / +1,2 pb | −3,2 / −2,6 pb | −26,9 / +25,0 pb |
 
-- Aucun permis aujourd'hui : seule l'équipe d'entraînement (lot minimum) trade. Un changement de permis est annoncé sur Telegram, et `/or_mt5` affiche l'état.
+- Aucun permis aujourd'hui : le compte MT5 ne bouge plus. L'armée continue d'observer, de noter ses pronostics, d'examiner de nouveaux signaux et de tenir ses comptes papier. Elle reprendra seule les ordres dès qu'une règle aura fait ses preuves.
+- Testé aussi (XAUUSDT 2026, données fiables) : toutes les variantes « gain pris tout de suite » perdent, même avec 82 à 99 % de trades gagnants. « Sans stop » : 99,4 % de gagnants, mais une position bloquée 215 jours à −997 €. Sur PAXG avant 2026, les écarts larges (prix arrondis au dollar) faisaient croire à tort que ces règles gagnaient.
 - `/or_verif` détaille aussi les **sorties** (prise de gain, stop, horizon, à la main) et le **taux de réussite nécessaire** pour être à zéro, compte tenu du gain moyen et de la perte moyenne.
 
 ### Fermetures et week-end
