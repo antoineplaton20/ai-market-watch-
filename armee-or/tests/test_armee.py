@@ -11,7 +11,7 @@ import zipfile
 import numpy as np
 import pytest
 
-from armee_or import base, chandeliers as C, chef, config, donnees as D, flux, levier as L, marches_lies as M, \
+from armee_or import base, chandeliers as C, chef, config, donnees as D, executant, flux, levier as L, marches_lies as M, \
     papier as PA, pronostiqueurs as P, rythme, strategie as S, telegram
 
 RACINE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -288,6 +288,14 @@ def test_bilan_historique(historique):
         assert u["garder_or_x"] > 1.5 and set(u["comptes"]) == set(L.PROFILS)
         assert all(c["capital"] >= 0 for c in u["comptes"].values())
     assert "ruiné" in chef.rapport_bilan()
+
+
+def test_permis_de_trader_sur_l_historique(historique):
+    permis = chef.permis_de_trader()
+    for tf in ("4h", "1d"):
+        assert len(permis[tf]["moities"]) == 2 and permis[tf]["ok"] == all(
+            m["n"] >= chef.PERMIS_MIN_DECISIONS and m["net_pb"] > 0 for m in permis[tf]["moities"])
+    assert "Permis de trader" in executant.texte_permis(permis)
 
 
 # ------------------------------------------------------------------ Telegram et indépendance

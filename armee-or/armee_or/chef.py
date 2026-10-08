@@ -436,6 +436,53 @@ def bilan_historique(chemin=None):
     return out
 
 
+PERMIS_MIN_DECISIONS = 30
+
+
+def permis_de_trader(chemin=None):
+    """Une équipe de décisions n'a le droit de trader sur MT5 que si sa règle, rejouée sur tout l'historique sans
+    regarder le futur, AVEC LES FRAIS ACTUELS (ceux mesurés sur MT5 dès qu'il y en a) et le filtre de tendance quand
+    il s'applique, gagne en moyenne sur les DEUX moitiés de l'historique. Quand les frais mesurés baissent, la règle
+    laisse passer beaucoup plus de décisions : ce permis vérifie qu'elles valent encore quelque chose."""
+    out = {"ts": time.time()}
+    for tf in ("4h", "1d"):
+        b = donnees.charger(SOURCE_DECISION, tf, chemin=chemin)
+        h, hb = S.UNITES[tf]
+        if len(b["c"]) < P.MIN_CALIB + 200:
+            out[tf] = {"ok": False, "raison": "historique trop court"}
+            continue
+        probas, naif, y = P.tout_calculer(b, h)
+        cons, _ = P.consensus(probas, naif, y, h)
+        d = S.decisions(cons, b, tf)
+        if executant.filtre_tendance_actif() and tf in executant.FILTRE_TENDANCE_TF:
+            d[d == -np.sign(P.score_tendance(b))] = 0
+        c, n = b["c"], len(b["c"])
+        fut = np.r_[c[h:] / c[:-h] - 1, np.full(h, np.nan)]
+        cout = S.couts(h, hb)
+        moities = []
+        for part in (slice(0, n // 2), slice(n // 2, n)):
+            m = np.zeros(n, bool)
+            m[part] = True
+            m &= (d != 0) & ~np.isnan(fut)
+            k = int(m.sum())
+            moities.append({"n": k, "net_pb": round(float((d[m] * fut[m] - cout).mean() * 1e4), 2) if k else None})
+        ok = all(x["n"] >= PERMIS_MIN_DECISIONS and x["net_pb"] > 0 for x in moities)
+        out[tf] = {"ok": ok, "moities": moities, "cout_pct": round(cout * 100, 4)}
+    return out
+
+
+def bot_permis(chef):
+    avant = base.lire("mt5:permis") or {}
+    permis = permis_de_trader()
+    base.ecrire("mt5:permis", permis)
+    for tf, nom in (("4h", "décisions 4 h"), ("1d", "décisions 1 j")):
+        etait, est = bool((avant.get(tf) or {}).get("ok")), bool(permis[tf]["ok"])
+        if avant and etait != est:
+            telegram.envoyer(f"🪪 MT5 · {nom} : permis de trader {'ACCORDÉ' if est else 'RETIRÉ'}. "
+                             + executant.texte_permis(permis), True)
+    return executant.texte_permis(permis)
+
+
 def bot_bilan(chef):
     out = bilan_historique()
     return "bilan : " + ", ".join(f"{tf} {u['decisions']} décisions" for tf, u in out["unites"].items())
@@ -726,6 +773,7 @@ class Chef:
             Bot("Pronostiqueurs + décision", "pronostic", 10, bot_pronostiqueurs, fond=True),
             Bot("Stratège de fond", "strategie", 3600, bot_fond, fond=True),
             Bot("Bilan historique", "archiviste", 7 * 86400, bot_bilan, fond=True),
+            Bot("Permis de trader", "apprentissage", 6 * 3600, bot_permis, fond=True),
             Bot("Exécutant MT5 (démo)", "execution", 5, executant.bot_mt5),
             Bot("Archiviste MT5", "archiviste", 3600, bot_archive_mt5, fond=True),
             Bot("Commandes", "chef", 3, bot_commandes, fond=True),

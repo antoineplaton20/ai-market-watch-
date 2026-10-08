@@ -222,6 +222,19 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 - L'avantage restant (environ +2 pb en 1 h dans le sens de la tendance) est tout juste au-dessus de l'écart réel mesuré sur MT5 (environ 1 pb) : c'est mince.
 - Le 1 j n'est pas filtré (pas assez d'historique pour le mesurer).
 
+### Permis de trader (équipes de décisions 4 h et 1 j)
+- Les frais réels mesurés sur MT5 sont bien plus bas que l'estimation de départ (écart ≈ 0,009 % contre 0,14 %). La règle « avantage > 1,5 × frais » laisse donc passer de plus en plus de décisions.
+- Avant chaque ordre, l'équipe doit avoir son **permis**. Toutes les 6 h, sa règle est rejouée sur tout l'historique, sans regarder le futur, avec les frais actuels et le filtre de tendance. Le permis n'est accordé que si le résultat net moyen par décision est **positif sur les deux moitiés** de l'historique (au moins 30 décisions dans chacune).
+- Mesure d'octobre 2026 (PAXG, net par décision, 1re / 2e moitié) :
+
+| Frais | 4 h (avec filtre) | 1 j |
+|---|---|---|
+| 0,0565 % (aujourd'hui) | −21,1 / −10,6 pb | −68,9 / +33,6 pb |
+| 0,015 % (bientôt) | −3,9 / −3,5 pb | −26,8 / +23,2 pb |
+
+- Aucun permis aujourd'hui : seule l'équipe d'entraînement (lot minimum) trade. Un changement de permis est annoncé sur Telegram, et `/or_mt5` affiche l'état.
+- `/or_verif` détaille aussi les **sorties** (prise de gain, stop, horizon, à la main) et le **taux de réussite nécessaire** pour être à zéro, compte tenu du gain moyen et de la perte moyenne.
+
 ### Fermetures et week-end
 - Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
 - Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).

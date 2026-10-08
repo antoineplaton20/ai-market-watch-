@@ -132,6 +132,7 @@ def faux(monkeypatch):
     monkeypatch.setattr(config, "MT5_ACTIF", True)
     monkeypatch.setattr(config, "MT5_PROFIL", "pro 1 % risqué")
     monkeypatch.setattr(config, "MT5_ENTRAINEMENT", True)
+    base.ecrire("mt5:permis", {"4h": {"ok": True}, "1d": {"ok": True}})    # permis accordé (testé à part)
     yield f
     serveur.shutdown()
     serveur.server_close()
@@ -571,3 +572,30 @@ def test_filtre_de_tendance(faux):
     base.ecrire("mt5:filtre_tendance", False)
     assert not executant.contre_tendance("1h", -1)
     faux.copy_rates_from_pos = plat
+
+
+
+def test_pas_de_permis_pas_d_ordre(faux):
+    base.ecrire("mt5:permis", {"4h": {"ok": False, "moities": [{"n": 80, "net_pb": -3.5}, {"n": 90, "net_pb": 1.0}]},
+                               "1d": {"ok": False, "raison": "historique trop court"}})
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    base.ecrire("mt5:entrainement", False)
+    _prono("4h", 1)
+    assert "pas de permis" in executant.bot_mt5(_chef()) and not faux.envois
+    texte = executant.rapport_mt5()
+    assert "4 h ✖ (-3.5 pb (80) / +1.0 pb (90))" in texte and "1 j ✖ (historique trop court)" in texte
+    base.ecrire("mt5:permis", None)
+    assert "en cours de calcul" in executant.texte_permis()
+
+
+def test_sorties_et_taux_de_reussite_necessaire():
+    deals = []
+    for i, (gain, com) in enumerate([(3.1, "armee-or gain entrainemen"), (3.0, "armee-or gain entrainemen"),
+                                     (3.2, "armee-or gain entrainemen"), (-30.0, "[sl 4100.00]"),
+                                     (-1.0, "armee-or fin entrainement"), (-5.0, "")]):
+        deals += [_deal(i, 0, 0.0, 10 * i, commission=0.0), {**_deal(i, 1, gain, 10 * i + 5, commission=0.0),
+                                                              "comment": com}]
+    texte = executant.texte_trades(executant.analyser_trades(deals, 100.0, 0.0, 1.0), "EUR")
+    assert "prise de gain 3 (moy. +3.10)" in texte and "stop 1 (moy. -30.00)" in texte
+    assert "horizon 1" in texte and "à la main ou courtier 1" in texte
+    assert "il faut 79 % de trades gagnants pour être à zéro ; réalisé : 50 %" in texte

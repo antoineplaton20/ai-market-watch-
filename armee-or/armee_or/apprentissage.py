@@ -419,9 +419,11 @@ def journal():
     base.ecrire("journal:poids", maintenant)
     direct = score_en_direct()
     if direct:
-        meilleurs = sorted(direct.items(), key=lambda kv: -kv[1]["competence"])[:5]
-        lignes.append("Score EN DIRECT sur 7 jours (compétence contre le naïf) : " + " · ".join(
-            f"{k} {v['competence'] * 100:+.1f} % (n={v['n']})" for k, v in meilleurs))
+        meilleurs = sorted(((k, v) for k, v in direct.items() if v["n"] >= 30),       # n < 30 : du bruit
+                           key=lambda kv: -kv[1]["competence"])[:5]
+        if meilleurs:
+            lignes.append("Score EN DIRECT sur 7 jours (compétence contre le naïf, au moins 30 pronostics) : " + " · ".join(
+                f"{k} {v['competence'] * 100:+.1f} % (n={v['n']})" for k, v in meilleurs))
     ex = base.lire("apprentissage:examen")
     if ex:
         adm = [f"{n} ({tf})" for tf, r in ex["resultats"].items() for n, x in r.items() if x.get("admis")]

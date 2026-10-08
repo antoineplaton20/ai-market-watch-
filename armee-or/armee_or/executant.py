@@ -334,6 +334,11 @@ def bot_mt5(chef):
         if not ferme_avant_le_week_end(EQUIPES[cle]["duree_h"]):
             msgs.append(f"{EQUIPES[cle]['nom']} : horizon après la fermeture du vendredi, décision ignorée")
             continue
+        if not ((base.lire("mt5:permis") or {}).get(cle) or {}).get("ok"):
+            _noter(cle, "refus", sens=int(p["sens"]), ok=False, message="pas de permis de trader")
+            msgs.append(f"{EQUIPES[cle]['nom']} : pas de permis de trader (règle perdante sur l'historique avec les "
+                        "frais actuels), décision ignorée")
+            continue
         if contre_tendance(EQUIPES[cle]["tf"], int(p["sens"])):
             _noter(cle, "refus", sens=int(p["sens"]), ok=False, message="contre la tendance")
             msgs.append(f"{EQUIPES[cle]['nom']} : décision contre la tendance, ignorée")
@@ -362,6 +367,21 @@ def etat_installation():
             "installé": "installé, connexion en attente", "ok": "installation réussie"}.get(statut, statut)
 
 
+def type_de_sortie(commentaire):
+    c = (commentaire or "").lower()
+    if c.startswith("armee-or gain"):
+        return "prise de gain"
+    if c.startswith("armee-or fin"):
+        return "horizon"
+    if c.startswith("armee-or"):
+        return "fermeture demandée"
+    if c.startswith("[sl"):
+        return "stop"
+    if c.startswith("[so"):
+        return "coupure de marge"
+    return "à la main ou courtier"
+
+
 def analyser_trades(deals, taille_contrat=100.0, ecart=None, taux=1.0):
     """Positions fermées de l'armée, dans l'ordre du temps : résultat net décomposé en mouvement du marché,
     écart achat/vente (estimé avec l'écart médian mesuré) et frais (commission, nuit), devise du compte."""
@@ -380,6 +400,7 @@ def analyser_trades(deals, taille_contrat=100.0, ecart=None, taux=1.0):
             p["sens"] = 1 if d["type"] == 0 else -1                        # 0 = achat, 1 = vente
         elif d["entry"] in (1, 3):
             p["ferme"], p["t"] = True, max(p["t"], d["time"])
+            p["sortie"] = type_de_sortie(d.get("comment"))
     fermees = sorted((p for p in pos.values() if p["ferme"]), key=lambda p: p["t"])
     for p in fermees:
         p["ecart"] = (ecart or 0.0) * p["notionnel"] / (taux or 1.0)    # payé à l'aller-retour, déjà dans « brut »
@@ -414,6 +435,16 @@ def texte_trades(fermees, devise=""):
                         f"{sum(p['net'] for p in t):+.2f}")
     if cote:
         lignes.append(" · ".join(cote) + f" {devise}")
+    sorties = {}
+    for p in fermees:
+        sorties.setdefault(p.get("sortie", "?"), []).append(p["net"])
+    lignes.append("Sorties : " + " · ".join(f"{k} {len(v)} (moy. {sum(v) / len(v):+.2f})"
+                                            for k, v in sorted(sorties.items(), key=lambda kv: -len(kv[1]))))
+    gains, pertes = [p["net"] for p in fermees if p["net"] > 0], [-p["net"] for p in fermees if p["net"] < 0]
+    if gains and pertes:
+        g, l = sum(gains) / len(gains), sum(pertes) / len(pertes)
+        lignes.append(f"Gain moyen {g:+.2f} · perte moyenne {-l:+.2f} : il faut {100 * l / (g + l):.0f} % de trades "
+                      f"gagnants pour être à zéro ; réalisé : {100 * len(gains) / n:.0f} %")
     bons = sum(p["mouvement"] > 0 for p in fermees)
     z = (bons - n / 2) / math.sqrt(n / 4)
     lignes.append(f"Bon sens (avant frais) : {bons}/{n} ({100 * bons / n:.0f} %) · écart au pile ou face : z = {z:+.2f}"
@@ -452,6 +483,22 @@ def rapport_trades():
     return texte_trades(fermees, compte.get("currency") or "")
 
 
+def texte_permis(permis=None):
+    permis = permis if permis is not None else base.lire("mt5:permis")
+    if not permis:
+        return "Permis de trader : en cours de calcul (aucun ordre des équipes de décisions en attendant)"
+    parts = []
+    for tf, nom in (("4h", "4 h"), ("1d", "1 j")):
+        x = permis.get(tf) or {}
+        if "moities" not in x:
+            parts.append(f"{nom} ✖ ({x.get('raison', '?')})")
+            continue
+        m = " / ".join("aucune décision" if v["net_pb"] is None else f"{v['net_pb']:+.1f} pb ({v['n']})" for v in x["moities"])
+        parts.append(f"{nom} {'✅' if x['ok'] else '✖'} ({m})")
+    return "Permis de trader (net moyen par décision sur 1re / 2e moitié de l'historique, frais actuels) : " + \
+        " · ".join(parts)
+
+
 def rapport_mt5():
     inst = etat_installation()
     if not config.MT5_ACTIF:
@@ -469,6 +516,7 @@ def rapport_mt5():
     regle = f"gain pris dès +{g:g} {c['currency']}" if g else "prise de gain arrêtée"
     lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
                   f" · {regle} · filtre de tendance {'actif' if filtre_tendance_actif() else 'arrêté'}")
+    lignes.append(texte_permis())
     for t, s in (base.lire("mt5:suivi", {}) or {}).items():
         reste = max(0, s["fin"] - time.time()) / 3600
         lignes.append(f"• {EQUIPES[s['equipe']]['nom']} : {'ACHAT' if s['sens'] > 0 else 'VENTE'} {s['volume']:g} lot à "
