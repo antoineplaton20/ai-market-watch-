@@ -57,6 +57,23 @@ def envoyer_photo(chemin, legende="", session=None):
         return False
 
 
+def envoyer_document(chemin, legende="", session=None):
+    """Fichier (sauvegarde) envoyé dans la conversation. -> code du fichier chez Telegram (pour le retélécharger)."""
+    if not (config.TELEGRAM_JETON and config.TELEGRAM_CHAT):
+        return None
+    try:
+        import requests
+        with open(chemin, "rb") as f:
+            r = (session or requests).post(f"https://api.telegram.org/bot{config.TELEGRAM_JETON}/sendDocument",
+                                           data={"chat_id": config.TELEGRAM_CHAT,
+                                                 "caption": (PREFIXE + legende)[:1000]},
+                                           files={"document": f}, timeout=300).json()
+        return ((r.get("result") or {}).get("document") or {}).get("file_id")
+    except Exception as ex:
+        _log.warning("Document Telegram non envoyé : %s", type(ex).__name__)
+        return None
+
+
 def alerte_rare(cle, texte, fenetre_s=3600, important=False):
     """Au plus un message par `cle` et par fenêtre (mémoire en base : survit aux redémarrages)."""
     deja = base.lire(f"alerte:{cle}", 0) or 0
@@ -69,6 +86,9 @@ def alerte_rare(cle, texte, fenetre_s=3600, important=False):
 
 MENU = [("or_go", "Terminal : écran de lancement"), ("or_gp", "Terminal : graphique 1 h (or_gp_4h, _1d…)"),
         ("or_rv", "Terminal : or / argent"), ("or_corr", "Terminal : corrélations"), ("or_wei", "Terminal : marchés liés"),
+        ("or_brief", "Brief du matin (envoyé seul à 8 h)"),
+        ("or_risque", "Risque : perte du jour, coupe-circuit"), ("or_sauvegarde", "Dernière sauvegarde"),
+        ("or_alerte", "Alerte de prix : /or_alerte 4200 ou +1%"), ("or_alertes", "Mes alertes de prix"),
         ("or", "Rapport complet"), ("or_veille", "Veille : tendances, niveaux, flux, COT, annonces, actus"),
         ("or_apprentissage", "Ce que l'armée a appris (journal)"),
         ("or_verif", "Vérifier : croissance de la mémoire et diagnostic des trades"),

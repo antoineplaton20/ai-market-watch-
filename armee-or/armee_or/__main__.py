@@ -72,6 +72,24 @@ def main(argv=None):
     elif cmd == "apprentissage":
         from . import apprentissage
         print(apprentissage.journal())
+    elif cmd == "sauvegarde":
+        from . import sauvegarde
+        i = sauvegarde.sauvegarder()
+        print(f"Sauvegarde faite : complète {i['complete_octets'] / 1e6:.1f} Mo ({i['complete']}), essentielle "
+              f"{i['essentielle_octets'] / 1e6:.1f} Mo {'envoyée sur Telegram' if i.get('file_id') else '(Telegram indisponible)'}"
+              f" · {i['rapports_purges']} lignes de journal purgées.")
+    elif cmd == "restaurer":
+        from . import sauvegarde
+        print(sauvegarde.restaurer(argv[1] if len(argv) > 1 else None))
+    elif cmd == "risque":
+        from . import risque
+        print(risque.reprendre() if argv[1:2] == ["reprendre"] else risque.texte())
+    elif cmd == "brief":
+        from . import brief
+        print(brief.texte_brief())
+    elif cmd in ("alerte", "alertes"):
+        from . import alertes
+        print(alertes.commande(" ".join(argv)))
     elif cmd == "terminal":
         from . import terminal
         return terminal.main(argv[1:])

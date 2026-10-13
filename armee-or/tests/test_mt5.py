@@ -625,3 +625,40 @@ def test_identifiants_refuses_alerte_espacee(faux, monkeypatch):
     executant.bot_mt5(_chef())
     cle, texte, fenetre = alertes[-1]
     assert cle == "mt5-connexion" and "REFUSE" in texte and "iPhone" in texte and fenetre == 12 * 3600
+
+
+def test_gestionnaire_de_risque_limites():
+    import calendar
+    from armee_or import risque as R
+    mardi = calendar.timegm((2026, 10, 13, 9, 0, 0))
+    e, evt = R.controler({"login": 1, "equity": 3000.0}, mardi)
+    assert evt is None and R.autorise(e, mardi)[0]
+    e, evt = R.controler({"login": 1, "equity": 2969.0}, mardi + 600)                # -1,03 % sur la journée
+    assert evt == "jour" and not R.autorise(e, mardi + 600)[0] and "demain" in R.autorise(e, mardi + 600)[1]
+    assert R.controler({"login": 1, "equity": 2960.0}, mardi + 700)[1] is None       # pas d'annonce en double
+    e, evt = R.controler({"login": 1, "equity": 2965.0}, mardi + 86400)              # mercredi : nouvelle journée
+    assert evt is None and R.autorise(e, mardi + 86400)[0]
+    e, evt = R.controler({"login": 1, "equity": 2845.0}, mardi + 86400 + 60)         # -5,17 % depuis 3 000
+    assert evt == "coupe" and "COUPE-CIRCUIT" in R.autorise(e)[1] and "⛔" in R.texte(e)
+    assert not R.autorise(R.controler({"login": 1, "equity": 3100.0}, mardi + 3 * 86400)[0])[0]   # reste coupé
+    assert "levé" in R.reprendre() and R.autorise()[0]
+    e, _ = R.controler({"login": 2, "equity": 100000.0}, mardi + 4 * 86400)        # autre compte : remis à zéro
+    assert e["pic"] == 100000.0 and not e.get("coupe")
+
+
+def test_coupe_circuit_ferme_tout_et_bloque_les_ordres(faux, monkeypatch):
+    envois = []
+    monkeypatch.setattr(executant.telegram, "envoyer", lambda t, *a, **k: envois.append((t, k)) or True)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    base.ecrire("mt5:entrainement", False)
+    executant.bot_mt5(_chef())                                                      # sommet : 100 000
+    executant._ouvrir("entrainement", 1, mt5.appel("etat")["compte"], set(), entrainement=True)
+    assert len(faux.positions) == 1
+    faux.solde = 94_000.0                                                           # -6 % : coupe-circuit
+    executant.bot_mt5(_chef())
+    assert not faux.positions and any("COUPE-CIRCUIT" in t and k.get("important") for t, k in envois)
+    base.ecrire("mt5:entrainement", True)
+    _prono("1h", 0, p=0.6)
+    nb = len(faux.envois)
+    assert "COUPE-CIRCUIT" in executant.bot_mt5(_chef()) and len(faux.envois) == nb   # aucun nouvel ordre
+    assert "Risque :" in executant.rapport_mt5()

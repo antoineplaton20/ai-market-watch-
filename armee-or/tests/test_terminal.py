@@ -42,6 +42,9 @@ def _remplir(maintenant):
     base.ecrire("cot", {"ts": maintenant, "date": "2026-10-07", "net": 180000.0, "net_pct_oi": 35.0,
                         "rang_3_ans": 0.9, "variation": -5000.0})
     base.ecrire("mt5:permis", {"1h": {"ok": False}, "4h": {"ok": False}, "1d": {"ok": True}})
+    base.ecrire("tresor", {"date": "2026-10-09", "reel_10a": 1.91, "reel_10a_5j": -0.06, "nominal_10a": 4.12,
+                           "nominal_10a_5j": 0.02, "inflation_10a": 2.21, "inflation_10a_5j": 0.08,
+                           "pente_10_2": 0.44, "pente_10_2_5j": None})
     base.ecrire("chef", {"ts": maintenant, "pause": False, "bots": [{"nom": "a", "echecs_suite": 0},
                                                                      {"nom": "b", "echecs_suite": 2}]})
     return c
@@ -57,7 +60,7 @@ def test_tous_les_ecrans_tiennent_dans_la_largeur():
                 assert T.visible(ligne) <= w, (code, w, ligne)
     go = T.rendu("go", w=60, couleur=False)
     for attendu in ("TERMINAL OR", "NIVEAUX", "TENDANCES", "MARCHÉS", "FLUX BINANCE", "AGENDA", "ACTUALITÉS",
-                    "ARMÉE", "permis 1h ✖ 4h ✖ 1d ✔", "bots 1/2 sains", "MT5", "écart 0.38 $", "OR/ARG 79.4"):
+                    "ARMÉE", "permis 1h ✖ 4h ✖ 1d ✔", "bots 1/2 sains", "MT5", "écart 0.38 $", "OR/ARG 79.4", "TAUX RÉEL 10A 1.91"):
         assert attendu in go, attendu
     assert "\033[" not in go and "\033[" in T.rendu("go", w=60, couleur=True)
 
@@ -115,3 +118,11 @@ def test_envoi_mono_echappe_le_html(monkeypatch):
     monkeypatch.setattr(config, "TELEGRAM_CHAT", "1")
     assert telegram.envoyer("a < b & c", session=S(), mono=True)
     assert envoye["parse_mode"] == "HTML" and "<pre>a &lt; b &amp; c</pre>" in envoye["text"]
+
+
+
+def test_tresor_dans_les_marches_lies():
+    _remplir(time.time())
+    for w in (36, 80):
+        wei = T.rendu("wei", w=w, couleur=False)
+        assert "TRÉSOR US" in wei and "Taux réel 10 ans 1.91 %" in wei and "Inflation attendue 10 ans 2.21 %" in wei

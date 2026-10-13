@@ -90,6 +90,19 @@ class _Rep:
         pass
 
 
+CSV_NOMINAL = 'Date,"2 Yr","10 Yr"\n' + "\n".join(
+    f"01/{j:02d}/2026,{4.0 + j / 100:.2f},{4.5 + j / 50:.2f}" for j in range(2, 30))
+CSV_REEL = 'Date,"5 YR","10 YR"\n' + "\n".join(f"01/{j:02d}/2026,1.50,{2.0 + j / 100:.2f}" for j in range(2, 30))
+
+
+class _RepTexte:
+    def __init__(self, texte):
+        self.text = texte
+
+    def raise_for_status(self):
+        pass
+
+
 class _Session:
     def get(self, url, params=None, headers=None, timeout=None):
         if "finance.yahoo" in url:
@@ -101,6 +114,8 @@ class _Session:
         if "cftc" in url:
             return _Rep([{"report_date_as_yyyy_mm_dd": f"2025-{m:02d}-07T00:00:00.000", "m_money_positions_long_all": "150000",
                           "m_money_positions_short_all": str(10000 * m), "open_interest_all": "400000"} for m in range(1, 13)])
+        if "home.treasury.gov" in url:
+            return _RepTexte(CSV_REEL if "real" in params["type"] else CSV_NOMINAL)
         if "fundingRate" in url:                                             # 10 relevés, puis plus rien
             servi, self.servi = getattr(self, "servi", False), True
             return _Rep([] if servi else [{"fundingTime": params["startTime"] + i * 28_800_000, "fundingRate": "0.0001"}
@@ -137,3 +152,22 @@ def test_croissance_de_la_memoire_relevee_chaque_heure():
     assert "observations de veille : 25 · +25 · +25" in texte and "pronostics jugés" in texte
     base.ecrire("memoire:releves", [])
     assert "pas encore de relevé" in A.texte_memoire(t)
+
+
+
+def test_tresor_americain_taux_reels_sans_regard_vers_le_futur():
+    import calendar
+    from armee_or import tresor
+    fin_janvier = calendar.timegm((2026, 1, 20, 12, 0, 0))
+    bilan = tresor.rattraper(_Session(), maintenant=fin_janvier)
+    t, v = A.serie("tresor:reel_10a")
+    assert bilan["tresor:reel_10a"] == len(t) and len(t) > 10
+    assert t[0] == calendar.timegm((2026, 1, 2, 0, 0, 0)) + tresor.DELAI_CONNU_S                 # connu le lendemain, 6 h UTC
+    assert t[-1] <= fin_janvier                                                         # rien d'après « maintenant »
+    ti, vi = A.serie("tresor:inflation_10a")
+    assert abs(vi[0] - ((4.5 + 2 / 50) - (2.0 + 2 / 100))) < 1e-9                       # nominal − réel
+    r = base.lire("tresor")
+    assert r["date"] == "2026-01-19" and abs(r["reel_10a_5j"] - 0.05) < 1e-9
+    assert "Taux réel 10 ans 2.19 %" in tresor.texte()
+    defs = A.definitions()
+    assert {"taux_reel_10a_5j", "inflation_attendue_5j", "pente_10_2_5j", "taux_reel_10a_ecart"} <= set(defs)

@@ -18,6 +18,15 @@ case "$CMD" in
   veille) en_bots "$PY -m armee_or veille" ;;
   apprentissage) en_bots "$PY -m armee_or apprentissage" ;;
   verif) en_bots "$PY -m armee_or verif" ;;
+  brief) en_bots "$PY -m armee_or brief" ;;
+  sauvegarde) en_bots "$PY -m armee_or sauvegarde" ;;
+  restaurer)
+    echo "Restauration : l'armée s'arrête le temps de l'opération (tes autres bots continuent)."
+    systemctl stop armee-or-chef armee-or-flux
+    runuser -u bots -- bash -c 'cd "$1" && shift && exec .venv/bin/python -m armee_or restaurer "$@"' _ "$DOSSIER" "${@:2}"
+    RC=$?; systemctl start armee-or-flux armee-or-chef; [ $RC -eq 0 ] && echo "Armée relancée." || echo "Échec : rien n'a été modifié si le fichier était illisible. Armée relancée."; exit $RC ;;
+  risque) [[ "${2:-}" =~ ^(reprendre)?$ ]] || { echo "Usage : or risque [reprendre]"; exit 1; }; en_bots "$PY -m armee_or risque ${2:-}" ;;
+  alerte|alertes) runuser -u bots -- bash -c 'cd "$1" && shift && exec .venv/bin/python -m armee_or "$@"' _ "$DOSSIER" "$CMD" "${@:2}" ;;
   pause|reprise) en_bots "$PY -m armee_or commande $1" ;;
   test) en_bots "$PY -m armee_or test" ;;
   journal) echo "Journal en direct (Ctrl+C pour quitter)"; tail -n 60 -f "$DOSSIER/runtime/or.log" ;;
@@ -70,6 +79,10 @@ TERMINAL DE L'OR (codes courts, comme un terminal financier) :
   or rv · or niv   or / argent sur 10 ans · niveaux clés
   or cot · or des · or risk   spéculateurs · fiche instrument · compte et permis
   or codes         tous les codes
+  or risque        perte du jour et coupe-circuit · or risque reprendre : feu vert après une coupure
+  or sauvegarde    sauvegarder maintenant (sinon chaque nuit vers 3 h) · or restaurer [code] : restauration
+  or brief         brief du matin (envoyé seul chaque jour de semaine à 8 h sur Telegram)
+  or alerte 4200   alerte Telegram quand l'or touche 4 200 $ (ou +1%, -0.5%) · or alertes · or alerte suppr 2
 
 Armée de l'or (indépendante de tes autres bots) :
   or etat          rapport : cours en direct, rythme, marchés liés, pronostics, comptes papier, santé des bots

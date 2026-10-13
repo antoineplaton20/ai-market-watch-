@@ -20,7 +20,7 @@ import time
 
 import numpy as np
 
-from . import base, config, indicateurs as I, mt5, pronostiqueurs as P, strategie as S, telegram, veille
+from . import base, config, indicateurs as I, mt5, pronostiqueurs as P, risque, strategie as S, telegram, veille
 
 EQUIPES = {
     "4h": {"magic": 770004, "tf": "4h", "nom": "décisions 4 h", "duree_h": S.UNITES["4h"][0] * S.UNITES["4h"][1]},
@@ -274,6 +274,15 @@ def bot_mt5(chef):
                              "ordre. Règle un compte démo avec « or mt5 compte ».", 6 * 3600, important=True)
         return "compte réel détecté : aucun ordre"
 
+    # 0) gestionnaire de risque central : perte du jour, baisse depuis le sommet
+    etat_risque, evenement = risque.controler(compte)
+    if evenement:
+        fermees = fermer_tout(f"risque {evenement}")
+        telegram.envoyer(("⛔ COUPE-CIRCUIT" if evenement == "coupe" else "🛑 Limite de perte du jour atteinte")
+                         + f" : {etat_risque['raison']}. {len(fermees)} position(s) de l'armée fermée(s). "
+                         + ("Plus aucun ordre jusqu'à ton feu vert : /or_risque_reprendre" if evenement == "coupe"
+                            else "Plus aucun ordre jusqu'à demain."), important=True)
+
     # 1) suivi des positions : fermeture à l'horizon, positions disparues (stop touché ou fermeture manuelle)
     positions = {p["ticket"]: p for p in mt5.appel("positions")}
     suivi = base.lire("mt5:suivi", {}) or {}
@@ -317,6 +326,9 @@ def bot_mt5(chef):
     # 2) nouvelles positions
     if chef.pause or base.lire("mt5:pause"):
         return "; ".join(msgs + ["ordres en pause"])
+    permis_risque, raison_risque = risque.autorise(etat_risque)
+    if not permis_risque:
+        return "; ".join(msgs + [raison_risque])
     annonce = veille.evenement_proche()
     if annonce:                                           # annonce économique majeure : ni avant ni pendant la secousse
         return "; ".join(msgs + [f"annonce « {annonce['titre']} » : aucun nouvel ordre de 15 min avant à 15 min après"])
@@ -530,6 +542,7 @@ def rapport_mt5():
     lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
                   f" · {regle} · filtre de tendance {'actif' if filtre_tendance_actif() else 'arrêté'}")
     lignes.append(texte_permis())
+    lignes.append(risque.texte())
     for t, s in (base.lire("mt5:suivi", {}) or {}).items():
         reste = max(0, s["fin"] - time.time()) / 3600
         lignes.append(f"• {EQUIPES[s['equipe']]['nom']} : {'ACHAT' if s['sens'] > 0 else 'VENTE'} {s['volume']:g} lot à "

@@ -181,6 +181,18 @@ Inspiré des terminaux financiers professionnels : un écran par **code court**,
 - Sur Telegram, les mêmes écrans s'ouvrent avec `/or_go`, `/or_gp_4h`, `/or_rv`, `/or_corr`, `/or_wei`, etc. Ils sont en police à largeur fixe et calibrés pour un iPhone (36 colonnes).
 - Les codes s'écrivent en minuscules ou en majuscules (`or GO`). L'écran s'adapte à la largeur de Termius : tourne le téléphone pour plus de détails.
 
+## Alertes, brief, risque, sauvegardes, Trésor US
+| Fonction | Telegram | Termius | Détail |
+|---|---|---|---|
+| **Alertes de prix** | `/or_alerte 4200` · `/or_alerte +1%` · `/or_alertes` · `/or_alerte_suppr 2` | `or alerte 4200` · `or alertes` | Vérifiées toutes les 2 s ; message important dès que l'or touche le prix, puis l'alerte est retirée (20 au maximum). |
+| **Brief du matin** | `/or_brief` | `or brief` | Envoyé seul chaque jour de semaine à 8 h (Paris) : nuit asiatique, annonces du jour, niveaux, tendances, marchés et taux réel, titres, état de l'armée. |
+| **Gestionnaire de risque** | `/or_risque` · `/or_risque_reprendre` | `or risque` · `or risque reprendre` | Perte du jour au-delà de 1 % : positions de l'armée fermées, plus d'ordre jusqu'au lendemain. Baisse de 5 % depuis le plus haut : **coupe-circuit**, tout est fermé et rien ne repart sans ton feu vert. Réglable (`OR_RISQUE_PERTE_JOUR_PCT`, `OR_RISQUE_BAISSE_MAX_PCT`). |
+| **Sauvegardes** | `/or_sauvegarde` | `or sauvegarde` · `or restaurer [code]` | Chaque nuit vers 3 h : copie complète sur le serveur (3 gardées) et sauvegarde essentielle (tout sauf les bougies, re-téléchargeables) envoyée sur Telegram avec son code de restauration. Le journal des bots est limité à 7 jours. |
+| **Trésor US** | `/or_wei` | `or wei` | Taux officiels quotidiens depuis 10 ans : taux réel 10 ans, nominal 10 ans, inflation attendue, pente 10 − 2 ans. Ils passent l'examen d'entrée comme les autres signaux. |
+
+- Serveur perdu ? Sur le nouveau serveur, installe l'armée, puis tape `or restaurer CODE` avec le code reçu sous la dernière sauvegarde Telegram.
+- Les réserves du fonds GLD et les chiffres publiés des annonces ne sont pas disponibles gratuitement, ils ne sont donc pas suivis.
+
 ## Réactivité
 - Le chef d'orchestre passe **chaque seconde**.
 - Les travaux lents (sources internet, gros calculs) tournent dans leurs propres fils : une source lente ne retarde jamais la sentinelle éclair ni l'exécutant MT5.

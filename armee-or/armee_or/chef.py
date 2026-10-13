@@ -22,6 +22,7 @@ import numpy as np
 
 from . import apprentissage, archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
     levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, terminal, veille
+from . import alertes, brief, risque, sauvegarde
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -182,6 +183,11 @@ def bot_actualites(chef):
 
 def bot_cot(chef):
     return veille.surveiller_cot()
+
+
+def bot_alertes(chef):
+    n = alertes.verifier()
+    return f"{n} alerte(s) déclenchée(s)" if n else f"{len(base.lire(alertes.CLE) or [])} alerte(s) en attente"
 
 
 def bot_archive_veille(chef):
@@ -596,6 +602,16 @@ def bot_commandes(chef):
                 telegram.envoyer(f"💶 MT5 : prise de gain {f'dès +{montant:g} €' if montant else 'arrêtée'}.")
             else:
                 telegram.envoyer("Montant inconnu : /or_gain_3 (en euros) ou /or_gain_off.")
+        elif c in ("/or_risque", "risque"):
+            telegram.envoyer("🛡 " + risque.texte())
+        elif c in ("/or_risque_reprendre", "risque reprendre"):
+            telegram.envoyer(risque.reprendre(), True)
+        elif c in ("/or_sauvegarde", "sauvegarde"):
+            telegram.envoyer(sauvegarde.texte())
+        elif c in ("/or_brief", "brief"):
+            telegram.envoyer(brief.texte_brief())
+        elif c.startswith("/or_alerte"):
+            telegram.envoyer(alertes.commande(c))
         elif c.startswith("/or_") and c[4:].split("_")[0] in terminal.ECRANS:
             code, *reste = c[4:].split("_")
             telegram.envoyer(terminal.rendu(code, *reste, w=TELEGRAM_COLONNES, couleur=False), mono=True)
@@ -764,6 +780,9 @@ class Chef:
         self.bots = [
             Bot("Vigie du cours", "vigie", 10, bot_vigie, fond=True),
             Bot("Sentinelle éclair", "vigie", 2, bot_eclair),
+            Bot("Alertes de prix", "vigie", 2, bot_alertes),
+            Bot("Brief du matin", "rapporteur", 60, lambda chef: brief.bot_brief(), fond=True),
+            Bot("Sauvegarde de nuit", "archiviste", 600, lambda chef: sauvegarde.bot_nuit(), fond=True),
             Bot("Niveaux clés", "analyste", 10, bot_niveaux),
             Bot("Tendance multi-unités", "analyste", 60, bot_tendances, fond=True),
             Bot("Microstructure Binance", "vigie", 30, bot_microstructure, fond=True),

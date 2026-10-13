@@ -21,7 +21,8 @@ FICHES = [
      "usage": "Compte de fond « tendance 10 mois » comparé à « garder l'or ».", "mesure": "Voir ci-dessus."},
     {"theme": "Or et macroéconomie", "reference": "Erb & Harvey — « The Golden Dilemma », Financial Analysts "
      "Journal, 2013", "idee": "Le prix réel de l'or varie beaucoup ; il est lié aux taux d'intérêt réels et n'est "
-     "une protection contre l'inflation que sur de très longues durées.", "usage": "Vigie des marchés liés (taux US, dollar).",
+     "une protection contre l'inflation que sur de très longues durées.", "usage": "Vigie des marchés liés (taux US, dollar) ; taux réel 10 ans officiel du Trésor américain "
+     "(et inflation attendue, pente des taux) candidat à l'examen d'entrée.",
      "mesure": "Corrélation des 60 derniers jours recalculée à chaque passage."},
     {"theme": "Or valeur refuge", "reference": "Baur & Lucey — « Is Gold a Hedge or a Safe Haven? », Financial "
      "Review, 2010", "idee": "L'or protège pendant les chutes brutales des actions (quelques jours), pas toujours au-delà.",

@@ -278,6 +278,9 @@ def ecran_go(w=None, maintenant=None):
                 morceaux.append(f"{nom} {_n(x['dernier'], d)} {_var(x['var_1j'], '{:+.1f}')}")
         if mk.get("ratio_or_argent"):
             morceaux.append(f"OR/ARG {mk['ratio_or_argent']:.1f}")
+        tr = base.lire("tresor") or {}
+        if tr.get("reel_10a") is not None:
+            morceaux.append(f"TAUX RÉEL 10A {tr['reel_10a']:.2f} " + _var(tr.get("reel_10a_5j"), "{:+.2f}", " pt/5j"))
         L += _a_la_ligne(morceaux, w)
     ms = base.lire("microstructure")
     if ms:
@@ -425,6 +428,7 @@ def ecran_wei(w=None):
             L += _a_la_ligne([_n(x["dernier"]), "1 j " + _var(x["var_1j"]), "5 j " + _var(x["var_5j"]),
                               f"corr {corr}"], w, "  ")
         L.append(_c(GRIS, _coupe(f"Contexte pour l'or : {mk['contexte']:+.2f} sur ±1", w)))
+        L += _tresor(w)
         L.append(_pied(w))
         return "\n".join(L)
     wn = max(10, w - 38)
@@ -435,8 +439,22 @@ def ecran_wei(w=None):
             f"{x['var_1j']:+.2f}")) + _var(x["var_1j"], suffixe="") + " " + " " * max(0, 8 - len(
                 f"{x['var_5j']:+.2f}")) + _var(x["var_5j"], suffixe="") + f"  {corr}")
     L.append(_c(GRIS, _coupe(f"Contexte pour l'or (dollar, taux, argent…) : {mk['contexte']:+.2f} sur ±1", w)))
+    L += _tresor(w)
     L.append(_pied(w))
     return "\n".join(L)
+
+
+def _tresor(w):
+    from . import tresor
+    t = base.lire("tresor") or {}
+    if t.get("reel_10a") is None:
+        return []
+    L = [section(f"TRÉSOR US · officiel · {t.get('date')}", w)]
+    for nom, lib in tresor.NOMS.items():
+        if t.get(nom) is not None:
+            L += _a_la_ligne([f"{lib} {t[nom]:.2f} %", "5 séances " + _var(t.get(f"{nom}_5j"), "{:+.2f}", " pt")], w)
+    L.append(_c(GRIS, _coupe("Taux réel en hausse : en général défavorable à l'or (il ne rapporte rien).", w)))
+    return L
 
 
 def ecran_corr(w=None):

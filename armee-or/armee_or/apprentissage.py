@@ -6,6 +6,8 @@ professionnels : rien n'influence les décisions sans avoir fait ses preuves, me
    horaire, 10 ans de rapports COT (CFTC), historique des taux de financement du perpétuel PAXG (Binance).
    Chaque valeur est rangée à l'instant où elle était CONNUE (clôture de la bougie, publication du rapport…).
 
+   Taux officiels du Trésor américain (taux réel et nominal à 10 ans, inflation attendue, pente) depuis 10 ans.
+
 2. CANDIDATS : chaque série observée devient un pronostiqueur candidat. Examen d'entrée, pour chaque unité de
    temps : calibration glissante (comme les autres pronostiqueurs), puis test de Diebold et Mariano (1995) contre
    le naïf, corrigé pour le nombre de candidats testés (Bonferroni ; Harvey, Liu et Zhu 2016 : exiger |t| ≥ 3).
@@ -138,6 +140,11 @@ def rattraper_historique(session=None, maintenant=None):
         bilan["financement"] = enregistrer("binance:financement_paxg_pct", pts)
     except Exception as ex:
         erreurs["financement"] = type(ex).__name__
+    try:                                                          # taux officiels du Trésor américain
+        from . import tresor
+        bilan.update(tresor.rattraper(session, maintenant))
+    except Exception as ex:
+        erreurs["tresor"] = type(ex).__name__
     base.ecrire("apprentissage:rattrapage", {"ts": maintenant, "bilan": bilan, "erreurs": erreurs})
     return bilan, erreurs
 
@@ -160,6 +167,14 @@ def _variation(v, k):
     return out
 
 
+def _difference(v, k):
+    """Variation en points (taux : peuvent être négatifs, pas de logarithme)."""
+    out = np.full(len(v), np.nan)
+    if len(v) > k:
+        out[k:] = v[k:] - v[:-k]
+    return out
+
+
 def _zscore(v, n=60):
     out = np.full(len(v), np.nan)
     for i in range(n, len(v)):
@@ -179,6 +194,14 @@ def definitions():
         d[f"{nom}_4h"] = (f"Variation sur 4 heures : {nom}", f"yahoo:{nom}:1h", lambda v: _variation(v, 4))
     d["cot_position"] = ("Position nette des gros spéculateurs (COT, % des positions)", "cot:net_pct", lambda v: v)
     d["cot_variation"] = ("Variation hebdomadaire de cette position (COT)", "cot:variation_pct", lambda v: v)
+    d["taux_reel_10a_5j"] = ("Variation sur 5 séances du taux réel 10 ans (Trésor US)", "tresor:reel_10a",
+                             lambda v: _difference(v, 5))
+    d["taux_reel_10a_ecart"] = ("Taux réel 10 ans : écart à sa moyenne de 60 séances", "tresor:reel_10a",
+                                lambda v: _zscore(v, 60))
+    d["inflation_attendue_5j"] = ("Variation sur 5 séances de l'inflation attendue à 10 ans", "tresor:inflation_10a",
+                                  lambda v: _difference(v, 5))
+    d["pente_10_2_5j"] = ("Variation sur 5 séances de la pente 10 ans − 2 ans", "tresor:pente_10_2",
+                          lambda v: _difference(v, 5))
     d["financement_paxg"] = ("Taux de financement du perpétuel PAXG", "binance:financement_paxg_pct", lambda v: v)
     for k, desc in (("acheteurs_pct", "Part de comptes acheteurs (perpétuel or)"),
                     ("desequilibre_pct", "Déséquilibre du carnet PAXG"),
