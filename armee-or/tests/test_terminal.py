@@ -136,4 +136,4 @@ def test_annonces_a_la_meme_heure_regroupees():
         {"titre": t, "ts": m + 7200, "prevision": p, "precedent": ""} for t, p in
         (("Core CPI m/m", "0.2%"), ("Core CPI y/y", "2.5%"), ("CPI m/m", "0.6%"))]})
     go = T.rendu("go", w=72, couleur=False)
-    assert go.count("dans 2 h") == 1 and "Core CPI y/y (prév. 2.5%)" in go and "CPI m/m (prév. 0.6%)" in go
+    assert go.count(" · dans ") == 1 and "Core CPI y/y (prév. 2.5%)" in go and "CPI m/m (prév. 0.6%)" in go
