@@ -126,3 +126,14 @@ def test_tresor_dans_les_marches_lies():
     for w in (36, 80):
         wei = T.rendu("wei", w=w, couleur=False)
         assert "TRÉSOR US" in wei and "Taux réel 10 ans 1.91 %" in wei and "Inflation attendue 10 ans 2.21 %" in wei
+
+
+
+def test_annonces_a_la_meme_heure_regroupees():
+    m = time.time()
+    _remplir(m)
+    base.ecrire("calendrier", {"ts": m, "evenements": [
+        {"titre": t, "ts": m + 7200, "prevision": p, "precedent": ""} for t, p in
+        (("Core CPI m/m", "0.2%"), ("Core CPI y/y", "2.5%"), ("CPI m/m", "0.6%"))]})
+    go = T.rendu("go", w=72, couleur=False)
+    assert go.count("dans 2 h") == 1 and "Core CPI y/y (prév. 2.5%)" in go and "CPI m/m (prév. 0.6%)" in go

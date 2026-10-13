@@ -298,13 +298,19 @@ def ecran_go(w=None, maintenant=None):
             L += _a_la_ligne(morceaux, w)
     cal = base.lire("calendrier")
     if cal:
-        a_venir = [e for e in cal["evenements"] if e["ts"] > m - 900][:3]
+        groupes = []                                            # annonces à la même heure : un seul horaire
+        for e in (e for e in cal["evenements"] if e["ts"] > m - 900):
+            if groupes and groupes[-1][0] == e["ts"]:
+                groupes[-1][1].append(e)
+            elif len(groupes) < 3:
+                groupes.append((e["ts"], [e]))
+        a_venir = groupes
         L.append(section("AGENDA (Paris)", w))
-        for e in a_venir:
-            reste = e["ts"] - m
+        for ts, evts in groupes:
+            reste = ts - m
             quand = "EN COURS" if reste <= 0 else f"dans {int(reste // 3600)} h {int(reste % 3600 // 60):02d}"
-            L += _a_la_ligne([_c(AMBRE, _heure(e["ts"], "%a %H:%M")), _coupe(e["titre"], w),
-                              f"prév. {e['prevision'] or '?'}", _c(ROUGE if 0 < reste <= 1800 else GRIS, quand)], w)
+            L += _a_la_ligne([_c(AMBRE, _heure(ts, "%a %H:%M")), _c(ROUGE if 0 < reste <= 1800 else GRIS, quand)]
+                             + [_coupe(f"{e['titre']} (prév. {e['prevision'] or '?'})", w) for e in evts], w)
         if not a_venir:
             L.append(_c(GRIS, "aucune annonce à fort impact d'ici la fin de semaine"))
     ac = base.lire("actualites")
