@@ -161,6 +161,26 @@ Sur la même période, **garder l'or a fait ×2,35**. Depuis 2000, le facteur es
 - **Binance** a cessé de servir les résidents de l'UE au 1er juillet 2026 (MiCA), et XAUUSDT n'y est pas ouvert aux Européens. Les flux publics restent lisibles depuis le serveur, ce qui suffit à l'armée, qui ne passe aucun ordre.
 - « Aucune erreur possible » n'existe pas. Ce qui existe : chaque erreur est isolée, relancée, comptée et signalée au chef, puis sur Telegram.
 
+## Terminal de l'or (Termius et Telegram)
+Inspiré des terminaux financiers professionnels : un écran par **code court**, ambre sur fond noir. Tout est lu dans la base de l'armée, donc l'affichage est instantané.
+
+| Code | Écran |
+|---|---|
+| `or go` | **Écran de lancement en direct** (rafraîchi toutes les 2 s, Ctrl+C pour quitter) : cours et variation du jour, prix en €/once, achat/vente MT5, séances ouvertes, graphique 24 h, niveaux clés, tendances, marchés liés, flux Binance, agenda, actualités, état de l'armée |
+| `or gp 4h` | Graphique (15m, 1h, 4h, 1d) avec haut, bas, ATR, RSI |
+| `or gip` | Intraday minute par minute |
+| `or eco` | Agenda des annonces américaines à fort impact, compte à rebours |
+| `or top` | Actualités de l'or, thèmes critiques en rouge |
+| `or wei` / `or corr` | Marchés liés (1 j, 5 j) et corrélations avec l'or sur 60 jours |
+| `or rv` | Valeur relative or / argent sur 10 ans : rang, écart à la moyenne |
+| `or niv` | Échelle des résistances et supports avec distances |
+| `or cot` | Gros spéculateurs (CFTC) et rang sur 3 ans |
+| `or des` | Fiche de l'instrument : courtier, contrat, frais mesurés, horaires en heure de Paris |
+| `or risk` | Compte, positions, permis de trader |
+
+- Sur Telegram, les mêmes écrans s'ouvrent avec `/or_go`, `/or_gp_4h`, `/or_rv`, `/or_corr`, `/or_wei`, etc. Ils sont en police à largeur fixe et calibrés pour un iPhone (36 colonnes).
+- Les codes s'écrivent en minuscules ou en majuscules (`or GO`). L'écran s'adapte à la largeur de Termius : tourne le téléphone pour plus de détails.
+
 ## Réactivité
 - Le chef d'orchestre passe **chaque seconde**.
 - Les travaux lents (sources internet, gros calculs) tournent dans leurs propres fils : une source lente ne retarde jamais la sentinelle éclair ni l'exécutant MT5.

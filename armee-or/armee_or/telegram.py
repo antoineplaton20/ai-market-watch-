@@ -18,8 +18,14 @@ PREFIXE = "🟡 [or] "
 LIMITE = 4000
 
 
-def envoyer(texte, important=False, session=None):
-    texte = (PREFIXE + texte)[:LIMITE]
+def envoyer(texte, important=False, session=None, mono=False):
+    """mono=True : écran du terminal en police à largeur fixe (colonnes et graphiques alignés)."""
+    if mono:
+        import html
+        corps = html.escape(texte)[:LIMITE - 40]
+        texte, extra = PREFIXE + "<pre>" + corps + "</pre>", {"parse_mode": "HTML"}
+    else:
+        texte, extra = (PREFIXE + texte)[:LIMITE], {}
     _log.info(texte.replace("\n", " | ")[:500])
     if not (config.TELEGRAM_JETON and config.TELEGRAM_CHAT):
         return False
@@ -27,7 +33,7 @@ def envoyer(texte, important=False, session=None):
         import requests
         s = session or requests
         s.post(f"https://api.telegram.org/bot{config.TELEGRAM_JETON}/sendMessage",
-               json={"chat_id": config.TELEGRAM_CHAT, "text": texte, "disable_notification": not important},
+               json={"chat_id": config.TELEGRAM_CHAT, "text": texte, "disable_notification": not important, **extra},
                timeout=15)
         return True
     except Exception as ex:
@@ -61,7 +67,9 @@ def alerte_rare(cle, texte, fenetre_s=3600, important=False):
     return envoyer(texte, important)
 
 
-MENU = [("or", "Rapport complet"), ("or_veille", "Veille : tendances, niveaux, flux, COT, annonces, actus"),
+MENU = [("or_go", "Terminal : écran de lancement"), ("or_gp", "Terminal : graphique 1 h (or_gp_4h, _1d…)"),
+        ("or_rv", "Terminal : or / argent"), ("or_corr", "Terminal : corrélations"), ("or_wei", "Terminal : marchés liés"),
+        ("or", "Rapport complet"), ("or_veille", "Veille : tendances, niveaux, flux, COT, annonces, actus"),
         ("or_apprentissage", "Ce que l'armée a appris (journal)"),
         ("or_verif", "Vérifier : croissance de la mémoire et diagnostic des trades"),
         ("or_calendrier", "Annonces économiques à fort impact"), ("or_niveaux", "Niveaux clés (supports, résistances)"),

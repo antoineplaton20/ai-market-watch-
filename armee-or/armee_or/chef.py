@@ -21,7 +21,7 @@ import traceback
 import numpy as np
 
 from . import apprentissage, archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
-    levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, veille
+    levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, terminal, veille
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -596,6 +596,9 @@ def bot_commandes(chef):
                 telegram.envoyer(f"💶 MT5 : prise de gain {f'dès +{montant:g} €' if montant else 'arrêtée'}.")
             else:
                 telegram.envoyer("Montant inconnu : /or_gain_3 (en euros) ou /or_gain_off.")
+        elif c.startswith("/or_") and c[4:].split("_")[0] in terminal.ECRANS:
+            code, *reste = c[4:].split("_")
+            telegram.envoyer(terminal.rendu(code, *reste, w=TELEGRAM_COLONNES, couleur=False), mono=True)
         elif c in ("/or_maj", "maj"):
             telegram.envoyer(demander_maj())
         elif c in ("/or_journal", "journal"):
@@ -606,6 +609,7 @@ def bot_commandes(chef):
     return ("commandes : " + ", ".join(faites)) if faites else "aucune commande"
 
 
+TELEGRAM_COLONNES = 36                                          # largeur d'un écran d'iPhone en police fixe
 UNITE_MAJ = "/etc/systemd/system/armee-or-maj.path"             # installée par installer_or.sh (service root)
 
 

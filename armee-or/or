@@ -6,7 +6,10 @@ en_bots() { runuser -u bots -- bash -c "cd '$DOSSIER' && $*"; }
 SERVICES="armee-or-flux armee-or-chef"
 [ -f /etc/systemd/system/armee-or-mt5.service ] && SERVICES="armee-or-mt5 $SERVICES"
 [ "$(id -u)" -eq 0 ] || { echo "Lance les commandes « or » en root (c'est le cas par défaut)."; exit 1; }
-case "${1:-aide}" in
+CMD="${1:-aide}"; CMD="${CMD,,}"                       # GO, Gp, go : même code
+case "$CMD" in
+  go|gp|gip|eco|top|wei|corr|rv|niv|cot|des|risk|codes)
+    runuser -u bots -- bash -c 'cd "$1" && shift && exec .venv/bin/python -m armee_or terminal "$@"' _ "$DOSSIER" "$CMD" "${@:2}" ;;
   etat|rapport) en_bots "$PY -m armee_or etat"; echo; for n in $(echo $SERVICES | sed 's/armee-or-//g'); do systemctl is-active --quiet armee-or-$n && echo "● armee-or-$n en marche" || echo "● armee-or-$n ARRÊTÉ"; done ;;
   levier) en_bots "$PY -m armee_or levier" ;;
   bilan) echo "Calcul sur tout l'historique (quelques secondes)..."; en_bots "$PY -m armee_or bilan" ;;
@@ -59,6 +62,15 @@ case "${1:-aide}" in
     [ -f "$NOUVEAU/installer_or.sh" ] || { echo "Ce zip ne contient pas l'armée de l'or."; exit 1; }
     bash "$NOUVEAU/installer_or.sh"; rm -rf "$TMP" ;;
   *) cat <<AIDE
+TERMINAL DE L'OR (codes courts, comme un terminal financier) :
+  or go            écran de lancement EN DIRECT (Ctrl+C pour quitter)
+  or gp 4h         graphique (15m, 1h, 4h, 1d) · or gip : intraday minute
+  or eco · or top  agenda des annonces · actualités
+  or wei · or corr marchés liés · corrélations avec l'or
+  or rv · or niv   or / argent sur 10 ans · niveaux clés
+  or cot · or des · or risk   spéculateurs · fiche instrument · compte et permis
+  or codes         tous les codes
+
 Armée de l'or (indépendante de tes autres bots) :
   or etat          rapport : cours en direct, rythme, marchés liés, pronostics, comptes papier, santé des bots
   or levier        fiches de levier x1 à x50 : marge, liquidation, perte au stop, risque historique

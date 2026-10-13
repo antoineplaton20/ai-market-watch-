@@ -72,6 +72,9 @@ def main(argv=None):
     elif cmd == "apprentissage":
         from . import apprentissage
         print(apprentissage.journal())
+    elif cmd == "terminal":
+        from . import terminal
+        return terminal.main(argv[1:])
     elif cmd == "verif":
         from . import apprentissage, executant
         print(apprentissage.texte_memoire() + "\n\n" + executant.rapport_trades())
