@@ -262,8 +262,12 @@ def bot_mt5(chef):
     base.ecrire("mt5:etat", {**etat, "ts": time.time()})
     compte = etat.get("compte")
     if not etat["connecte"] or not compte:
-        telegram.alerte_rare("mt5-connexion", f"🔴 MT5 non connecté : {etat.get('erreur') or 'en attente du serveur'}. "
-                             "Nouvel essai automatique.", 3600)
+        erreur = etat.get("erreur") or "en attente du serveur"
+        refus = "REFUSE" in erreur                          # identifiants refusés : seule une action de ta part règle ça
+        telegram.alerte_rare("mt5-connexion", f"🔴 MT5 non connecté : {erreur}. "
+                             + ("Ouvre ce compte dans l'app MetaTrader 5 de l'iPhone : s'il y est refusé aussi, le "
+                                "compte démo a expiré (crée-en un nouveau). Rappel dans 12 h." if refus
+                                else "Nouvel essai automatique."), 12 * 3600 if refus else 3600)
         return f"MT5 non connecté ({etat.get('erreur')})"
     if not compte["demo"]:
         telegram.alerte_rare("mt5-reel", "⛔ Le compte MT5 connecté n'est PAS un compte démo : l'armée ne passe AUCUN "

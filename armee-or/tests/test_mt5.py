@@ -612,3 +612,16 @@ def test_sorties_et_taux_de_reussite_necessaire():
     assert "prise de gain 3 (moy. +3.10)" in texte and "stop 1 (moy. -30.00)" in texte
     assert "horizon 1" in texte and "à la main ou courtier 1" in texte
     assert "il faut 79 % de trades gagnants pour être à zéro ; réalisé : 50 %" in texte
+
+
+
+def test_identifiants_refuses_alerte_espacee(faux, monkeypatch):
+    alertes = []
+    monkeypatch.setattr(executant.telegram, "alerte_rare", lambda cle, texte, fenetre=3600, **k: alertes.append(
+        (cle, texte, fenetre)) or True)
+    faux.initialize = lambda **kw: False
+    faux.terminal_info = lambda: None
+    faux.last_error = lambda: (-6, "Terminal: Authorization failed")
+    executant.bot_mt5(_chef())
+    cle, texte, fenetre = alertes[-1]
+    assert cle == "mt5-connexion" and "REFUSE" in texte and "iPhone" in texte and fenetre == 12 * 3600
