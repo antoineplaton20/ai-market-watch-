@@ -34,7 +34,8 @@ def appel(op, delai=30, **parametres):
 
 
 PROFILS_COURTS = {"x1": "x1", "x3": "x3", "x5": "x5", "x10": "x10", "x20": "x20 (max. UE)",
-                  "x50": "x50 (max. Binance)", "pro": "pro 1 % risqué"}
+                  "x50": "x50 (max. Binance)", "pro": "pro 1 % risqué",
+                  "agressif": "agressif 3 % risqué"}
 
 
 def nom_profil(texte):

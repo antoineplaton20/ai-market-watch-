@@ -26,7 +26,7 @@ PROFILS = {
     # nom : (mode, valeur) ; « fixe » = notionnel = capital × levier (ce que font beaucoup de débutants)
     "x1": ("fixe", 1), "x3": ("fixe", 3), "x5": ("fixe", 5), "x10": ("fixe", 10),
     "x20 (max. UE)": ("fixe", 20), "x50 (max. Binance)": ("fixe", 50),
-    "pro 1 % risqué": ("risque", 0.01),
+    "pro 1 % risqué": ("risque", 0.01), "agressif 3 % risqué": ("risque", 0.03),
 }
 
 

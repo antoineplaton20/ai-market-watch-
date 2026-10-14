@@ -579,6 +579,25 @@ def bot_commandes(chef):
         elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c == "/or_agressif":
+            telegram.envoyer(("🔥 Mode agressif ACTIF." if executant.mode_agressif() else "Mode agressif arrêté.")
+                             + " Touche : /or_agressif_on ou /or_agressif_off")
+        elif c in ("/or_agressif_on", "mt5_agressif on"):
+            base.ecrire("mt5:agressif", True)
+            base.ecrire("mt5:permis_exige", False)
+            base.ecrire("mt5:entrainement", True)
+            telegram.envoyer("🔥 MODE AGRESSIF pour toutes les équipes MT5 :\n"
+                             "• plus besoin de permis ;\n"
+                             "• décisions 4 h et 1 j : un ordre à chaque penchant du consensus, 3 % du capital risqué ;\n"
+                             f"• entraînement : {executant.MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum chaque heure, "
+                             "prise de gain proportionnelle à la taille ;\n"
+                             "• freins élargis : perte du jour 3 %, coupe-circuit 10 % ;\n"
+                             "• gardés : filtre de tendance, stop, horizon, pause aux annonces, week-end, compte démo.\n"
+                             "/or_agressif_off pour revenir au mode normal.", True)
+        elif c in ("/or_agressif_off", "mt5_agressif off"):
+            base.ecrire("mt5:agressif", False)
+            telegram.envoyer("Mode agressif arrêté : tailles, freins (1 %/jour, 5 %) et décisions normales. Les bots "
+                             "restent actifs sans permis (/or_permis_on pour « que du prouvé »).", True)
         elif c == "/or_permis":
             telegram.envoyer(("🪪 Que du prouvé : aucune équipe ne trade sans permis." if executant.permis_exige() else
                               "🟠 Bots actifs sans preuve : les équipes tradent même sans permis.")

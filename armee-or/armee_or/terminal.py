@@ -338,6 +338,8 @@ def _etat_armee():
             morceaux.append(f"MT5 {'démo' if compte.get('demo') else 'RÉEL'} {_n(compte['equity'])} {compte['currency']}")
         else:
             morceaux.append(_c(ROUGE, "MT5 non connecté"))
+    if base.lire("mt5:agressif"):
+        morceaux.append(_c(ROUGE, "MODE AGRESSIF"))
     morceaux.append(f"{len(base.lire('mt5:suivi', {}) or {})} position(s)")
     if base.lire("pause") or base.lire("mt5:pause"):
         morceaux.append(_c(ROUGE, "EN PAUSE"))

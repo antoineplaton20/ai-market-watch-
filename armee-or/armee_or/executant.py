@@ -33,7 +33,17 @@ MS = {"1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000}
 STOP_ATR = 3.0
 
 
+def mode_agressif():
+    return bool(base.lire("mt5:agressif"))
+
+
+LOT_REFERENCE = 0.01                                 # la prise de gain « +X € » vaut pour 0,01 lot ; proportionnelle au-delà
+MULT_ENTRAINEMENT_AGRESSIF = 2                       # entraînement : 2 fois le lot minimum en mode agressif
+
+
 def profil_actif():
+    if mode_agressif():
+        return "agressif 3 % risqué"
     return mt5.nom_profil(base.lire("mt5:profil") or config.MT5_PROFIL) or "pro 1 % risqué"
 
 
@@ -156,7 +166,10 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
     atr = _atr(eq["tf"])
     stop = prix - sens * STOP_ATR * atr
     if entrainement:
-        lots, explication = specs["volume_min"], f"lot minimum {specs['volume_min']:g} (entraînement)"
+        mult = MULT_ENTRAINEMENT_AGRESSIF if mode_agressif() else 1
+        lots = round(specs["volume_min"] * mult, 8)
+        explication = (f"{lots:g} lot ({mult} × le minimum, mode agressif)" if mult > 1
+                       else f"lot minimum {specs['volume_min']:g} (entraînement)")
         if mt5.appel("marge", sens=sens, volume=lots) > 0.9 * compte["margin_free"]:
             lots, explication = 0.0, "marge insuffisante"
     else:
@@ -164,6 +177,11 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
         taux = _taux_usd(compte.get("currency"))                          # capital converti en dollars (XAUUSD)
         lots, explication = mt5.volume(profil_actif(), compte["equity"] * taux, prix, stop, specs, marge_lot * taux,
                                        compte["margin_free"] * taux)
+        if lots <= 0 and mode_agressif() and marge_lot * specs["volume_min"] <= 0.9 * compte["margin_free"]:
+            lots = specs["volume_min"]                        # agressif : au moins le lot minimum, même au-delà de 3 %
+            perte = abs(prix - stop) * lots * specs["trade_contract_size"] / taux
+            explication = (f"lot minimum {lots:g} (mode agressif : perte au stop ≈ {perte:.0f} "
+                           f"{compte.get('currency', '')}, {perte / compte['equity'] * 100:.1f} % du capital)")
     if lots <= 0:
         _noter(cle, "refus", sens=sens, prix=prix, sl=stop, ok=False, message=explication)
         return f"{eq['nom']} : pas d'ordre ({explication})"
@@ -304,8 +322,9 @@ def bot_mt5(chef):
         else:
             p = positions[int(t)]
             gain = (p["profit"] or 0) + (p["swap"] or 0)
+            seuil_pos = None if seuil is None else seuil * max(1.0, (p["volume"] or 0) / LOT_REFERENCE)
             motif = ("horizon atteint" if time.time() >= s["fin"] else
-                     "gain pris" if seuil is not None and gain >= seuil else None)
+                     "gain pris" if seuil_pos is not None and gain >= seuil_pos else None)
             if not motif:
                 continue
             r = mt5.appel("fermer", ticket=int(t), commentaire=f"armee-or {'fin' if motif[0] == 'h' else 'gain'} "
@@ -343,7 +362,10 @@ def bot_mt5(chef):
     ouvertes = {s["equipe"] for s in suivi.values()}
     for cle in ("4h", "1d"):
         p = base.lire(f"prono:{cle}")
-        if not p or not p["sens"] or not _frais(p, cle, maintenant_ms) or base.lire(f"mt5:fait:{cle}") == p["ts"]:
+        sens = int(p["sens"]) if p and p.get("sens") else 0
+        if p and not sens and mode_agressif() and p.get("p") not in (None, 0.5):
+            sens = 1 if p["p"] > 0.5 else -1                  # agressif : on suit le moindre penchant du consensus
+        if not p or not sens or not _frais(p, cle, maintenant_ms) or base.lire(f"mt5:fait:{cle}") == p["ts"]:
             continue
         base.ecrire(f"mt5:fait:{cle}", p["ts"])                     # une décision = un ordre au plus
         if cle in ouvertes:
@@ -353,15 +375,15 @@ def bot_mt5(chef):
             msgs.append(f"{EQUIPES[cle]['nom']} : horizon après la fermeture du vendredi, décision ignorée")
             continue
         if not a_le_permis(EQUIPES[cle]["tf"]):
-            _noter(cle, "refus", sens=int(p["sens"]), ok=False, message="pas de permis de trader")
+            _noter(cle, "refus", sens=sens, ok=False, message="pas de permis de trader")
             msgs.append(f"{EQUIPES[cle]['nom']} : pas de permis de trader (règle perdante sur l'historique avec les "
                         "frais actuels), décision ignorée")
             continue
-        if contre_tendance(EQUIPES[cle]["tf"], int(p["sens"])):
-            _noter(cle, "refus", sens=int(p["sens"]), ok=False, message="contre la tendance")
+        if contre_tendance(EQUIPES[cle]["tf"], sens):
+            _noter(cle, "refus", sens=sens, ok=False, message="contre la tendance")
             msgs.append(f"{EQUIPES[cle]['nom']} : décision contre la tendance, ignorée")
             continue
-        msgs.append(_ouvrir(cle, int(p["sens"]), compte, set(positions)))
+        msgs.append(_ouvrir(cle, sens, compte, set(positions)))
     if entrainement_actif() and "entrainement" not in ouvertes \
             and ferme_avant_le_week_end(EQUIPES["entrainement"]["duree_h"]):
         p = base.lire("prono:1h")
@@ -551,6 +573,10 @@ def rapport_mt5():
     regle = f"gain pris dès +{g:g} {c['currency']}" if g else "prise de gain arrêtée"
     lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
                   f" · {regle} · filtre de tendance {'actif' if filtre_tendance_actif() else 'arrêté'}")
+    if mode_agressif():
+        lignes.append("🔥 MODE AGRESSIF : décisions à chaque penchant du consensus, 3 % risqué par décision, "
+                      f"entraînement {MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum, freins 3 %/jour et 10 % "
+                      "(/or_agressif_off pour revenir)")
     lignes.append(texte_permis())
     lignes.append(risque.texte())
     for t, s in (base.lire("mt5:suivi", {}) or {}).items():

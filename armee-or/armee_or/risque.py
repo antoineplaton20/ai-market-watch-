@@ -16,7 +16,15 @@ from . import base, config
 
 PERTE_JOUR_PCT = config.nombre("OR_RISQUE_PERTE_JOUR_PCT", 1.0)
 BAISSE_MAX_PCT = config.nombre("OR_RISQUE_BAISSE_MAX_PCT", 5.0)
+AGRESSIF_PERTE_JOUR_PCT, AGRESSIF_BAISSE_MAX_PCT = 3.0, 10.0       # mode agressif : freins plus lâches
 CLE = "risque:etat"
+
+
+def limites():
+    """-> (perte du jour max, baisse max depuis le sommet), en %."""
+    if base.lire("mt5:agressif"):
+        return AGRESSIF_PERTE_JOUR_PCT, AGRESSIF_BAISSE_MAX_PCT
+    return PERTE_JOUR_PCT, BAISSE_MAX_PCT
 
 
 def _jour(ts):
@@ -39,11 +47,12 @@ def controler(compte, maintenant=None):
     e["perte_jour_pct"] = (equite / e["equite_debut_jour"] - 1) * 100 if e["equite_debut_jour"] else 0.0
     e["baisse_pct"] = (equite / e["pic"] - 1) * 100 if e["pic"] else 0.0
     evenement = None
-    if not e.get("coupe") and e["baisse_pct"] <= -BAISSE_MAX_PCT:
+    perte_jour_max, baisse_max = limites()
+    if not e.get("coupe") and e["baisse_pct"] <= -baisse_max:
         e.update(coupe=True, ts_coupe=m, raison=f"baisse de {e['baisse_pct']:.2f} % depuis le sommet "
                                                 f"({e['pic']:.2f})")
         evenement = "coupe"
-    elif not e.get("coupe") and e.get("arret_jour") != jour and e["perte_jour_pct"] <= -PERTE_JOUR_PCT:
+    elif not e.get("coupe") and e.get("arret_jour") != jour and e["perte_jour_pct"] <= -perte_jour_max:
         e.update(arret_jour=jour, raison=f"perte du jour de {e['perte_jour_pct']:.2f} %")
         evenement = "jour"
     e["ts"] = m
@@ -79,5 +88,6 @@ def texte(e=None):
         return "Risque : pas encore mesuré (compte MT5 non connecté)"
     ok, raison = autorise(e)
     etat = "OK" if ok else f"⛔ {raison}"
-    return (f"Risque : jour {e['perte_jour_pct']:+.2f} % (limite -{PERTE_JOUR_PCT:g} %) · depuis le sommet "
-            f"{e['baisse_pct']:+.2f} % (coupe-circuit -{BAISSE_MAX_PCT:g} %) · {etat}")
+    jour_max, baisse_max = limites()
+    return (f"Risque : jour {e['perte_jour_pct']:+.2f} % (limite -{jour_max:g} %) · depuis le sommet "
+            f"{e['baisse_pct']:+.2f} % (coupe-circuit -{baisse_max:g} %) · {etat}")

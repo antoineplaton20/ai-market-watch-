@@ -680,3 +680,51 @@ def test_bots_actifs_sans_permis_sur_demande(faux, monkeypatch):
     monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_permis_on"])
     chef.bot_commandes(_chef())
     assert executant.permis_exige() and "RÉTABLI" in envois[-1]
+
+
+def test_mode_agressif(faux, monkeypatch):
+    from armee_or import risque as R
+    envois = []
+    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_agressif_on"])
+    base.ecrire("mt5:permis_exige", True)
+    chef.bot_commandes(_chef())
+    assert "MODE AGRESSIF" in envois[-1] and executant.mode_agressif() and not executant.permis_exige()
+    assert executant.profil_actif() == "agressif 3 % risqué" and R.limites() == (3.0, 10.0)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    base.ecrire("mt5:entrainement", False)
+    _prono("4h", 0, p=0.53)                                    # simple penchant : ignoré en mode normal
+    executant.bot_mt5(_chef())
+    assert len(faux.positions) == 1 and faux.positions[0].type == faux.ORDER_TYPE_BUY
+    texte = executant.rapport_mt5()
+    assert "MODE AGRESSIF" in texte and "limite -3 %" in texte and "coupe-circuit -10 %" in texte
+    executant.fermer_tout()
+    base.ecrire("mt5:entrainement", True)
+    _prono("1h", 0, p=0.6)
+    executant.bot_mt5(_chef())
+    entr = [p for p in faux.positions if p.magic == executant.EQUIPES["entrainement"]["magic"]]
+    assert entr and entr[0].volume == 0.02                                         # 2 × le lot minimum
+    entr[0].profit = 4.0                                                           # < 2 × 3 € : on garde
+    executant.bot_mt5(_chef())
+    assert entr[0] in faux.positions
+    entr[0].profit = 6.5                                                           # ≥ 6 € : gain pris
+    executant.bot_mt5(_chef())
+    assert entr[0] not in faux.positions
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_agressif_off"])
+    chef.bot_commandes(_chef())
+    assert not executant.mode_agressif() and R.limites() == (1.0, 5.0) and executant.profil_actif() == "pro 1 % risqué"
+
+
+def test_agressif_prend_le_lot_minimum_si_le_risque_depasse(faux):
+    base.ecrire("mt5:agressif", True)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    faux.solde = 2_800.0                                       # petit compte : 1 once au stop > 3 %
+    plat = faux.copy_rates_from_pos
+
+    def volatil(sym, tf, debut, n):
+        r = plat(sym, tf, debut, n)
+        r["high"], r["low"] = r["close"] + 100, r["close"] - 100            # ATR 200 $ : stop à 600 $
+        return r
+    faux.copy_rates_from_pos = volatil
+    texte = executant._ouvrir("1d", 1, mt5.appel("etat")["compte"], set())
+    assert "lot minimum 0.01 (mode agressif" in texte and len(faux.positions) == 1
