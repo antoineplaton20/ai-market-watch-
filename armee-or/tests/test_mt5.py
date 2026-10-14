@@ -662,3 +662,21 @@ def test_coupe_circuit_ferme_tout_et_bloque_les_ordres(faux, monkeypatch):
     nb = len(faux.envois)
     assert "COUPE-CIRCUIT" in executant.bot_mt5(_chef()) and len(faux.envois) == nb   # aucun nouvel ordre
     assert "Risque :" in executant.rapport_mt5()
+
+
+def test_bots_actifs_sans_permis_sur_demande(faux, monkeypatch):
+    envois = []
+    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
+    base.ecrire("mt5:permis", {"1h": {"ok": False, "moities": [{"n": 100, "net_pb": -3.0}, {"n": 100, "net_pb": -1.0}]}})
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    _prono("1h", 0, p=0.60)
+    assert "pas de permis" in executant.bot_mt5(_chef()) and not faux.envois           # que du prouvé (défaut)
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_permis_off"])
+    chef.bot_commandes(_chef())
+    assert "Bots ACTIFS" in envois[-1] and not executant.permis_exige()
+    _prono("1h", 0, p=0.61)
+    executant.bot_mt5(_chef())
+    assert len(faux.envois) == 1 and "NON EXIGÉ" in executant.rapport_mt5()            # l'entraînement trade
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_permis_on"])
+    chef.bot_commandes(_chef())
+    assert executant.permis_exige() and "RÉTABLI" in envois[-1]

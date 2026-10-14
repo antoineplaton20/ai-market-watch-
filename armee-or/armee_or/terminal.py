@@ -327,8 +327,10 @@ def _etat_armee():
     morceaux = []
     permis = base.lire("mt5:permis")
     if permis:
+        from .executant import permis_exige
         morceaux.append("permis " + " ".join(f"{tf} {'✔' if (permis.get(tf) or {}).get('ok') else '✖'}"
-                                             for tf in ("1h", "4h", "1d")))
+                                             for tf in ("1h", "4h", "1d"))
+                        + ("" if permis_exige() else _c(AMBRE, " (non exigés : bots actifs)")))
     e = base.lire("mt5:etat") or {}
     compte = e.get("compte")
     if config.MT5_ACTIF:

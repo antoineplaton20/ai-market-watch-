@@ -579,6 +579,18 @@ def bot_commandes(chef):
         elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c == "/or_permis":
+            telegram.envoyer(("🪪 Que du prouvé : aucune équipe ne trade sans permis." if executant.permis_exige() else
+                              "🟠 Bots actifs sans preuve : les équipes tradent même sans permis.")
+                             + " Touche : /or_permis_off (bots actifs) ou /or_permis_on (que du prouvé).\n"
+                             + executant.texte_permis())
+        elif c in ("/or_permis_on", "/or_permis_off", "mt5_permis on", "mt5_permis off"):
+            actif = c.endswith("on")
+            base.ecrire("mt5:permis_exige", actif)
+            telegram.envoyer("🪪 Que du prouvé RÉTABLI : aucun nouvel ordre sans permis." if actif else
+                             "🟠 Bots ACTIFS : les équipes tradent sans attendre leur permis (entraînement 0,01 lot, "
+                             "décisions selon ton profil). Garde-fous toujours en place : filtre de tendance, stop, "
+                             "prise de gain, perte du jour 1 %, coupe-circuit 5 %. /or_permis_on pour revenir.", True)
         elif c == "/or_tendance":
             telegram.envoyer(f"🧭 Filtre de tendance {'actif' if executant.filtre_tendance_actif() else 'arrêté'} : "
                              "aucune position MT5 contre la tendance (1 h et 4 h). Touche : /or_tendance_on  ou  "

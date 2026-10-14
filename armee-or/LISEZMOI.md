@@ -259,6 +259,7 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 - Toutes les 6 h, la règle de chaque équipe (entraînement 1 h, décisions 4 h et 1 j) est rejouée sur tout l'historique. On ne regarde jamais le futur, on applique les frais réels du courtier et le filtre de tendance, et on utilise le même consensus qu'en direct, signaux admis compris.
 - Le permis n'est accordé que si le résultat net moyen par décision est **positif sur les deux moitiés** de l'historique, avec au moins 30 décisions dans chacune.
 - Chaque changement est annoncé sur Telegram (🪪). L'état est visible dans `/or_mt5`.
+- **Interrupteur** : `/or_permis_off` (ou `or mt5 permis off`) remet les bots en action même sans permis ; `/or_permis_on` rétablit « que du prouvé ». Bots actifs ou non, les garde-fous restent en place : filtre de tendance, stop, prise de gain, perte du jour, coupe-circuit.
 - Mesure d'octobre 2026 (PAXG, net par décision, 1re / 2e moitié) :
 
 | Frais aller-retour | Entraînement 1 h | Décisions 4 h | Décisions 1 j |

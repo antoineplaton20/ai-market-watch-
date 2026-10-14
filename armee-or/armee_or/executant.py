@@ -503,8 +503,16 @@ def rapport_trades():
     return texte_trades(fermees, compte.get("currency") or "")
 
 
+def permis_exige():
+    """« Que du prouvé » (True, par défaut) ou bots actifs sans preuve (False, choix du propriétaire)."""
+    v = base.lire("mt5:permis_exige")
+    return True if v is None else bool(v)
+
+
 def a_le_permis(tf):
-    """« Que du prouvé » : aucun ordre sans permis (voir chef.permis_de_trader)."""
+    """« Que du prouvé » : aucun ordre sans permis (voir chef.permis_de_trader), sauf si le propriétaire l'a levé."""
+    if not permis_exige():
+        return True
     return bool(((base.lire("mt5:permis") or {}).get(tf) or {}).get("ok"))
 
 
@@ -520,7 +528,9 @@ def texte_permis(permis=None):
             continue
         m = " / ".join("aucune décision" if v["net_pb"] is None else f"{v['net_pb']:+.1f} pb ({v['n']})" for v in x["moities"])
         parts.append(f"{nom} {'✅' if x['ok'] else '✖'} ({m})")
-    return "Permis de trader (net moyen par décision sur 1re / 2e moitié de l'historique, frais actuels) : " + \
+    entete = ("Permis de trader" if permis_exige() else
+              "Permis NON EXIGÉ (bots actifs sans preuve, /or_permis_on pour revenir) · examen")
+    return entete + " (net moyen par décision sur 1re / 2e moitié de l'historique, frais actuels) : " + \
         " · ".join(parts)
 
 
