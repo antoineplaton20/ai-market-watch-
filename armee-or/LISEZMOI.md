@@ -279,6 +279,20 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
 - Testé aussi (XAUUSDT 2026, données fiables) : toutes les variantes « gain pris tout de suite » perdent, même avec 82 à 99 % de trades gagnants. « Sans stop » : 99,4 % de gagnants, mais une position bloquée 215 jours à −997 €. Sur PAXG avant 2026, les écarts larges (prix arrondis au dollar) faisaient croire à tort que ces règles gagnaient.
 - `/or_verif` détaille aussi les **sorties** (prise de gain, stop, horizon, à la main) et le **taux de réussite nécessaire** pour être à zéro, compte tenu du gain moyen et de la perte moyenne.
 
+### Correctifs du 15 octobre 2026 (après la nuit du 14 au 15)
+- **Ce qui s'est passé** : 11 ventes sur 12 pendant que l'or remontait de 4 076 à 4 155 $. Petits gains (+6 à +9 €), grosses pertes (−44, −84, −29 €).
+- **Défaut 1, l'équipe 4 h** : −187 € sur ses 4 trades en direct, soit les trois quarts des pertes totales, et perdante sur tout l'historique.
+  - Correction : elle reste **sur la touche tant qu'elle n'a pas son permis**, même bots actifs ou en mode agressif.
+- **Défaut 2, le retard du filtre de tendance** : la tendance EMA 20 / EMA 100 en 1 h réagit en retard aux retournements.
+  - Correction : l'entraînement exige aussi **l'élan** (prix du bon côté de sa moyenne des 20 dernières heures).
+  - Mesure de la règle d'entraînement : XAUUSDT 2026, −580 / −349 € devient −360 / −213 € ; PAXG 2025-2026, +212 / −1 605 € devient +367 / −1 389 €.
+- **Testé, sans effet ou pire, donc non retenu** :
+  - pause après un stop : effet incertain ;
+  - stop plus serré (1,5 ou 2 ATR) : pire ;
+  - horizon de 2 h : pire ;
+  - retrait de la prise de gain pour l'équipe 1 j : plus de gain total, mais le pire trade passe de −139 à −367 €.
+- Même corrigée, la règle d'entraînement reste **perdante en moyenne** sur l'historique : environ −0,3 € par trade d'une once.
+
 ### Fermetures et week-end
 - Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
 - Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).

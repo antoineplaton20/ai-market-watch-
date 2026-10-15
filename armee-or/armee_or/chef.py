@@ -588,11 +588,13 @@ def bot_commandes(chef):
             base.ecrire("mt5:entrainement", True)
             telegram.envoyer("🔥 MODE AGRESSIF pour toutes les équipes MT5 :\n"
                              "• plus besoin de permis ;\n"
-                             "• décisions 4 h et 1 j : un ordre à chaque penchant du consensus, 3 % du capital risqué ;\n"
+                             "• décisions 1 j : un ordre à chaque penchant du consensus, 3 % du capital risqué ;\n"
+                             "• décisions 4 h : sur la touche tant qu'elles n'ont pas leur permis (perdantes) ;\n"
                              f"• entraînement : {executant.MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum chaque heure, "
                              "prise de gain proportionnelle à la taille ;\n"
                              "• freins élargis : perte du jour 3 %, coupe-circuit 10 % ;\n"
-                             "• gardés : filtre de tendance, stop, horizon, pause aux annonces, week-end, compte démo.\n"
+                             "• gardés : filtre de tendance et d'élan, stop, horizon, pause aux annonces, week-end, "
+                             "compte démo.\n"
                              "/or_agressif_off pour revenir au mode normal.", True)
         elif c in ("/or_agressif_off", "mt5_agressif off"):
             base.ecrire("mt5:agressif", False)

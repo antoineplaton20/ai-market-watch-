@@ -75,20 +75,36 @@ def filtre_tendance_actif():
     return True if v is None else bool(v)
 
 
-def tendance(tf):
-    """Sens de la tendance sur les bougies FERMÉES du courtier : EMA 20 contre EMA 100, en ATR. 0 = indécis."""
+ELAN_TF = ("1h",)                                     # élan exigé pour l'entraînement (mesuré, voir LISEZMOI)
+
+
+def etat_tendance(tf):
+    """Sur les bougies FERMÉES du courtier -> (tendance : EMA 20 contre EMA 100 ; élan : prix contre EMA 20).
+    Chacun vaut +1, -1 ou 0 (indécis)."""
     rates = np.array(mt5.appel("bougies", tf=tf, n=300), dtype=float)
     if len(rates) < 130:
-        return 0
+        return 0, 0
     r = rates[:-1]
     s = P.score_tendance({"h": r[:, 2], "l": r[:, 3], "c": r[:, 4]})[-1]
-    return 0 if not np.isfinite(s) or s == 0 else int(np.sign(s))
+    t = 0 if not np.isfinite(s) or s == 0 else int(np.sign(s))
+    ecart = r[-1, 4] - I.ema(r[:, 4], 20)[-1]
+    return t, (0 if not np.isfinite(ecart) or ecart == 0 else int(np.sign(ecart)))
+
+
+def tendance(tf):
+    return etat_tendance(tf)[0]
 
 
 def contre_tendance(tf, sens):
     """Sur l'or, les paris CONTRE la tendance perdent (4 h contre une tendance forte : 46 % justes, z = -3,2) ;
-    ceux dans son sens font un peu mieux que le hasard (1 h : 52 %, z = +4 sur les deux moitiés)."""
-    return filtre_tendance_actif() and tf in FILTRE_TENDANCE_TF and tendance(tf) == -sens
+    ceux dans son sens font un peu mieux que le hasard (1 h : 52 %, z = +4 sur les deux moitiés).
+    Élan (1 h) : la tendance EMA 20 / EMA 100 réagit en retard quand l'or se retourne (15/10/2026 : ventes en
+    série pendant une hausse de 80 $) ; exiger aussi le prix du bon côté de sa moyenne 20 h réduit les pertes de
+    la règle d'entraînement de 35 à 40 % sur les deux moitiés de 2026 (XAUUSDT) et de 2025-2026 (PAXG)."""
+    if not filtre_tendance_actif() or tf not in FILTRE_TENDANCE_TF:
+        return False
+    t, e = etat_tendance(tf)
+    return t == -sens or (tf in ELAN_TF and e == -sens)
 
 
 def _atr(tf):
@@ -377,7 +393,9 @@ def bot_mt5(chef):
         if not a_le_permis(EQUIPES[cle]["tf"]):
             _noter(cle, "refus", sens=sens, ok=False, message="pas de permis de trader")
             msgs.append(f"{EQUIPES[cle]['nom']} : pas de permis de trader (règle perdante sur l'historique avec les "
-                        "frais actuels), décision ignorée")
+                        "frais actuels), décision ignorée"
+                        + (" · équipe sur la touche tant qu'elle n'a pas son permis" if cle in TOUJOURS_SOUS_PERMIS
+                           else ""))
             continue
         if contre_tendance(EQUIPES[cle]["tf"], sens):
             _noter(cle, "refus", sens=sens, ok=False, message="contre la tendance")
@@ -393,7 +411,7 @@ def bot_mt5(chef):
             if not a_le_permis("1h"):
                 msgs.append("entraînement : pas de permis de trader (rien de prouvé gagnant), pas d'ordre")
             elif contre_tendance("1h", sens):
-                msgs.append("entraînement : sens contre la tendance, pas d'ordre cette heure")
+                msgs.append("entraînement : sens contre la tendance ou l'élan, pas d'ordre cette heure")
             else:
                 msgs.append(_ouvrir("entrainement", sens, compte, set(positions), entrainement=True))
     return "; ".join(msgs) or f"{len(positions)} position(s), équité {compte['equity']:.2f} {compte['currency']}"
@@ -531,9 +549,13 @@ def permis_exige():
     return True if v is None else bool(v)
 
 
+TOUJOURS_SOUS_PERMIS = ("4h",)      # perdante sur tout l'historique et en direct (-187 € sur 4 trades, 3/10/2026)
+
+
 def a_le_permis(tf):
-    """« Que du prouvé » : aucun ordre sans permis (voir chef.permis_de_trader), sauf si le propriétaire l'a levé."""
-    if not permis_exige():
+    """« Que du prouvé » : aucun ordre sans permis (voir chef.permis_de_trader), sauf si le propriétaire l'a levé.
+    L'équipe 4 h reste sur la touche sans permis, même bots actifs ou en mode agressif."""
+    if not permis_exige() and tf not in TOUJOURS_SOUS_PERMIS:
         return True
     return bool(((base.lire("mt5:permis") or {}).get(tf) or {}).get("ok"))
 
@@ -574,7 +596,8 @@ def rapport_mt5():
     lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
                   f" · {regle} · filtre de tendance {'actif' if filtre_tendance_actif() else 'arrêté'}")
     if mode_agressif():
-        lignes.append("🔥 MODE AGRESSIF : décisions à chaque penchant du consensus, 3 % risqué par décision, "
+        lignes.append("🔥 MODE AGRESSIF : décisions 1 j à chaque penchant du consensus (4 h sur la touche sans "
+                      "permis), 3 % risqué par décision, "
                       f"entraînement {MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum, freins 3 %/jour et 10 % "
                       "(/or_agressif_off pour revenir)")
     lignes.append(texte_permis())

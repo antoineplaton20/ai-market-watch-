@@ -728,3 +728,36 @@ def test_agressif_prend_le_lot_minimum_si_le_risque_depasse(faux):
     faux.copy_rates_from_pos = volatil
     texte = executant._ouvrir("1d", 1, mt5.appel("etat")["compte"], set())
     assert "lot minimum 0.01 (mode agressif" in texte and len(faux.positions) == 1
+
+
+def test_elan_bloque_les_ventes_pendant_un_rebond(faux):
+    def baisse_puis_rebond(s, tf, debut, n):
+        r = np.zeros(n, dtype=[("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"), ("close", "f8"),
+                               ("tick_volume", "i8")])
+        r["time"] = np.arange(n) * 3600
+        prix = 4200 - np.arange(n) * 1.0                                   # longue baisse : EMA 20 < EMA 100
+        prix[-12:] = prix[-13] + np.arange(1, 13) * 6.0                    # rebond de 72 $ sur 12 h
+        r["close"] = r["open"] = prix
+        r["high"], r["low"] = prix + 3, prix - 3
+        return r
+    faux.copy_rates_from_pos = baisse_puis_rebond
+    t, e = executant.etat_tendance("1h")
+    assert t == -1 and e == 1                                               # tendance encore baissière, élan haussier
+    assert executant.contre_tendance("1h", -1)                              # vente refusée (élan contraire)
+    assert executant.contre_tendance("1h", 1)                               # achat refusé (tendance contraire)
+    assert executant.contre_tendance("4h", -1) is False                     # 4 h : élan non exigé
+
+
+def test_equipe_4h_sur_la_touche_meme_bots_actifs(faux):
+    base.ecrire("mt5:permis_exige", False)
+    base.ecrire("mt5:agressif", True)
+    base.ecrire("mt5:permis", {"4h": {"ok": False}, "1d": {"ok": False}})
+    base.ecrire("mt5:entrainement", False)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    assert not executant.a_le_permis("4h") and executant.a_le_permis("1d") and executant.a_le_permis("1h")
+    _prono("4h", 1)
+    texte = executant.bot_mt5(_chef())
+    assert "sur la touche" in texte and not faux.envois
+    _prono("1d", 1)
+    executant.bot_mt5(_chef())
+    assert len(faux.envois) == 1                                            # 1 j trade
