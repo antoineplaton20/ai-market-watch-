@@ -761,3 +761,23 @@ def test_equipe_4h_sur_la_touche_meme_bots_actifs(faux):
     _prono("1d", 1)
     executant.bot_mt5(_chef())
     assert len(faux.envois) == 1                                            # 1 j trade
+
+
+def test_frein_du_jour_garde_la_position_1j(faux, monkeypatch):
+    envois = []
+    monkeypatch.setattr(executant.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    base.ecrire("mt5:entrainement", False)
+    executant.bot_mt5(_chef())                                                      # début de journée : 100 000
+    compte = mt5.appel("etat")["compte"]
+    executant._ouvrir("entrainement", 1, compte, set(), entrainement=True)
+    executant._ouvrir("1d", 1, compte, {p.ticket for p in faux.positions})
+    assert len(faux.positions) == 2
+    faux.solde = 98_500.0                                                           # -1,5 % : frein du jour (1 %)
+    executant.bot_mt5(_chef())
+    restantes = [executant.PAR_MAGIC[p.magic] for p in faux.positions]
+    assert restantes == ["1d"] and any("reste ouverte" in t for t in envois)
+    assert [s["equipe"] for s in base.lire("mt5:suivi").values()] == ["1d"]
+    faux.solde = 94_000.0                                                           # -6 % : coupe-circuit, tout fermé
+    executant.bot_mt5(_chef())
+    assert not faux.positions

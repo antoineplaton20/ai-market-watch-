@@ -293,6 +293,18 @@ L'armée apprend en continu, mais uniquement de ce qui a fait ses preuves, mesur
   - retrait de la prise de gain pour l'équipe 1 j : plus de gain total, mais le pire trade passe de −139 à −367 €.
 - Même corrigée, la règle d'entraînement reste **perdante en moyenne** sur l'historique : environ −0,3 € par trade d'une once.
 
+### Correctif du 19 octobre 2026 : le frein du jour et l'équipe 1 j
+- **Constat** : une position 1 j (achat 0,01 à 4 187,12, stop à 3 952,90, prévue pour 5 jours) est à −37,57 €.
+  - C'est −42 $, soit une demi-journée de variation normale de l'or (75 $ par jour en ce moment).
+  - Sur PAXG 2025-2026, cette règle gagne sur les deux moitiés (98 % de trades gagnants, pire −139 €).
+- **Défaut trouvé** : en mode agressif, son stop (environ −209 €) est plus loin que le frein du jour (−3 %, environ 82 €). Le frein la fermait donc en plein creux.
+  - Mesure : avec le frein, +399 € deviennent +116 € (4 coupures en 2 ans, toujours juste avant le rebond).
+- **Correction** : le frein du jour ferme les positions **courtes** (entraînement, 4 h) et bloque les nouveaux ordres jusqu'au lendemain. La position 1 j garde son propre stop.
+  - Le coupe-circuit (5 %, ou 10 % en mode agressif) ferme toujours **tout**.
+- **Testé et non retenu** :
+  - stop 1 j limité à 3 % du capital : +474 € deviennent +63 € ;
+  - filtre de tendance ou d'élan sur l'équipe 1 j : mieux sur une moitié, moins bien sur l'autre.
+
 ### Fermetures et week-end
 - Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
 - Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).

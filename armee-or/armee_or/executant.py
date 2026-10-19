@@ -228,15 +228,26 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
     return texte
 
 
-def fermer_tout(motif="demande"):
+def fermer_tout(motif="demande", equipes=None):
+    """Ferme les positions de l'armée (toutes, ou seulement celles des équipes données)."""
     faits = []
     for p in mt5.appel("positions"):
+        if equipes is not None and PAR_MAGIC.get(p["magic"]) not in equipes:
+            continue
         r = mt5.appel("fermer", ticket=p["ticket"], commentaire=f"armee-or {motif}"[:25])
         _noter(PAR_MAGIC.get(p["magic"], "?"), "fermeture", p["ticket"], 0, p["volume"], r.get("prix") or 0, 0,
                r["ok"], f"{motif} · {r['retcode']} {r['commentaire']}")
         faits.append(p["ticket"])
-    base.ecrire("mt5:suivi", {})
+    suivi = base.lire("mt5:suivi", {}) or {}
+    base.ecrire("mt5:suivi", {} if equipes is None else {t: v for t, v in suivi.items() if int(t) not in faits})
     return faits
+
+
+# Frein du jour : il ferme les positions COURTES et bloque les nouveaux ordres, mais laisse la position de 5 jours
+# de l'équipe 1 j sous la protection de son propre stop. Mesure (PAXG 2025-2026, équipe 1 j) : fermée par le
+# frein, elle passe de +399 € à +116 € (4 coupures en 2 ans, toujours au creux, juste avant le rebond).
+# Le coupe-circuit, lui, ferme TOUT.
+EQUIPES_COURTES = ("entrainement", "4h")
 
 
 def equipes_des_positions(deals):
@@ -310,12 +321,15 @@ def bot_mt5(chef):
 
     # 0) gestionnaire de risque central : perte du jour, baisse depuis le sommet
     etat_risque, evenement = risque.controler(compte)
-    if evenement:
-        fermees = fermer_tout(f"risque {evenement}")
-        telegram.envoyer(("⛔ COUPE-CIRCUIT" if evenement == "coupe" else "🛑 Limite de perte du jour atteinte")
-                         + f" : {etat_risque['raison']}. {len(fermees)} position(s) de l'armée fermée(s). "
-                         + ("Plus aucun ordre jusqu'à ton feu vert : /or_risque_reprendre" if evenement == "coupe"
-                            else "Plus aucun ordre jusqu'à demain."), important=True)
+    if evenement == "coupe":
+        fermees = fermer_tout("risque coupe")
+        telegram.envoyer(f"⛔ COUPE-CIRCUIT : {etat_risque['raison']}. {len(fermees)} position(s) de l'armée fermée(s). "
+                         "Plus aucun ordre jusqu'à ton feu vert : /or_risque_reprendre", important=True)
+    elif evenement == "jour":
+        fermees = fermer_tout("risque jour", equipes=EQUIPES_COURTES)
+        telegram.envoyer(f"🛑 Limite de perte du jour atteinte : {etat_risque['raison']}. {len(fermees)} position(s) "
+                         "courte(s) fermée(s) ; une position 1 j reste ouverte avec son propre stop. Plus aucun "
+                         "nouvel ordre jusqu'à demain.", important=True)
 
     # 1) suivi des positions : fermeture à l'horizon, positions disparues (stop touché ou fermeture manuelle)
     positions = {p["ticket"]: p for p in mt5.appel("positions")}
