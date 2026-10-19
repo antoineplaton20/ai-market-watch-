@@ -8,6 +8,7 @@ import pytest
 
 from armee_or import base, chef, config, donnees as D, executant, flux, mt5, pont_mt5
 from armee_or.executant import ferme_avant_le_week_end as _avant_week_end   # sans le remplacement des tests
+from armee_or.executant import heure_d_entrainement as _heure_entrainement
 
 LOGIN = 5550001
 
@@ -781,3 +782,27 @@ def test_frein_du_jour_garde_la_position_1j(faux, monkeypatch):
     faux.solde = 94_000.0                                                           # -6 % : coupe-circuit, tout fermé
     executant.bot_mt5(_chef())
     assert not faux.positions
+
+
+
+def test_pas_d_entrainement_la_nuit_asiatique(faux, monkeypatch):
+    import calendar
+    assert not _heure_entrainement(calendar.timegm((2026, 10, 15, 3, 0, 0)))          # 3 h UTC : Asie
+    assert _heure_entrainement(calendar.timegm((2026, 10, 15, 7, 0, 0)))
+    assert _heure_entrainement(calendar.timegm((2026, 10, 15, 20, 59, 0)))
+    assert not _heure_entrainement(calendar.timegm((2026, 10, 15, 21, 0, 0)))
+    monkeypatch.setattr(executant, "heure_d_entrainement", lambda *a, **k: False)
+    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
+    _prono("1h", 0, p=0.6)
+    assert "nuit asiatique" in executant.bot_mt5(_chef()) and not faux.envois
+
+
+def test_mode_rentable(faux, monkeypatch):
+    envois = []
+    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
+    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_rentable"])
+    chef.bot_commandes(_chef())
+    assert "MODE RENTABLE" in envois[-1] and "Aucun réglage ne garantit" in envois[-1]
+    assert not executant.entrainement_actif() and executant.mode_agressif() and not executant.permis_exige()
+    base.ecrire("mt5:permis", {"4h": {"ok": False}, "1d": {"ok": False}})
+    assert executant.a_le_permis("1d") and not executant.a_le_permis("4h")

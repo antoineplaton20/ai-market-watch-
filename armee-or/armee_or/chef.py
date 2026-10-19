@@ -579,6 +579,18 @@ def bot_commandes(chef):
         elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
             base.ecrire("mt5:entrainement", c.endswith("on"))
             telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+        elif c in ("/or_rentable", "mt5_rentable"):
+            base.ecrire("mt5:agressif", True)               # équipe 1 j : chaque penchant, lot minimum, freins 3 % / 10 %
+            base.ecrire("mt5:permis_exige", False)
+            base.ecrire("mt5:entrainement", False)
+            telegram.envoyer("💶 MODE RENTABLE : seule l'équipe qui a gagné sur l'historique trade.\n"
+                             "• décisions 1 j : actives (positions de 5 jours, prise de gain +3 €, stop large) — "
+                             "PAXG 2025-2026 : gagnante sur les deux moitiés, 98 % de trades gagnants, pire −139 € ;\n"
+                             "• entraînement : arrêté (au mieux proche de zéro, même corrigé) ;\n"
+                             "• décisions 4 h : sur la touche (perdantes) ;\n"
+                             "• freins : perte du jour 3 % (positions courtes), coupe-circuit 10 %.\n"
+                             "Attention : cette équipe a gagné parce que l'or montait (2024-2026) ; en marché sans "
+                             "direction (2020-2023) elle perdait. Aucun réglage ne garantit le positif.", True)
         elif c == "/or_agressif":
             telegram.envoyer(("🔥 Mode agressif ACTIF." if executant.mode_agressif() else "Mode agressif arrêté.")
                              + " Touche : /or_agressif_on ou /or_agressif_off")

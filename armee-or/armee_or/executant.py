@@ -60,6 +60,18 @@ def entrainement_actif():
     return config.MT5_ENTRAINEMENT if v is None else bool(v)
 
 
+HEURES_ENTRAINEMENT_UTC = range(7, 21)
+
+
+def heure_d_entrainement(maintenant=None):
+    """Pas d'entraînement pendant la nuit asiatique (21 h - 7 h UTC). Mesure de la règle (tendance + élan, +3 €,
+    stop 3 ATR, 4 h) : les entrées de 0 h à 7 h UTC perdent sur les deux moitiés des deux sources (XAUUSDT 2026 :
+    -0,86 €/trade ; PAXG 2025-2026 : -0,61 €/trade) ; sans elles, la règle passe de -0,28 à +0,05 €/trade (XAUUSDT,
+    positif sur les deux moitiés) et de -0,21 à +0,01 €/trade (PAXG). Marché calme et sans direction la nuit :
+    les petits gains rapides y sont mangés par les retours en arrière."""
+    return dt.datetime.fromtimestamp(maintenant or time.time(), dt.timezone.utc).hour in HEURES_ENTRAINEMENT_UTC
+
+
 def _noter(equipe, action, ticket=None, sens=0, volume=0.0, prix=0.0, sl=0.0, ok=True, message=""):
     with base.connexion() as c:
         c.execute("INSERT INTO ordres_mt5(ts, equipe, action, ticket, sens, volume, prix, sl, ok, message) "
@@ -416,7 +428,9 @@ def bot_mt5(chef):
             msgs.append(f"{EQUIPES[cle]['nom']} : décision contre la tendance, ignorée")
             continue
         msgs.append(_ouvrir(cle, sens, compte, set(positions)))
-    if entrainement_actif() and "entrainement" not in ouvertes \
+    if entrainement_actif() and "entrainement" not in ouvertes and not heure_d_entrainement():
+        msgs.append("entraînement : nuit asiatique (21 h - 7 h UTC), pas d'ordre")
+    elif entrainement_actif() and "entrainement" not in ouvertes \
             and ferme_avant_le_week_end(EQUIPES["entrainement"]["duree_h"]):
         p = base.lire("prono:1h")
         if p and _frais(p, "1h", maintenant_ms) and base.lire("mt5:fait:entrainement") != p["ts"] and p["p"] != 0.5:

@@ -36,6 +36,7 @@ def isolement(tmp_path, monkeypatch):
     monkeypatch.setattr(strategie, "COUTS_REELS", None)          # frais estimés, jamais ceux appris ailleurs
     from armee_or import executant
     monkeypatch.setattr(executant, "ferme_avant_le_week_end", lambda *a, **k: True)   # tests valables le week-end aussi
+    monkeypatch.setattr(executant, "heure_d_entrainement", lambda *a, **k: True)       # et à toute heure
     (tmp_path / "runtime").mkdir()
     yield
 
