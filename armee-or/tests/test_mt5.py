@@ -806,3 +806,10 @@ def test_mode_rentable(faux, monkeypatch):
     assert not executant.entrainement_actif() and executant.mode_agressif() and not executant.permis_exige()
     base.ecrire("mt5:permis", {"4h": {"ok": False}, "1d": {"ok": False}})
     assert executant.a_le_permis("1d") and not executant.a_le_permis("4h")
+
+
+
+def test_permis_affiche_le_naif():
+    texte = executant.texte_permis({"1d": {"ok": False, "moities": [{"n": 300, "net_pb": 30.0, "naif_pb": 41.0},
+                                                                    {"n": 400, "net_pb": 12.0, "naif_pb": 12.0}]}})
+    assert "1 j ✖ (+30.0 pb (300) / +12.0 pb (400) · naïf +41.0 / +12.0)" in texte and "battre le naïf" in texte

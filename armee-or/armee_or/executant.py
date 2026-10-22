@@ -599,10 +599,14 @@ def texte_permis(permis=None):
             parts.append(f"{nom} ✖ ({x.get('raison', '?')})")
             continue
         m = " / ".join("aucune décision" if v["net_pb"] is None else f"{v['net_pb']:+.1f} pb ({v['n']})" for v in x["moities"])
+        if any(v.get("naif_pb") is not None for v in x["moities"]):
+            m += " · naïf " + " / ".join("—" if v.get("naif_pb") is None else f"{v['naif_pb']:+.1f}"
+                                         for v in x["moities"])
         parts.append(f"{nom} {'✅' if x['ok'] else '✖'} ({m})")
     entete = ("Permis de trader" if permis_exige() else
               "Permis NON EXIGÉ (bots actifs sans preuve, /or_permis_on pour revenir) · examen")
-    return entete + " (net moyen par décision sur 1re / 2e moitié de l'historique, frais actuels) : " + \
+    return entete + (" (net moyen par décision sur 1re / 2e moitié de l'historique, frais actuels ; il faut gagner ET "
+                     "battre le naïf) : ") + \
         " · ".join(parts)
 
 

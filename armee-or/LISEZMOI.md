@@ -323,6 +323,18 @@ Chaque piste a été mesurée sur la règle réelle (prise de gain, stop, horizo
 - **`/or_rentable`** (ou `or mt5 rentable`) ne garde que l'équipe 1 j, la seule gagnante sur l'historique récent. L'entraînement est arrêté, la 4 h reste sur la touche, les freins sont à 3 % / 10 %.
 - Limite honnête : l'équipe 1 j a gagné parce que l'or montait (2024-2026) ; elle perdait en marché sans direction (2020-2023). Aucun réglage ne garantit un résultat positif.
 
+### Diagnostic du 22 octobre 2026 : le vrai problème, et retour à « que du prouvé »
+- **Constat** : en 2026, le consensus de l'équipe 1 j vaut **exactement le naïf** (0,605 : « l'or a monté 60 % du temps récemment »), donc elle achète **100 % du temps**. Les poids des bots sont à zéro : ils n'apportent aucune information.
+  - Ses gains de 2025 (or +65 %) n'étaient qu'un pari sur la hausse.
+  - La prise de gain à +3 € plafonnait les gains, alors que les pertes couraient jusqu'à 5 jours (achat à 4 187, fermé à −58,94 €).
+- **Décision du propriétaire** : arrêt des ordres (`/or_permis_on`). La position ouverte se termine avec son stop ou son horizon. Terminal, alertes, brief et apprentissage continuent.
+- **Permis renforcé** : une équipe doit gagner sur les deux moitiés **et faire mieux que la même règle appliquée au seul naïf**.
+  - Mesure (frais 0,015 %, net par décision, 1re / 2e moitié, comparé au naïf) :
+    - entraînement −1,4 / +0,7 pb (naïf −2,0 / +0,6) ;
+    - 4 h −3,9 / −3,5 pb (naïf +1,0 / +2,3) ;
+    - 1 j −26,8 / +23,2 pb (naïf −26,8 / +44,2).
+  - Les bots ne battent le naïf nulle part de façon nette : aucune équipe n'a son permis.
+
 ### Fermetures et week-end
 - Une position courte (entraînement 4 h, décisions 4 h sur 24 h) n'est ouverte que si son horizon tombe avant la fermeture du vendredi (20 h UTC) : rien ne reste ouvert à son insu pendant le week-end.
 - Si l'horizon arrive marché fermé, la fermeture attend la réouverture, sans noter un échec toutes les 5 s (les anciennes lignes répétées sont nettoyées une fois).

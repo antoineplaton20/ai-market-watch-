@@ -449,7 +449,7 @@ def permis_de_trader(chemin=None):
     """« Que du prouvé » : une équipe (entraînement 1 h, décisions 4 h et 1 j) n'a le droit de trader sur MT5 que si
     sa règle, rejouée sur tout l'historique sans
     regarder le futur, AVEC LES FRAIS ACTUELS (ceux mesurés sur MT5 dès qu'il y en a) et le filtre de tendance quand
-    il s'applique, gagne en moyenne sur les DEUX moitiés de l'historique. Quand les frais mesurés baissent, la règle
+    il s'applique, gagne en moyenne sur les DEUX moitiés de l'historique ET y fait mieux que le naïf. Quand les frais mesurés baissent, la règle
     laisse passer beaucoup plus de décisions : ce permis vérifie qu'elles valent encore quelque chose."""
     out = {"ts": time.time()}
     for tf in ("1h", "4h", "1d"):
@@ -461,23 +461,34 @@ def permis_de_trader(chemin=None):
         probas, naif, y = P.tout_calculer(b, h)
         probas.update(apprentissage.probas_admis(b, tf, h, y))  # le même consensus qu'en direct
         cons, _ = P.consensus(probas, naif, y, h)
-        if tf == "1h":                                          # entraînement : le sens du consensus à chaque heure
-            d = np.where(np.isfinite(cons), np.sign(cons - 0.5), 0).astype(int)
-        else:
-            d = S.decisions(cons, b, tf)
-        if executant.filtre_tendance_actif() and tf in executant.FILTRE_TENDANCE_TF:
-            d[d == -np.sign(P.score_tendance(b))] = 0
+        def regle(p):
+            if tf == "1h":                                      # entraînement : le sens du consensus à chaque heure
+                d = np.where(np.isfinite(p), np.sign(p - 0.5), 0).astype(int)
+            else:
+                d = S.decisions(p, b, tf)
+            if executant.filtre_tendance_actif() and tf in executant.FILTRE_TENDANCE_TF:
+                d[d == -np.sign(P.score_tendance(b))] = 0
+            return d
+        # La même règle appliquée au seul NAÏF (« l'or a monté x % du temps récemment ») : en 2026, le consensus 1 j
+        # valait exactement le naïf et achetait 100 % du temps, un pari déguisé sur la hausse (22/10/2026).
+        # Le permis exige désormais que l'équipe fasse MIEUX que ce naïf, pas seulement qu'elle gagne.
+        d, d_naif = regle(cons), regle(np.asarray(naif, dtype=float))
         c, n = b["c"], len(b["c"])
         fut = np.r_[c[h:] / c[:-h] - 1, np.full(h, np.nan)]
         cout = S.couts(h, hb)
+
+        def net(dd, m):
+            m = m & (dd != 0) & ~np.isnan(fut)
+            return int(m.sum()), (round(float((dd[m] * fut[m] - cout).mean() * 1e4), 2) if m.sum() else None)
         moities = []
         for part in (slice(0, n // 2), slice(n // 2, n)):
             m = np.zeros(n, bool)
             m[part] = True
-            m &= (d != 0) & ~np.isnan(fut)
-            k = int(m.sum())
-            moities.append({"n": k, "net_pb": round(float((d[m] * fut[m] - cout).mean() * 1e4), 2) if k else None})
-        ok = all(x["n"] >= PERMIS_MIN_DECISIONS and x["net_pb"] > 0 for x in moities)
+            k, v = net(d, m)
+            _, v_naif = net(d_naif, m)
+            moities.append({"n": k, "net_pb": v, "naif_pb": v_naif})
+        ok = all(x["n"] >= PERMIS_MIN_DECISIONS and x["net_pb"] > 0 and x["net_pb"] > (x["naif_pb"] or 0.0)
+                 for x in moities)
         out[tf] = {"ok": ok, "moities": moities, "cout_pct": round(cout * 100, 4)}
     return out
 
