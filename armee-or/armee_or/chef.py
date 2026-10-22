@@ -675,6 +675,8 @@ def bot_commandes(chef):
             telegram.envoyer(demander_maj())
         elif c in ("/or_journal", "journal"):
             telegram.envoyer(fin_du_journal())
+        elif c in ("/or_prompt", "prompt"):
+            envoyer_prompt()
         elif c in ("/or_aide", "/start", "aide"):
             telegram.envoyer("🟡 Commandes (touche-les) :\n" + "\n".join(f"/{n} — {d}" for n, d in telegram.MENU))
         faites.append(c)
@@ -709,6 +711,20 @@ def fin_du_journal(n=25):
         return "Journal vide."
     texte = "".join(f"{l[11:19]} {l.split(' | ', 1)[1]}" if " | " in l else l for l in lignes)   # heure seule
     return "📜 Fin du journal de l'armée\n" + texte[-3500:]
+
+
+PROMPT_MAITRE = "PROMPT_MAITRE.md"                              # consigne complète de l'IA qui construit l'armée
+
+
+def envoyer_prompt():
+    """Le prompt maître en fichier dans Telegram : depuis l'iPhone, à transmettre tel quel à une IA."""
+    chemin = config.RACINE / PROMPT_MAITRE
+    if not chemin.exists():
+        return telegram.envoyer("Prompt maître absent du serveur : /or_maj puis réessaie /or_prompt.")
+    if telegram.envoyer_document(chemin, "Prompt maître de l'armée : à donner tel quel à l'IA qui conçoit, code et "
+                                         "améliore les bots (avec Claude Code : « Lis armee-or/PROMPT_MAITRE.md »)."):
+        return True
+    return telegram.envoyer("Prompt maître non envoyé (Telegram indisponible) : réessaie /or_prompt.")
 
 
 def bot_rapporteur(chef):

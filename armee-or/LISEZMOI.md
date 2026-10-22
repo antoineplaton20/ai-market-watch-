@@ -40,6 +40,25 @@ Les comptes de levier x1 → x50 restent **simulés sur papier**. Si tu branches
 - **Voir les positions** : dans l'app **MetaTrader 5** pour iPhone, connectée au même compte démo.
 - **Termius** ne sert qu'en secours (`or etat`, `or mt5 journal`).
 
+## Prompt maître (`/or_prompt`)
+
+`PROMPT_MAITRE.md` est la consigne complète à donner à l'IA (Claude ou une autre) qui conçoit, code et améliore l'armée. Il contient :
+
+- la mission ;
+- les douze lois d'airain : la preuve avant l'argent, aucune donnée du futur, les frais réels, battre le naïf, le risque d'abord… ;
+- les faits déjà mesurés ;
+- l'économie et l'histoire de l'or depuis 1900 ;
+- les chandeliers et les écoles de l'analyse technique ;
+- les grands traders, investisseurs et économistes, français compris. Chacun est traduit en hypothèse testable (H01 à H22) ou en leçon ;
+- la méthode de preuve : banc d'essai, étalons, permis ;
+- les chantiers.
+
+Pour s'en servir :
+
+- **Sur Telegram** : `/or_prompt` envoie le fichier, à transmettre tel quel à une IA.
+- **Avec Claude Code** : écris « Lis armee-or/PROMPT_MAITRE.md puis attaque le chantier n° 1 ». Le fichier `CLAUDE.md` du dossier le rappelle à chaque session.
+- **Version courte** : pour une IA qui ne lit pas les longs fichiers, le « prompt court » du §0 suffit.
+
 ## Commandes Termius
 
 ```

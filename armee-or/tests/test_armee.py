@@ -363,3 +363,25 @@ def test_mise_a_jour_et_journal_depuis_telegram(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "JOURNAL", journal)
     texte = chef.fin_du_journal()
     assert "10:00:39 chef | ligne 39" in texte and "ligne 14" not in texte and "2026-10-06" not in texte
+
+
+def test_prompt_maitre_livre_et_envoye_sur_telegram(monkeypatch, tmp_path):
+    import shutil
+    from pathlib import Path
+    from armee_or import chef, telegram
+    vrai = Path(__file__).resolve().parent.parent / chef.PROMPT_MAITRE           # livré avec le code (or maj)
+    texte = vrai.read_text(encoding="utf-8")
+    for section in ("Prompt court", "Les douze lois d'airain", "Où on en est", "Les grands", "Le banc d'essai",
+                    "Interdits", "Définition de « fini »", "/or_prompt"):
+        assert section in texte
+    assert all(f"H{i:02d}" in texte for i in range(1, 23))                     # tout le catalogue d'hypothèses
+    envoyes, messages = [], []
+    monkeypatch.setattr(telegram, "envoyer_document", lambda chemin, legende="": envoyes.append(chemin) or "id")
+    monkeypatch.setattr(telegram, "envoyer", lambda t, *a, **k: messages.append(t) or True)
+    monkeypatch.setattr(telegram, "commandes", lambda: ["/or_prompt"])
+    chef.bot_commandes(type("Chef", (), {"pause": False})())
+    assert envoyes == [] and "/or_maj" in messages[-1]                          # pas encore sur le serveur
+    shutil.copy(vrai, tmp_path / chef.PROMPT_MAITRE)
+    assert "commandes : /or_prompt" == chef.bot_commandes(type("Chef", (), {"pause": False})())
+    assert envoyes == [tmp_path / chef.PROMPT_MAITRE]
+    assert any(n == "or_prompt" for n, _ in telegram.MENU)
