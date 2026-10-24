@@ -6,3 +6,4 @@ runs/
 demo/
 *.mp4
 *.pt
+resultats/*.log
