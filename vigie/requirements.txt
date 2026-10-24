@@ -1,0 +1,7 @@
+# Versions utilisées pour les mesures du dossier technique (Python 3.13, processeur x86-64).
+numpy==2.5.3
+scipy==1.18.1
+opencv-python-headless==5.0.0
+torch==2.14.1
+torchvision==0.29.1
+pytest==9.1.1
