@@ -1,0 +1,31 @@
+{
+  "evaluation": {
+    "nombre_images": 8349,
+    "nombre_verites": 8627,
+    "seuil_iou": 0.5,
+    "precision_moyenne": 0.8561292842011595,
+    "rappel_maximal": 0.9110930798655384,
+    "meilleur_seuil_score": 0.6991299390792847,
+    "precision_au_meilleur_seuil": 0.8997516664488302,
+    "rappel_au_meilleur_seuil": 0.797959893358062,
+    "f1_au_meilleur_seuil": 0.8458041528443297,
+    "rappel_par_taille": {
+      "grand": 0.842503259452412,
+      "moyen": 0.8117475373951113,
+      "petit": 0.7789473684210526,
+      "tres_petit": 0.5079872204472844
+    },
+    "verites_par_taille": {
+      "grand": 3835,
+      "moyen": 2741,
+      "petit": 1425,
+      "tres_petit": 626
+    },
+    "fausses_alarmes_par_image_vide": null
+  },
+  "secondes_par_image": 0.13434341868079394,
+  "modele": "/tmp/claude-0/-home-user-ai-market-watch-/66aad7e5-86a2-5a63-b1c6-8227062bad61/scratchpad/runs/v1/meilleur.pt",
+  "donnees": "/tmp/claude-0/-home-user-ai-market-watch-/66aad7e5-86a2-5a63-b1c6-8227062bad61/scratchpad/data/seraphim/test",
+  "images_max": null,
+  "graine": 0
+}

@@ -64,6 +64,22 @@ python scripts/telecharger_sequences_antiuav.py --destination data/antiuav --seq
 python scripts/evaluer_sequences.py --modele runs/v1/meilleur.pt --donnees data/antiuav --rapport resultats/sequences.json
 ```
 
+## Résultats mesurés
+
+Modèle entraîné 2 époques sur 7 000 images, sur processeur, seuil 0,70 fixé sur la validation.
+
+| Mesure | Résultat |
+| --- | --- |
+| Test Seraphim, 8 349 images jamais vues : précision moyenne (AP à 50 %) | 0,856 |
+| Test Seraphim : drones trouvés / détections justes au seuil 0,70 | 79,8 % / 90,0 % |
+| Test Seraphim : drones de moins de 16 pixels trouvés | 50,8 % |
+| Vidéo Anti-UAV, 10 séquences : fausses alertes | 0 image sur 3 000 |
+| Vidéo Anti-UAV : part des images où le drone est suivi, mode normal / tuiles | 29,6 % / 58,7 % |
+| Vidéo Anti-UAV : séquences sans alerte (2 de nuit, 1 dans la brume) | 3 sur 10 |
+| Temps par image 1920 × 1080 sur processeur, mode normal / tuiles | 114 ms / 469 ms |
+
+Fichiers détaillés dans `resultats/`.
+
 ## Organisation
 
 | Fichier | Rôle |

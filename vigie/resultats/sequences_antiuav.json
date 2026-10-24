@@ -1,0 +1,138 @@
+{
+  "synthese": {
+    "sequences": 10,
+    "images": 3000,
+    "taux_suivi_moyen": 0.2962592592592593,
+    "delai_alerte_median_s": 0.28,
+    "sequences_sans_alerte": 3,
+    "part_images_fausse_alerte_moyenne": 0.0,
+    "changements_identifiant_total": 6,
+    "millisecondes_par_image_moyenne": 114.47792707302808,
+    "seuil_score": 0.7,
+    "tuiles": 1,
+    "images_par_seconde_supposees": 25.0,
+    "modele": "/tmp/claude-0/-home-user-ai-market-watch-/66aad7e5-86a2-5a63-b1c6-8227062bad61/scratchpad/runs/v1/meilleur.pt"
+  },
+  "sequences": [
+    {
+      "nom": "20190925_111757_1_1",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.96,
+      "delai_alerte_s": 0.08,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 0,
+      "precision_moyenne_detection": 0.8725586771062707,
+      "millisecondes_par_image": 111.94165069006583
+    },
+    {
+      "nom": "20190925_124000_1_1",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.33,
+      "delai_alerte_s": 1.96,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 0,
+      "precision_moyenne_detection": 0.31687364479597496,
+      "millisecondes_par_image": 106.08618194339215
+    },
+    {
+      "nom": "20190925_124612_1_1",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.29333333333333333,
+      "delai_alerte_s": 1.0,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 1,
+      "precision_moyenne_detection": 0.13012857142857143,
+      "millisecondes_par_image": 116.00143951336577
+    },
+    {
+      "nom": "20190925_134301_1_3",
+      "images": 300,
+      "images_avec_drone": 274,
+      "taux_suivi": 0.0,
+      "delai_alerte_s": null,
+      "alerte_jamais_donnee": true,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 0,
+      "precision_moyenne_detection": 0.0,
+      "millisecondes_par_image": 124.9660630699509
+    },
+    {
+      "nom": "20190925_193610_1_4",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.0,
+      "delai_alerte_s": null,
+      "alerte_jamais_donnee": true,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 0,
+      "precision_moyenne_detection": 0.01,
+      "millisecondes_par_image": 114.7259616999933
+    },
+    {
+      "nom": "20190925_200805_1_5",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.0,
+      "delai_alerte_s": null,
+      "alerte_jamais_donnee": true,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 0,
+      "precision_moyenne_detection": 0.0033333333333333335,
+      "millisecondes_par_image": 119.66155771674796
+    },
+    {
+      "nom": "20190926_095902_1_6",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.5766666666666667,
+      "delai_alerte_s": 0.08,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 1,
+      "precision_moyenne_detection": 0.5831648949404022,
+      "millisecondes_par_image": 112.6957216667688
+    },
+    {
+      "nom": "20190926_102042_1_7",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.013333333333333334,
+      "delai_alerte_s": 0.28,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 0,
+      "precision_moyenne_detection": 0.018444444444444444,
+      "millisecondes_par_image": 112.2494800333455
+    },
+    {
+      "nom": "20190926_111509_1_8",
+      "images": 300,
+      "images_avec_drone": 270,
+      "taux_suivi": 0.25925925925925924,
+      "delai_alerte_s": 1.4,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 1,
+      "precision_moyenne_detection": 0.3111111111111111,
+      "millisecondes_par_image": 116.64967218327244
+    },
+    {
+      "nom": "20190926_134054_1_9",
+      "images": 300,
+      "images_avec_drone": 300,
+      "taux_suivi": 0.53,
+      "delai_alerte_s": 0.08,
+      "alerte_jamais_donnee": false,
+      "part_images_fausse_alerte": 0.0,
+      "changements_identifiant": 3,
+      "precision_moyenne_detection": 0.5520932529938092,
+      "millisecondes_par_image": 109.80154221337823
+    }
+  ]
+}
