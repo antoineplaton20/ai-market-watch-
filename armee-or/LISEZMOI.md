@@ -59,6 +59,43 @@ Pour s'en servir :
 - **Avec Claude Code** : écris « Lis armee-or/PROMPT_MAITRE.md puis attaque le chantier n° 1 ». Le fichier `CLAUDE.md` du dossier le rappelle à chaque session.
 - **Version courte** : pour une IA qui ne lit pas les longs fichiers, le « prompt court » du §0 suffit.
 
+## Équipe vidéo : 2e compte démo à fort levier (`/or_video`)
+
+**Les deux vidéos envoyées le 25/10/2026**, analysées image par image (une image toutes les 3 secondes) :
+
+| | Vidéo 1 | Vidéo 2 |
+|---|---|---|
+| Compte | 2,02 $ → 218 697 $ en 74 min | 9,88 $ → 129 861 $ en 51 min |
+| Marché | uniquement l'or (XAUUSDm) | uniquement l'or (XAUUSDm) |
+
+- **La méthode** : 7 à 10 positions identiques, fermées ensemble dès 1 à 3 $ de gain par once, **aucun stop**. La mise est relancée après chaque gain jusqu'à la limite de marge (niveau de marge vu à 87 %, 91 % et 99 %).
+- **« Positif à chaque trade »**, seulement parce que les pertes ne sont jamais fermées. Elles sont visibles à l'écran : 7 × −157,92 $, puis −2 817 $.
+
+**Rejouée avec les mêmes règles sur l'or réel** (bougies 1 min, janvier-septembre 2026, fonction `video.simuler`) :
+
+- 167 040 loteries : départ à 2,02 $ ou 9,88 $, gain pris à 1, 2 ou 3 $ par once ;
+- le résultat des vidéos est atteint **4 fois**, soit 1 sur 42 000 ;
+- **99,98 % des loteries sont ruinées en moins de 24 h**.
+
+Les vidéos montrent les rares gagnants d'une loterie.
+
+**L'équipe vidéo.** À la demande du propriétaire, elle rejoue cette méthode **à l'identique sur un 2e compte DÉMO** (argent fictif), à côté de l'armée :
+
+- **Séparée de l'armée** : elle a son terminal MT5 (une copie du préfixe Wine), son pont (127.0.0.1:18778), son service `armee-or-mt5-video` et son numéro magique 770077. Le compte de l'armée et ses identifiants ne sont jamais touchés.
+- **Chaque loterie est comptée** : départ, record, paniers gagnés, ruine. Telegram annonce chaque départ, chaque palier (×10, ×100…) et chaque ruine.
+- **Après une ruine**, il suffit de remettre le solde du compte démo (dans l'espace du courtier) : la loterie suivante démarre seule.
+- **Démo seulement** : le pont refuse tout ordre si le compte n'est pas un compte démo.
+
+**Mise en route (Termius) :**
+
+1. Crée un compte DÉMO à fort levier avec un petit solde (2 à 10 $) : dans l'app MT5, Réglages > Nouveau compte, ou depuis l'espace client du courtier.
+2. Lance `or video installer` et entre le login, le mot de passe et le nom exact du serveur. La copie du terminal prend 2 à 5 min, la connexion 5 min au plus.
+3. Suis l'équipe avec `/or_video`. Réglages :
+   - `/or_video_gain_2` : fermeture des paniers à +2 $ par once ;
+   - `/or_video_off` et `/or_video_on` : arrêter ou reprendre les nouveaux paniers ;
+   - `/or_video_fermer` : tout fermer tout de suite.
+4. `or video rejouer` rejoue la méthode sur les bougies 1 min du courtier (environ 3 mois).
+
 ## Commandes Termius
 
 ```

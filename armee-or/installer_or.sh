@@ -146,10 +146,13 @@ systemctl daemon-reload
 systemctl enable --now armee-or-maj.path > /dev/null 2>&1 || true
 systemctl enable armee-or-flux armee-or-chef > /dev/null 2>&1
 systemctl restart armee-or-flux armee-or-chef
+# équipe vidéo (2e compte démo, si branchée) : son pont recharge le nouveau code
+[ -f /etc/systemd/system/armee-or-mt5-video.service ] && systemctl restart armee-or-mt5-video
 
 etape "8/8 Contrôle"
 sleep 8
 NOMS="flux chef"; [ -f /etc/systemd/system/armee-or-mt5.service ] && NOMS="mt5 flux chef"
+[ -f /etc/systemd/system/armee-or-mt5-video.service ] && NOMS="$NOMS mt5-video"
 for NOM in $NOMS; do
   systemctl is-active --quiet armee-or-$NOM && echo -e "${V}● armee-or-$NOM en marche${N}" || echo -e "${R}● armee-or-$NOM arrêté${N} (or journal)"
 done

@@ -13,6 +13,9 @@ Sécurités appliquées ICI, au plus près du compte :
 
 Usage : python pont_mt5.py              (service)
         python pont_mt5.py --verifier   (connexion, compte, cours ; code 0 si tout va bien)
+        python pont_mt5.py --instance video [--verifier]
+                                        (2e compte démo de l'équipe vidéo : réglages OR_VIDEO_*, port 18778,
+                                         son propre terminal ; les identifiants de l'armée ne lui sont jamais passés)
 """
 import datetime as dt
 import json
@@ -50,6 +53,22 @@ def lire_env(chemin):
     return valeurs
 
 
+def reglages_instance(reglages, instance=""):
+    """Réglages vus par une instance du pont. « video » : les clés OR_VIDEO_* deviennent les OR_MT5_* du pont, et
+    les OR_MT5_* de l'armée (son login, son mot de passe) sont retirées : chaque instance ne voit que SON compte."""
+    if not instance:
+        return dict(reglages)
+    prefixe = f"OR_{instance.upper()}_"
+    vus = {k: v for k, v in reglages.items() if not k.startswith("OR_MT5_")}
+    vus.update({"OR_MT5_" + k[len(prefixe):]: v for k, v in reglages.items() if k.startswith(prefixe)})
+    vus.setdefault("OR_MT5_PORT", "18778")
+    return vus
+
+
+def suffixe(instance):
+    return f"_{instance}" if instance else ""
+
+
 def _d(x):
     return x._asdict() if hasattr(x, "_asdict") else x
 
@@ -74,10 +93,11 @@ def choisir_or(noms):
 
 
 class Pont:
-    def __init__(self, mt5, reglages, dossier=None):
+    def __init__(self, mt5, reglages, dossier=None, instance=""):
         self.mt5 = mt5
         self.r = reglages
         self.dossier = dossier                     # dossier de l'armée : runtime/activer_algo pour le lanceur
+        self.instance = instance                   # "" : compte de l'armée ; "video" : 2e compte démo
         self.derniere_demande_algo = 0.0
         self.verrou = threading.RLock()
         self.symbole = reglages.get("OR_MT5_SYMBOLE") or "XAUUSD"
@@ -348,7 +368,7 @@ class Pont:
             return False
         self.derniere_demande_algo = time.time()
         try:
-            with open(os.path.join(self.dossier, "runtime", "activer_algo"), "w") as f:
+            with open(os.path.join(self.dossier, "runtime", "activer_algo" + suffixe(self.instance)), "w") as f:
                 f.write(str(time.time()))
             journal("Algo Trading éteint dans le terminal : activation demandée (Ctrl+E)")
             return True
@@ -384,33 +404,33 @@ def fichier_demarrage(reglages):
     return "\r\n".join(lignes) + "\r\n"
 
 
-def chemin_demarrage(chemin):
+def chemin_demarrage(chemin, instance=""):
     """À la racine du disque (C:\\) : aucun espace dans « /config:… », que MT5 lirait mal entre guillemets."""
+    nom = f"armee_or_demarrage{suffixe(instance)}.ini"
     lecteur = ntpath.splitdrive(chemin or "")[0]
-    return lecteur + "\\armee_or_demarrage.ini" if lecteur else os.path.join(os.path.dirname(chemin),
-                                                                             "armee_or_demarrage.ini")
+    return lecteur + "\\" + nom if lecteur else os.path.join(os.path.dirname(chemin), nom)
 
 
-def lancer_terminal(chemin, reglages=None):
+def lancer_terminal(chemin, reglages=None, instance=""):
     """Démarre le terminal en mode portable avec le fichier de démarrage, effacé dès que le terminal l'a lu."""
     if not chemin or not os.path.exists(chemin):
         return None
-    ini = chemin_demarrage(chemin)
+    ini = chemin_demarrage(chemin, instance)
     with open(ini, "w", encoding="utf-8") as f:
         f.write(fichier_demarrage(reglages or {}))
     journal("lancement du terminal", chemin)
     processus = subprocess.Popen([chemin, "/portable", "/config:" + ini])
 
-    minuterie = threading.Timer(90, effacer_demarrage, args=(chemin,))
+    minuterie = threading.Timer(90, effacer_demarrage, args=(chemin, instance))
     minuterie.daemon = True
     minuterie.start()
     return processus
 
 
-def effacer_demarrage(chemin):
+def effacer_demarrage(chemin, instance=""):
     """Le mot de passe ne reste jamais sur le disque plus longtemps que le démarrage du terminal."""
     try:
-        os.remove(chemin_demarrage(chemin))
+        os.remove(chemin_demarrage(chemin, instance))
     except (OSError, TypeError):
         pass
 
@@ -418,15 +438,17 @@ def effacer_demarrage(chemin):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     ici = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    reglages = lire_env(os.path.join(ici, ".env"))
+    instance = argv[argv.index("--instance") + 1] if "--instance" in argv[:-1] else ""
+    reglages = reglages_instance(lire_env(os.path.join(ici, ".env")), instance)
+    terminal = reglages.get("OR_MT5_TERMINAL")
     import MetaTrader5 as mt5
-    pont = Pont(mt5, reglages, dossier=ici)
+    pont = Pont(mt5, reglages, dossier=ici, instance=instance)
     if "--verifier" in argv:
-        lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
+        lancer_terminal(terminal, reglages, instance)
         limite = time.time() + 240                              # 4 min au plus : l'installateur coupe à 5
         while time.time() < limite and not pont.connecter():
             time.sleep(10)
-        effacer_demarrage(reglages.get("OR_MT5_TERMINAL"))
+        effacer_demarrage(terminal, instance)
         etat = pont.op_etat()
         print(json.dumps(etat, indent=1, default=str))
         if not etat["connecte"]:
@@ -437,13 +459,13 @@ def main(argv=None):
         sys.stdout.flush()                                      # os._exit ne vide pas les tampons : résultat d'abord
         sys.stderr.flush()
         os._exit(0)                                             # ne pas attendre le terminal lancé pour la vérification
-    lancer_terminal(reglages.get("OR_MT5_TERMINAL"), reglages)
+    lancer_terminal(terminal, reglages, instance)
     time.sleep(15)
     pont.connecter()
-    effacer_demarrage(reglages.get("OR_MT5_TERMINAL"))
+    effacer_demarrage(terminal, instance)
     threading.Thread(target=pont.surveiller, daemon=True).start()
     port = int(reglages.get("OR_MT5_PORT") or 18777)
-    journal("pont MT5 à l'écoute sur 127.0.0.1:%d" % port)
+    journal("pont MT5%s à l'écoute sur 127.0.0.1:%d" % (" (" + instance + ")" if instance else "", port))
     pont.serveur(port).serve_forever()
 
 

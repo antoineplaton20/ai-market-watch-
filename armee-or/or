@@ -5,6 +5,7 @@ PY="$DOSSIER/.venv/bin/python"
 en_bots() { runuser -u bots -- bash -c "cd '$DOSSIER' && $*"; }
 SERVICES="armee-or-flux armee-or-chef"
 [ -f /etc/systemd/system/armee-or-mt5.service ] && SERVICES="armee-or-mt5 $SERVICES"
+[ -f /etc/systemd/system/armee-or-mt5-video.service ] && SERVICES="armee-or-mt5-video $SERVICES"
 [ "$(id -u)" -eq 0 ] || { echo "Lance les commandes « or » en root (c'est le cas par défaut)."; exit 1; }
 CMD="${1:-aide}"; CMD="${CMD,,}"                       # GO, Gp, go : même code
 case "$CMD" in
@@ -49,6 +50,17 @@ case "$CMD" in
       compte) sed -i '/^# MetaTrader 5/d;/^OR_MT5_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_mt5.sh" ;;   # il relance lui-même flux et chef
       installer) bash "$DOSSIER/installer_mt5.sh" ;;   # il relance lui-même flux et chef
       *) echo "or mt5 [etat|fermer|reprendre|profil X|entrainement on|off|gain X|off|tendance on|off|permis on|off|agressif on|off|rentable|journal|compte|installer]" ;;
+    esac ;;
+  video)
+    case "${2:-etat}" in
+      etat) en_bots "$PY -m armee_or video"; systemctl is-active --quiet armee-or-mt5-video && echo "● armee-or-mt5-video en marche" || echo "● armee-or-mt5-video ARRÊTÉ (or video journal)" ;;
+      on|off|fermer) en_bots "$PY -m armee_or commande video_$2" ;;
+      gain) [[ "${3:-}" =~ ^[0-9]+([.,][0-9]+)?$ ]] || { echo "Usage : or video gain 2 (\$ par once)"; exit 1; }; en_bots "$PY -m armee_or commande video_gain $3" ;;
+      rejouer) en_bots "$PY -m armee_or video rejouer" ;;
+      journal) journalctl -u armee-or-mt5-video -n 80 -f ;;
+      compte) sed -i '/^# Équipe vidéo/d;/^OR_VIDEO_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_video.sh" ;;
+      installer) bash "$DOSSIER/installer_video.sh" ;;
+      *) echo "or video [etat|on|off|fermer|gain X|rejouer|journal|compte|installer]" ;;
     esac ;;
   config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;
   maj)
@@ -107,6 +119,9 @@ Armée de l'or (indépendante de tes autres bots) :
   or mt5 rentable          seulement ce qui a gagné sur l'historique (équipe 1 j ; entraînement arrêté)
   or mt5 agressif on|off   mode agressif : plus d'ordres, plus gros, freins élargis (3 %/jour, 10 %)
   or mt5 journal | compte  journal du pont MT5 / changer de compte démo
+  or video installer       équipe vidéo : 2e compte DÉMO à fort levier, méthode des deux vidéos
+  or video                 ses paniers, ses loteries (départ, record, ruine) · or video on|off|fermer
+  or video gain 2          panier fermé dès +2 \$ par once · or video rejouer : la méthode sur l'historique 1 min
   or journal       journal en direct
   or demarrer | arreter | redemarrer
   or test          contrôle complet

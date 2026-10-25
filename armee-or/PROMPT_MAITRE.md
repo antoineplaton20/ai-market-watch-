@@ -378,6 +378,24 @@ Pour le permis (frais estimés à 0,015 %, net par décision) : −1,4 pb sur la
 
 50 signaux candidats ont été examinés : dollar, taux, VIX, argent, taux réels, inflation attendue, pente des taux… Aucun n'est admis au seuil corrigé.
 
+### La méthode des vidéos (25/10/2026)
+
+Le propriétaire a envoyé deux vidéos, analysées image par image :
+
+- vidéo 1 : 2,02 $ → 218 697 $ en 74 min ;
+- vidéo 2 : 9,88 $ → 129 861 $ en 51 min ;
+- uniquement de l'or (XAUUSDm), chez un courtier à levier illimité.
+
+**La méthode** : un panier de positions identiques, fermé dès 1 à 3 $ de gain par once, **aucun stop**, et une mise relancée jusqu'à la limite de marge. Le résultat paraît positif à chaque trade parce que les pertes ne sont jamais fermées.
+
+**Rejouée avec les mêmes règles** sur l'or réel (bougies 1 min de 2026, `video.simuler`) :
+
+- 167 040 loteries ;
+- le résultat des vidéos est atteint 4 fois, soit 1 sur 42 000 ;
+- 99,98 % des loteries sont ruinées en moins de 24 h.
+
+**Décision du propriétaire** : la rejouer à l'identique sur un **2e compte démo** séparé (équipe vidéo, `video.py`, hypothèse H23). Elle n'entre jamais dans l'armée.
+
 ### Testé et rejeté
 
 - pause après un stop ;
@@ -1223,6 +1241,13 @@ Les numéros sont fixes. L'ordre de test conseillé est celui du §17.
   - Ce n'est pas un signal mais un réglage, à appliquer à toute règle admise.
   - On mesure le gain en Sharpe et en baisse maximale.
 
+**Testée et rejetée pour l'armée**
+
+- **H23 — La méthode des vidéos** (panier sans stop, gain pris à quelques dollars, mise relancée au maximum de la marge).
+  - Résultat : 1 loterie sur 42 000 atteint le résultat des vidéos, 99,98 % sont ruinées (§5).
+  - Elle vit à part, sur un 2e compte démo (`video.py`, service `armee-or-mt5-video`), pour que le propriétaire voie le résultat en vrai.
+  - Elle n'entre jamais dans l'armée : c'est une martingale de mise, interdite par la loi 7.
+
 ### 10.4 Idées écartées, sauf preuve nouvelle
 
 - **Écartées d'office** : les vagues d'Elliott, les angles et cycles de Gann, l'astrologie et les cycles lunaires, les « secrets » vendus en ligne, les signaux de groupes Telegram. Elles ne sont pas réfutables ou n'ont pas de source. On ne les teste que si quelqu'un les chiffre sans ambiguïté, et alors au seuil le plus strict.
@@ -1346,6 +1371,7 @@ Règle : une hypothèse est jugée sur la source 1 dès qu'elle existe pour l'un
 | `terminal.py`, `brief.py`, `alertes.py` | Les écrans façon terminal pro (`/or_go`…), le brief de 8 h, les alertes de prix. |
 | `sauvegarde.py`, `base.py`, `config.py`, `telegram.py`, `systemd.py` | Les sauvegardes de nuit, la base SQLite (mode WAL), les réglages `.env`, les messages, le chien de garde. |
 | `bibliotheque.py` | Les fiches de savoir, à étendre avec les grands. |
+| `video.py` | L'équipe vidéo (H23) : la méthode des vidéos, sur un 2e compte démo séparé (port 18778, numéro magique 770077), avec son rejeu historique. |
 
 ### 12.2 La vitesse (mesurée, puis à tenir)
 
@@ -1378,7 +1404,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 126 tests au 22/10/2026. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 137 tests au 25/10/2026. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

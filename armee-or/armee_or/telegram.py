@@ -98,6 +98,7 @@ MENU = [("or_go", "Terminal : écran de lancement"), ("or_gp", "Terminal : graph
         ("or_mt5_profil", "Choisir le levier des décisions"), ("or_mt5_ecran", "Photo de l'écran du terminal MT5"), ("or_entrainement", "Équipe d'entraînement on/off"), ("or_gain", "Prise de gain : fermer dès +X €"), ("or_tendance", "Filtre : jamais contre la tendance on/off"), ("or_permis", "Bots actifs ou « que du prouvé »"), ("or_rentable", "Mode rentable : seulement ce qui a gagné"), ("or_agressif", "Mode agressif on/off"),
         ("or_maj", "Mettre à jour l'armée (sans terminal)"), ("or_journal", "Dernières lignes du journal"),
         ("or_prompt", "Prompt maître : à donner à une IA"),
+        ("or_video", "Équipe vidéo : 2e compte démo, méthode des vidéos"),
         ("or_levier", "Fiches de levier x1 à x50"), ("or_bougies", "Les 40 chandeliers mesurés sur l'or"), ("or_bilan", "Bilan historique"), ("or_pause", "Pause des nouvelles positions"),
         ("or_reprise", "Reprise des positions"), ("or_bibliotheque", "Connaissances utilisées"), ("or_aide", "Toutes les commandes")]
 

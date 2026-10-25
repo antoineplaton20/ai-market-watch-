@@ -12,9 +12,12 @@ class ErreurMT5(Exception):
     pass
 
 
-def appel(op, delai=30, **parametres):
+def appel(op, delai=30, port=None, **parametres):
+    """port : celui du pont de l'armée par défaut ; config.VIDEO_PORT pour le 2e compte (équipe vidéo)."""
+    port = port or config.MT5_PORT
+    service = "armee-or-mt5-video" if port == config.VIDEO_PORT else "armee-or-mt5"
     try:
-        with socket.create_connection(("127.0.0.1", config.MT5_PORT), timeout=delai) as s:
+        with socket.create_connection(("127.0.0.1", port), timeout=delai) as s:
             s.sendall((json.dumps({"op": op, **parametres}) + "\n").encode())
             morceaux = b""
             while not morceaux.endswith(b"\n"):
@@ -23,7 +26,7 @@ def appel(op, delai=30, **parametres):
                     break
                 morceaux += bloc
     except OSError as ex:
-        raise ErreurMT5(f"pont MT5 injoignable ({ex.__class__.__name__}) : service armee-or-mt5 arrêté ou en démarrage")
+        raise ErreurMT5(f"pont MT5 injoignable ({ex.__class__.__name__}) : service {service} arrêté ou en démarrage")
     try:
         rep = json.loads(morceaux)
     except ValueError:

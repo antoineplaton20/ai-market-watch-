@@ -22,7 +22,7 @@ import numpy as np
 
 from . import apprentissage, archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
     levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, terminal, veille
-from . import alertes, brief, risque, sauvegarde
+from . import alertes, brief, risque, sauvegarde, video
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -677,6 +677,8 @@ def bot_commandes(chef):
             telegram.envoyer(fin_du_journal())
         elif c in ("/or_prompt", "prompt"):
             envoyer_prompt()
+        elif c == "/or_video" or c.startswith(("/or_video_", "video")):
+            telegram.envoyer(video.commande(c))
         elif c in ("/or_aide", "/start", "aide"):
             telegram.envoyer("🟡 Commandes (touche-les) :\n" + "\n".join(f"/{n} — {d}" for n, d in telegram.MENU))
         faites.append(c)
@@ -875,6 +877,8 @@ class Chef:
             Bot("Bilan historique", "archiviste", 7 * 86400, bot_bilan, fond=True),
             Bot("Permis de trader", "apprentissage", 6 * 3600, bot_permis, fond=True),
             Bot("Exécutant MT5 (démo)", "execution", 5, executant.bot_mt5),
+            Bot("Équipe vidéo (2e compte démo)", "execution", 1 if config.VIDEO_ACTIF else 300, video.bot_video,
+                fond=True),
             Bot("Archiviste MT5", "archiviste", 3600, bot_archive_mt5, fond=True),
             Bot("Commandes", "chef", 3, bot_commandes, fond=True),
             Bot("Rapporteur", "chef", config.RAPPORT_HEURES * 3600, bot_rapporteur, fond=True),

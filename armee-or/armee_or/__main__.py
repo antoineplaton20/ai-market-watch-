@@ -18,7 +18,8 @@ from . import config
 
 
 COMMANDES = ("pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
-             "mt5_entrainement", "mt5_ecran", "bougies", "apprentissage", "verif", "mt5_gain", "mt5_tendance", "mt5_permis", "mt5_agressif", "mt5_rentable")
+             "mt5_entrainement", "mt5_ecran", "bougies", "apprentissage", "verif", "mt5_gain", "mt5_tendance", "mt5_permis", "mt5_agressif", "mt5_rentable",
+             "video_on", "video_off", "video_fermer", "video_gain")
 
 
 def _journal():
@@ -104,6 +105,15 @@ def main(argv=None):
     elif cmd == "mt5":
         from . import executant
         print(executant.rapport_mt5())
+    elif cmd == "video" and len(argv) > 1 and argv[1] == "rejouer":
+        from . import video
+        capital, cible = 9.88, 129_861.08
+        print("Bougies 1 min du 2e compte (jusqu'à 100 000, environ 3 mois)…")
+        bougies = video.appel("bougies", tf="1m", n=100_000, delai=300)
+        print(video.texte_rejeu(video.rejouer(bougies, capital, cible), capital, cible))
+    elif cmd == "video":
+        from . import video
+        print(video.texte_video())
     elif cmd == "commande" and len(argv) > 1 and argv[1].split(" ")[0] in COMMANDES:
         texte = " ".join(argv[1:])
         fichier = config.RACINE / "runtime" / "commandes.txt"

@@ -313,9 +313,9 @@ def test_le_pont_reste_autonome_et_ne_contient_aucun_identifiant():
     texte = open(os.path.join(racine, "armee_or", "pont_mt5.py"), encoding="utf-8").read()
     assert not re.search(r"(?m)^\s*(from \.|from armee_or|import armee_or)", texte)       # stdlib + MetaTrader5 seulement
     assert "127.0.0.1" in texte and "0.0.0.0" not in texte                                  # jamais exposé au réseau
-    for fichier in ("installer_mt5.sh", "installer_or.sh", "or"):
+    for fichier in ("installer_mt5.sh", "installer_video.sh", "installer_or.sh", "or"):
         contenu = open(os.path.join(racine, fichier), encoding="utf-8").read()
-        assert not re.search(r"OR_MT5_(LOGIN|MOT_DE_PASSE)=\d|MOT_DE_PASSE=[^$\n]", contenu), fichier
+        assert not re.search(r"OR_(MT5|VIDEO)_(LOGIN|MOT_DE_PASSE)=\d|MOT_DE_PASSE=[^$\n]", contenu), fichier
 
 
 def test_pilotage_au_doigt_depuis_telegram(faux, monkeypatch):
