@@ -39,8 +39,13 @@ _log = logging.getLogger("or.marches")
 MAGIQUE = 770050
 CLE = "marches:etat"
 STRATEGIES = {"sma200": "au-dessus de sa moyenne 200 jours", "croisement_20_50": "moyenne 20 j au-dessus de la 50 j "
-              "(3e vidéo)", "toujours_acheter": "toujours acheter (étalon naïf)"}
-CANDIDATES = ("sma200", "croisement_20_50")
+              "(3e vidéo)", "momentum_12m": "en hausse sur 12 mois (Moskowitz, Ooi et Pedersen, 2012)",
+              "toujours_acheter": "toujours acheter (étalon naïf)"}
+# R6 (25/10/2026) : le momentum 12 mois est le seul des 13 essais de la recherche à passer tous les contrôles
+# (etudes/recherche_r6.py, etudes/robustesse_r6.py). Le permis choisit, sur l'historique du COURTIER, la meilleure
+# règle qui gagne sur chaque moitié et bat le naïf.
+CANDIDATES = ("sma200", "croisement_20_50", "momentum_12m")
+MOMENTUM = 252                      # 12 mois de bourse
 STOP_ATR = 5.0                      # stop de catastrophe : 5 ATR(20) journaliers sous l'entrée
 VOL_BANC = 0.10                     # banc : chaque marché à 10 % de volatilité annuelle (portefeuille à risque égal)
 LEVIER_MAX = 5.0
@@ -201,6 +206,10 @@ def signal(c, strategie):
     if strategie == "croisement_20_50":
         a, b = I.sma(c, 20), I.sma(c, 50)
         return np.where(np.isfinite(b) & (a > b), 1.0, 0.0)
+    if strategie == "momentum_12m":                         # Moskowitz, Ooi et Pedersen (2012), acheteur seulement
+        s = np.zeros(len(c))
+        s[MOMENTUM:] = c[MOMENTUM:] > c[:-MOMENTUM]
+        return s
     s = np.ones(len(c))
     s[:200] = 0.0                                           # même départ que la moyenne 200 j
     return s
@@ -297,7 +306,7 @@ def statistiques(x):
             "pire_baisse": float((courbe - np.maximum.accumulate(courbe)).min())}
 
 
-def banc(marches, strategies=("sma200", "croisement_20_50", "toujours_acheter")):
+def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
     """marches : {symbole: {"ts": ms, "o","h","l","c": tableaux, "cout": {...}}} -> résultats par règle :
     portefeuille à risque égal (moyenne des marchés présents chaque jour), deux moitiés, entrées, Sharpe par marché."""
     garde = {s: d for s, d in marches.items() if len(d["c"]) >= MIN_BOUGIES}
@@ -731,8 +740,9 @@ def texte_marches():
         lignes.append("Refusés par le pont : " + " · ".join(f"{s} ({r})" for s, r in sorted(e["refus"].items())))
     if base.lire(INCERTAIN):
         lignes.append("⚠️ Ordre incertain non réconcilié : entrées verrouillées (/or_diagnostic).")
-    lignes.append("Rappel : 34 marchés, Yahoo 2000-2026, exécution à l'ouverture suivante → règle 200 jours Sharpe "
-                  f"+0,35 / +0,52 (moitiés), mais {GAGNANTS_MESURES} des trades gagnants : beaucoup de petites pertes, quelques "
-                  "gros gains. Viser 80 % de trades gagnants (prise de gain rapide) la rend perdante. "
-                  "/or_marches_off · /or_marches_on · /or_marches_fermer")
+    lignes.append("Rappel : 34 marchés, Yahoo 2000-2026, exécution à l'ouverture suivante, stop 5 ATR → momentum 12 mois "
+                  "Sharpe +0,38 / +0,66 (moitiés), 34 % de trades gagnants ; règle 200 jours +0,35 / +0,52, "
+                  f"{GAGNANTS_MESURES} de trades gagnants ; « toujours acheter » +0,08 / +0,46. Viser 80 % de trades "
+                  "gagnants (prise de gain rapide) rend la règle perdante. /or_marches_off · /or_marches_on · "
+                  "/or_marches_fermer")
     return "\n".join(lignes)

@@ -450,7 +450,7 @@ def test_banc_sans_aucune_donnee_du_futur():
     o, h, l = c * (1 + rng.normal(0, 0.002, len(c))), c * 1.006, c * 0.994
     h, l = np.maximum(h, np.maximum(o, c)), np.minimum(l, np.minimum(o, c))
     cout = {"ecart": 0.0003, "swap_long": -0.0001}
-    for strat in ("sma200", "croisement_20_50", "toujours_acheter"):
+    for strat in ("sma200", "croisement_20_50", "momentum_12m", "toujours_acheter"):
         j1 = []
         net1, _ = marches.simuler_marche(o, h, l, c, strat, cout, journal=j1)
         for k in (300, 640, 1111):
@@ -496,14 +496,16 @@ def test_trades_comptes_un_par_un_et_permis_par_moitie():
     assert marches.permis({"sma200": r, "toujours_acheter": naif})["sma200"]["ok"]
 
 
-def test_l_equipe_en_direct_decide_les_memes_jours_que_le_banc(monkeypatch):
+@pytest.mark.parametrize("regle,periode", [("sma200", 260), ("momentum_12m", 330)])
+def test_l_equipe_en_direct_decide_les_memes_jours_que_le_banc(monkeypatch, regle, periode):
     """Calibrage : l'équipe, rejouée bougie après bougie sur un faux courtier, achète et vend exactement les jours où
-    le banc d'essai exécute ses ordres (décision à la clôture, ordre à la bougie suivante)."""
-    c = _serie_ondulee()
+    le banc d'essai exécute ses ordres (décision à la clôture, ordre à la bougie suivante), pour chaque règle."""
+    i = np.arange(1100)
+    c = (100 + 0.01 * i + 6 * np.sin(2 * np.pi * i / periode) + np.random.default_rng(7).normal(0, 0.15, 1100)) / 100
     n = len(c)
     journal = []
-    marches.simuler_marche(c, c * 1.002, c * 0.998, c, "sma200", {"ecart": 0.0, "swap_long": 0.0}, journal=journal)
-    sig = marches.signal(c, "sma200")
+    marches.simuler_marche(c, c * 1.02, c * 0.98, c, regle, {"ecart": 0.0, "swap_long": 0.0}, journal=journal)
+    sig = marches.signal(c, regle)                          # bougies larges : stop lointain (le faux courtier n'en a pas)
     assert len(journal) >= 3 and all(t[1] is None or sig[t[1] - 1] == 0 for t in journal)   # sorties de règle seulement
     f = FauxMulti({"EURUSD": ("Forex\\Majors\\EURUSD", 100_000.0, c[:261].copy())})
     pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
@@ -516,7 +518,7 @@ def test_l_equipe_en_direct_decide_les_memes_jours_que_le_banc(monkeypatch):
         base.ecrire("mt5:etat", {"connecte": True, "compte": {"equity": 100_000.0, "currency": "USD", "demo": True,
                                                              "margin_free": 100_000.0, "login": 1,
                                                              "server": "MetaQuotes-Demo"}, "ts": 9e12})
-        base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+        base.ecrire("marches:permis", {regle: {"ok": True, "sharpe": (0.3, 0.5)}})
         activer()
         entrees, sorties = [], []
         depart = next(t[1] for t in journal if t[1] is not None and t[1] >= 261)
@@ -569,3 +571,18 @@ def test_chemin_marches_au_hasard_ne_franchit_jamais_un_plafond(courtier):
     courtier.positions, envois = [], len(courtier.envois)
     r = pont.traiter({"op": "marches_ouvrir", "symbole": "EURUSD", "volume": 0.01, "sl": 0.5})["r"]
     assert not r["ok"] and len(courtier.envois) == envois                              # compte réel : rien ne part
+
+
+def test_momentum_12_mois_et_choix_du_permis():
+    c = np.concatenate((np.linspace(100, 200, 400), np.linspace(200, 120, 300)))
+    s = marches.signal(c, "momentum_12m")
+    assert s[:252].sum() == 0 and s[300] == 1 and s[-1] == 0                       # 12 mois de recul, puis le signe
+    assert s[260] == (c[260] > c[260 - 252])
+    assert "momentum_12m" in marches.CANDIDATES and "momentum_12m" in marches.STRATEGIES
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.35, 0.52)},
+                                   "momentum_12m": {"ok": True, "sharpe": (0.38, 0.66)},
+                                   "croisement_20_50": {"ok": False, "sharpe": (0.9, 0.9)}})
+    assert marches.strategie_permise() == "momentum_12m"                           # la meilleure règle PERMISE
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.35, 0.52)},
+                                   "momentum_12m": {"ok": False, "sharpe": (0.38, 0.66)}})
+    assert marches.strategie_permise() == "sma200"

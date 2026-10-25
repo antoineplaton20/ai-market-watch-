@@ -15,6 +15,9 @@
 > notée par root (/var/lib/armee-or) s'installe, après les tests sur le serveur, en pause. Chaque publication monte
 > donc la version et régénère PAQUET.json (test_le_paquet_publie_est_a_jour).
 >
+> R6 (25/10/2026) : recherche sur internet demandée par le propriétaire (« être positifs quoi qu'il arrive »).
+> Seul le momentum 12 mois passe tous les contrôles : ajouté aux candidats du permis multi-marchés (§5).
+>
 > R5.3 : une activation ne doit jamais en relancer une autre. Toute installation arrête la démo R4 (actif = False
 > dans runtime/demo-r4.json, compteurs gardés) ; seule /or_demo_on la relance.
 
@@ -449,6 +452,28 @@ Test préliminaire sur 34 marchés de type MT5, bougies quotidiennes Yahoo de 20
 - **Le même banc, dans `marches.py`** (stop de catastrophe à 5 ATR, financement de 3 %), donne +0,31 / +0,51 contre +0,08 / +0,45 pour le naïf, avec une pire baisse de −14 % contre −31 % : le permis est accordé.
 - **R5.1 (25/10/2026), banc recalibré** : chaque ordre est exécuté à l'ouverture qui SUIT la clôture de décision, comme l'équipe en direct (avant, le banc achetait au cours de clôture qui avait servi à décider). La règle des 200 jours donne +0,35 / +0,52, le naïf +0,08 / +0,46 : permis maintenu. Un test rejoue l'équipe bougie après bougie et vérifie qu'elle achète et vend les mêmes jours que le banc.
 - **Trade par trade** : 3 432 trades, **22 % gagnants**, gain moyen +3,9 %, perte moyenne −1,0 % (part de la mise du marché). La règle gagne par quelques gros gains, pas par la fréquence des gains.
+
+### Recherche R6 (25/10/2026) : les idées publiées, testées à l'identique
+
+Demande du propriétaire : fouiller internet (recherche, forums, vidéos, prompts d'IA) pour renforcer les bots. Les idées sérieuses ont été testées avec leurs paramètres PUBLIÉS, sans réglage sur nos données. Les 13 essais sont comptés (H27 à H35 du registre). Mêmes règles pour toutes : exécution à l'ouverture suivante, frais, deux moitiés, battre le naïf du même panier (`etudes/recherche_r6.py`, `etudes/robustesse_r6.py`, `etudes/or_seances.py`).
+
+| Règle (source) | Sharpe moitiés | Naïf du même panier | Verdict |
+|---|---|---|---|
+| **Momentum 12 mois, acheteur** (Moskowitz, Ooi et Pedersen, 2012) | **+0,38 / +0,66** (stop 5 ATR compris) | +0,08 / +0,46 | **candidat du permis** |
+| Règle 200 jours (l'équipe) | +0,35 / +0,52 | +0,08 / +0,46 | en service |
+| Momentum 1/3/12 mois (AQR) | +0,31 / +0,52 | +0,09 / +0,46 | redondant |
+| Moyennes 50/100/200 combinées | +0,33 / +0,38 | +0,09 / +0,46 | rejetée |
+| Indices : RSI(2) de Connors (2008) | +0,38 / +0,39, 70 % de trades gagnants | +0,07 / +0,52 | rejetée |
+| Indices : IBS < 0,2 | +0,48 / +0,20 | +0,07 / +0,52 | éteinte après 2013 |
+| Indices : tournant du mois (Lakonishok et Smidt, 1988) | +0,59 / −0,07 | +0,07 / +0,52 | disparue |
+| Indices : Halloween (Bouman et Jacobsen, 2002) | +0,60 / +0,41 | +0,07 / +0,52 | rejetée de peu |
+| Indices : effet de nuit (Cliff, Cooper et Gulen, 2008) | −1,02 / −0,38 | +0,07 / +0,52 | frais trop lourds |
+| Or : vendre pendant New York (constat WGC 2026) | +0,28 / +0,08 | — | trop faible |
+
+- **Robustesse du momentum 12 mois** : il bat le naïf avec des écarts triplés, avec un financement à −5 %/an, et sur 191 sous-paniers tirés au hasard sur 200 ; il fait mieux que la règle 200 jours sur 163 de ces 200 sous-paniers. Il ne gagne pas famille par famille (sauf forex et crypto) : c'est la diversification qui travaille. Sa statistique t (≈ 2,7 sur 26 ans) reste sous le seuil de Bonferroni (~3,0 pour 21 essais) : c'est pourquoi il n'est qu'un candidat, départagé par le permis sur l'historique du courtier. Il a été publié en 2012 : notre 2e moitié (2013-2026) est donc hors de l'échantillon des auteurs.
+- **Les règles à fort taux de réussite** (RSI(2), IBS : 63 à 70 % de trades gagnants) ne battent pas « toujours acheter » sur 2013-2026. Mélangé au momentum (25 % du risque), le RSI(2) donne +0,45 / +0,68 et 59 % de mois positifs : un écart trop faible pour être distingué du hasard, donc pas déployé.
+- **Écartées sur pièces** : la dérive avant la Fed (disparue après 2015, Kurov, Wolfe et Gilbert) ; le portage des devises (Koijen et al., 2018 : Sharpe brut ~0,7, krachs groupés ; non testable sans l'historique des swaps) ; les robots « 100 % gagnants » (grilles et martingales : un seul mouvement défavorable vide le compte) ; les IA qui tradent seules (banc de l'université de Hong Kong, 2026 : plusieurs modèles autour de zéro en six semaines).
+- **Rappel des régulateurs** : 74 à 89 % des comptes CFD de particuliers perdent de l'argent (ESMA, 2018).
 - **Le forex seul ne rapporte rien.** Les familles ne gagnent qu'ensemble : c'est la diversification qui travaille.
 - **Le permis réel se calcule sur l'historique du courtier**, avec ses écarts et ses swaps.
 
@@ -1508,7 +1533,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 230 tests au 25/10/2026 (R5.3) ; 239 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 232 tests au 25/10/2026 (R6) ; 241 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

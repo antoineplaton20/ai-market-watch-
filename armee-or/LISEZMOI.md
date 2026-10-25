@@ -1,4 +1,35 @@
-# Armée de l’or 2.5-R5.3 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R6 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 25 octobre 2026 (R6) — la recherche sur internet, testée sur nos données
+
+**Ce qui a été fouillé** : publications de recherche (AQR, Journal of Financial Economics, Quantpedia, SSRN, arXiv), blogs de traders quantitatifs, forums (MQL5, ProRealCode, BabyPips), régulateurs (ESMA), World Gold Council, expériences d’IA qui tradent, robots vendus sur Telegram.
+
+**Ce qui a été gardé** : seulement les idées chiffrées, avec leurs paramètres publiés. Chacune a été testée telle quelle sur nos 34 marchés (2000-2026) ou sur l’or 15 min (2021-2026), avec les mêmes règles qu’en direct : ordre à l’ouverture suivante, frais, deux moitiés, et il faut battre « toujours acheter ».
+
+| Idée | Résultat | Verdict |
+|---|---|---|
+| **Momentum 12 mois** (Moskowitz, Ooi, Pedersen 2012) | Sharpe +0,38 / +0,66, pire baisse −13 % | **ajouté au permis** |
+| Notre règle 200 jours | +0,35 / +0,52 | gardée |
+| RSI(2) de Connors (indices) | 70 % de trades gagnants mais +0,38 / +0,39 | ne bat pas le naïf |
+| IBS, tournant du mois (indices) | très bons avant 2013, morts après | rejetés |
+| Halloween, effet de nuit | battus par le naïf / mangés par les frais | rejetés |
+| Or : séance de New York | baissière, mais trop faible une fois l’écart payé | rejeté |
+| Dérive avant la Fed, portage des devises | disparue après 2015 / pas d’historique des swaps | écartés |
+| Robots « 100 % gagnants » | grilles et martingales | interdits |
+
+**Le momentum 12 mois** est acheteur d’un marché si son prix est plus haut qu’il y a un an. Il a passé tous les contrôles :
+
+- frais triplés, financement plus cher ;
+- 200 sous-paniers de marchés tirés au hasard : il bat le naïf dans 191 cas ;
+- l’équipe en direct, rejouée jour par jour, prend exactement les mêmes décisions que le banc.
+
+Il rejoint la règle des 200 jours comme candidat. Toutes les heures, le banc d’essai les compare sur l’historique de TON courtier et le permis prend la meilleure des règles qui gagnent sur chaque moitié. `/or_marches` montre les deux.
+
+**Ce que la recherche ne trouve nulle part** : une méthode qui gagne à chaque trade. Les règles à 70 % de trades gagnants font moins bien que « toujours acheter » depuis 2013. Celles qui affichent 100 % cachent leurs pertes (grilles, martingales). Les régulateurs européens rappellent que 74 à 89 % des comptes CFD de particuliers perdent de l’argent. Le seul levier qui marche est la diversification : beaucoup de marchés, des pertes coupées petites, et une taille réglée par la volatilité.
+
+Tout est consigné : 17 nouvelles fiches dans le registre des hypothèses (H23 à H39), et les scripts dans `etudes/` (voir `etudes/LISEZMOI.md`).
+
+Pour l’installer : `/or_maj` (Telegram) ou `or maj` (Termius).
 
 ## 25 octobre 2026 (R5.3) — une activation ne relance plus une autre équipe
 

@@ -1,4 +1,4 @@
-"""Migration locale R5.3 d'une installation connue (R4, R5 à R5.2, ou la base acceptée par R4). Pas d'installation Wine
+"""Migration locale R6 d'une installation connue (R4, R5 à R5.3, ou la base acceptée par R4). Pas d'installation Wine
 ni de changement des autres bots. R5 = R4 + équipe multi-marchés + équipe vidéo (2e compte démo), toutes deux
 désactivées. R5.2 : mise à jour depuis Termius (or maj) et Telegram (/or_maj), version plus récente seulement."""
 import argparse
@@ -22,7 +22,7 @@ SAUVEGARDES = Path('/var/backups/armee-or-r5')
 TELECOMMANDE = Path('/usr/local/bin/or')
 SERVICES = ('armee-or-mt5.service','armee-or-flux.service','armee-or-chef.service')
 VIDEO = 'armee-or-mt5-video.service'  # pont du 2e compte : relancé s'il tournait, jamais exigé pour valider
-VERSION = '2.5-R5.3'
+VERSION = '2.5-R6'
 UNITE_MAJ = Path('/etc/systemd/system/armee-or-maj.service')
 CHEMIN_MAJ = Path('/etc/systemd/system/armee-or-maj.path')
 DEJA_A_JOUR, PLUS_ANCIENNE = 3, 4  # codes de sortie de « comparer », lus par « or maj »
