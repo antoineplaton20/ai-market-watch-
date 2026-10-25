@@ -59,6 +59,44 @@ Pour s'en servir :
 - **Avec Claude Code** : écris « Lis armee-or/PROMPT_MAITRE.md puis attaque le chantier n° 1 ». Le fichier `CLAUDE.md` du dossier le rappelle à chaque session.
 - **Version courte** : pour une IA qui ne lit pas les longs fichiers, le « prompt court » du §0 suffit.
 
+## Armée multi-marchés : tout MT5 (`/or_marches`)
+
+**Décision du 25/10/2026** : l'armée ne vise plus seulement l'or, mais tous les marchés de MT5 (forex, métaux, énergie, matières agricoles, indices, crypto).
+
+**Ce que la mesure a montré**, sur 34 marchés (Yahoo 2000-2026, frais et financement compris) :
+
+- La règle la plus simple et la mieux documentée gagne : n'être acheteur d'un marché qu'**au-dessus de sa moyenne de 200 jours** (Paul Tudor Jones ; Faber, 2007), avec une taille réglée par la volatilité.
+- Son Sharpe va de +0,47 à +0,81 selon le coût du financement. Elle est positive sur les deux moitiés (2000-2013 et 2013-2026), avec une pire baisse moitié moindre que « tout acheter ».
+- Le croisement 20/50 jours de la 3e vidéo ne fait pas mieux que « tout acheter ». La cassure des Turtles perd après frais.
+- C'est la diversification qui travaille, pas la prédiction.
+
+**Ce que fait l'équipe** (`marches.py`, numéro magique 770050, jamais gérée par l'exécutant de l'or) :
+
+1. **Inventaire** : la liste de tous les symboles du courtier, et un panier d'environ 34 marchés liquides choisi automatiquement, quels que soient leurs noms chez ce courtier (EURUSD.a, XAUUSDm, US500.cash…).
+2. **Archive** : les bougies journalières de chaque marché, depuis 2000 si le courtier les a.
+3. **Banc d'essai** : chaque règle, sur chaque marché, avec les écarts et les swaps réels du courtier, sur deux moitiés.
+4. **Permis** : une règle trade seulement si le portefeuille gagne sur chaque moitié ET bat « toujours acheter » le même panier. Le permis est revu chaque heure, et tu es prévenu (🪪) dès qu'il change.
+5. **Équipe** : une décision par marché et par bougie journalière close.
+   - Achat au-dessus de la règle, sortie en dessous.
+   - Taille réglée par la volatilité.
+   - Stop de catastrophe chez le courtier à 5 ATR.
+   - Pas de nouvel achat sous coupe-circuit, frein du jour, `/or_pause` ou au-delà de 50 % de marge utilisée.
+
+**Le capital décide du nombre de marchés.** Seuls les marchés dont le lot minimum tient dans le budget de risque sont tradés. Avec environ 2 700 €, l'or, le pétrole ou le Bitcoin sont trop gros au lot minimum (0,01), contrairement à la plupart des paires de forex et aux indices. `/or_marches` montre les marchés tenables et les exclus. Pour voir le portefeuille complet, il faut un compte démo avec un solde plus élevé.
+
+**Honnêtement** : c'est une stratégie lente, avec des positions gardées des semaines ou des mois, quelques pertes et des gains plus rares mais plus gros. Elle n'est pas « positive à chaque trade ». Sur 26 ans, sa force est de baisser deux fois moins que « tout acheter ».
+
+**Commandes** :
+
+- `/or_marches` : inventaire, banc, permis, capital et positions ;
+- `/or_marches_off` et `/or_marches_on` : arrêter ou reprendre les achats ;
+- `/or_marches_fermer` : tout fermer ;
+- dans Termius : `or marches`.
+
+**La 3e vidéo**, analysée image par image et transcrite : un tutoriel en anglais (Claude Code et Alpaca), sur des actions américaines et un compte papier de 50 000 $, avec un croisement 20/50 jours sur Apple. Elle ne montre aucun résultat réel, et la courbe de gains affichée est une illustration. L'auteur prévient lui-même que la règle perd en marché sans tendance.
+
+**L'équipe vidéo sur d'autres marchés** : `/or_video_symbole_eurusd` (ou un autre nom) fait jouer le prochain panier sur ce marché ; `/or_video_symbole_or` ramène l'équipe sur l'or. Le gain et la mise sont ramenés à la même part du prix que sur l'or.
+
 ## Équipe vidéo : 2e compte démo à fort levier (`/or_video`)
 
 **Les deux vidéos envoyées le 25/10/2026**, analysées image par image (une image toutes les 3 secondes) :

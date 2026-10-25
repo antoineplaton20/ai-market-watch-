@@ -29,6 +29,7 @@ EQUIPES = {
                      "duree_h": S.UNITES["1h"][0] * S.UNITES["1h"][1]},
 }
 PAR_MAGIC = {e["magic"]: k for k, e in EQUIPES.items()}
+AUTRES_EQUIPES = {770050}                   # équipe multi-marchés (marches.py) : ses positions ne sont jamais gérées ici
 MS = {"1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000}
 STOP_ATR = 3.0
 
@@ -344,7 +345,7 @@ def bot_mt5(chef):
                          "nouvel ordre jusqu'à demain.", important=True)
 
     # 1) suivi des positions : fermeture à l'horizon, positions disparues (stop touché ou fermeture manuelle)
-    positions = {p["ticket"]: p for p in mt5.appel("positions")}
+    positions = {p["ticket"]: p for p in mt5.appel("positions") if p["magic"] not in AUTRES_EQUIPES}
     suivi = base.lire("mt5:suivi", {}) or {}
     msgs = []
     seuil = gain_minimum()

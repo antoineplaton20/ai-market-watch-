@@ -31,6 +31,7 @@ EXPO = config.nombre("OR_VIDEO_EXPO", 0.25)                      # $ gagnés ou 
 GAIN_PAR_ONCE = config.nombre("OR_VIDEO_GAIN", 1.0)             # panier fermé dès +1 $ par once (les vidéos : 1 à 3 $)
 MARGE_MAX = 0.95                                                 # part de la marge libre engagée (vidéos : ~100 %)
 MARCHE_FERME = 10018
+PRIX_OR_REF = 4000.0                # hors de l'or : gain et exposition ramenés à la même part du prix que sur l'or
 PALIERS = (10, 100, 1_000, 10_000, 100_000)
 VIDEOS = (("vidéo 1", 2.02, 218_697.79, 74), ("vidéo 2", 9.88, 129_861.08, 51))
 REJEU = ("Rejouée sur 9 mois d'or réel (1 min, 2026) : 167 040 loteries, résultat des vidéos atteint 4 fois "
@@ -65,17 +66,36 @@ def gain_par_once():
     return float(v) if v else GAIN_PAR_ONCE
 
 
+def est_or(symbole):
+    return not symbole or symbole.upper().startswith(("XAU", "GOLD"))
+
+
+def resoudre(e, demande):
+    """Nom exact du symbole chez le courtier (Telegram met tout en minuscules) ; None = l'or, symbole du pont."""
+    if not demande or demande.lower() == "or" or est_or(demande):
+        return None
+    cache = e.setdefault("symboles_resolus", {})
+    if demande not in cache:
+        noms = [x["name"] for x in appel("symboles", delai=120)]
+        exacts = [x for x in noms if x.lower() == demande.lower()]
+        proches = sorted((len(x), x) for x in noms if x.lower().startswith(demande.lower()))
+        cache[demande] = exacts[0] if exacts else (proches[0][1] if proches else "")
+    return cache[demande] or ""
+
+
 # ============================================================================ règles (direct ET rejeu historique)
-def taille_panier(equite, marge_libre, marge_lot_min, specs, n=N_POSITIONS, expo=EXPO):
+def taille_panier(equite, marge_libre, marge_lot_min, specs, n=N_POSITIONS, expo=EXPO, valeur_lot=None):
     """-> (positions, lots par position) ; (0, 0.0) si même une position au lot minimum est impossible.
     Lots totaux visés : expo × équité / taille du contrat (au moins le lot minimum, comme dans les vidéos),
-    plafonnés par la marge libre."""
+    plafonnés par la marge libre. Hors de l'or (valeur_lot : notionnel d'un lot dans la devise du compte), la même
+    exposition en part du prix : un mouvement de 1/4 000 du prix rapporte ou coûte expo × équité."""
     pas = specs.get("volume_step") or 0.01
     mini = specs.get("volume_min") or 0.01
     contrat = specs.get("trade_contract_size") or 100.0
     possible = (math.floor(MARGE_MAX * marge_libre / marge_lot_min + 1e-9) * mini
                 if marge_lot_min and marge_lot_min > 0 else float("inf"))
-    total = min(max(expo * equite / contrat, mini), possible)
+    vise = expo * equite * PRIX_OR_REF / valeur_lot if valeur_lot else expo * equite / contrat
+    total = min(max(vise, mini), possible)
     if total < mini - 1e-9:
         return 0, 0.0
     n = max(1, min(n, int(total / mini + 1e-9)))
@@ -89,10 +109,13 @@ def bilan_panier(positions):
             sum((p.get("profit") or 0.0) + (p.get("swap") or 0.0) for p in positions))
 
 
-def a_fermer(positions, specs, gain=None):
-    """Panier fermé dès +gain $ par once sur l'ensemble des lots ; jamais à perte (aucun stop, comme les vidéos)."""
+def a_fermer(positions, specs, gain=None, valeur_lot=None):
+    """Panier fermé dès +gain $ par once sur l'ensemble des lots (hors de l'or : la même part du prix) ; jamais à
+    perte (aucun stop, comme les vidéos)."""
     lots, profit = bilan_panier(positions)
-    return lots > 0 and profit >= (gain or gain_par_once()) * lots * (specs.get("trade_contract_size") or 100.0)
+    g = gain or gain_par_once()
+    seuil = (g / PRIX_OR_REF * valeur_lot if valeur_lot else g * (specs.get("trade_contract_size") or 100.0)) * lots
+    return lots > 0 and profit >= seuil
 
 
 def sens_du_moment(bougies):
@@ -108,7 +131,12 @@ def seuil_ruine(loterie):
 
 
 # ============================================================================ le bot (toutes les secondes)
-def specs_du_compte(e, maintenant):
+def specs_du_compte(e, maintenant, symbole=None):
+    if symbole:
+        cache = e.setdefault("specs_autres", {})
+        if symbole not in cache or maintenant - cache[symbole].get("ts", 0) > 3600:
+            cache[symbole] = {**appel("specs", symbole=symbole), "ts": maintenant}
+        return cache[symbole]
     s = e.get("specs")
     if not s or maintenant - e.get("specs_ts", 0) > 3600:
         s = appel("specs")
@@ -181,13 +209,23 @@ def bot_video(chef=None, maintenant=None):
         return "compte réel : aucun ordre"
     e = lire()
     equite, devise = float(compte["equity"]), compte.get("currency") or "$"
-    specs = specs_du_compte(e, m)
     positions = [p for p in appel("positions") if p.get("magic") == MAGIQUE]
+    symbole = positions[0]["symbol"] if positions else resoudre(e, base.lire("video:symbole"))
+    if symbole == "":
+        demande = base.lire("video:symbole")
+        base.ecrire("video:symbole", None)
+        ecrire(e)
+        telegram.envoyer(f"⚠️ Équipe vidéo : « {demande} » introuvable chez ce courtier, retour à l'or.")
+        return "symbole introuvable : retour à l'or"
+    if symbole and est_or(symbole):
+        symbole = None
+    specs = specs_du_compte(e, m, symbole)
+    valeur_lot = appel("valeur_lot", symbole=symbole) if symbole else None
     lot = e.get("loterie")
 
     if positions:                                                   # 1) un panier tourne : fermé seulement en gain
         _, profit = bilan_panier(positions)
-        if not a_fermer(positions, specs):
+        if not a_fermer(positions, specs, valeur_lot=valeur_lot):
             return f"panier ouvert ({len(positions)} positions) : {profit:+.2f}"
         if m < e.get("reessai", 0):
             return "panier gagnant, fermeture en attente (marché fermé ou refus)"
@@ -225,24 +263,26 @@ def bot_video(chef=None, maintenant=None):
     if m < e.get("reessai", 0):
         ecrire(e)
         return "ordres en attente (marché fermé ou refus)"
-    bougies = appel("bougies", tf="1m", n=3)                       # 4) nouveau panier, mise relancée
+    bougies = appel("bougies", tf="1m", n=3, symbole=symbole)      # 4) nouveau panier, mise relancée
     sens = sens_du_moment(bougies)
-    marge_lot = appel("marge", sens=sens, volume=specs["volume_min"])
-    n, lots = taille_panier(equite, float(compte.get("margin_free") or equite), marge_lot, specs)
+    marge_lot = appel("marge", sens=sens, volume=specs["volume_min"], symbole=symbole)
+    n, lots = taille_panier(equite, float(compte.get("margin_free") or equite), marge_lot, specs,
+                            valeur_lot=valeur_lot)
     if n == 0:
         ruine(e, lot, equite, devise, m)
         ecrire(e)
         return "marge insuffisante : loterie ruinée"
     ouverts, raison = 0, ""
     for _ in range(n):
-        r = appel("ouvrir", sens=sens, volume=lots, sl=0.0, magic=MAGIQUE, commentaire="armee-or video")
+        r = appel("ouvrir", sens=sens, volume=lots, sl=0.0, magic=MAGIQUE, commentaire="armee-or video",
+                  symbole=symbole)
         if not r.get("ok"):
             _log.warning("ordre vidéo refusé : %s %s", r.get("retcode"), r.get("commentaire"))
             raison = refus(e, r, m)
             break
         ouverts += 1
     if ouverts:
-        e["panier"] = {"sens": sens, "ts": m, "n": ouverts, "lots": lots}
+        e["panier"] = {"sens": sens, "ts": m, "n": ouverts, "lots": lots, "symbole": symbole or specs.get("name")}
     ecrire(e)
     if not ouverts:
         return raison
@@ -272,6 +312,14 @@ def commande(c):
         return "⏸ Équipe vidéo : plus de nouveau panier ; celui en cours se ferme à son gain (/or_video_fermer : tout de suite)."
     if c in ("video_fermer",):
         return fermer_tout()
+    if c.startswith(("video_symbole_", "video_symbole ")):
+        v = c[len("video_symbole_"):].strip()
+        if not v or est_or(v) or v == "or":
+            base.ecrire("video:symbole", None)
+            return "✅ Équipe vidéo : retour à l'or au prochain panier."
+        base.ecrire("video:symbole", v)
+        return (f"✅ Équipe vidéo : prochain panier sur « {v.upper()} » (nom exact vérifié chez le courtier ; le panier "
+                "en cours se termine d'abord). Gain et mise ramenés à la même part du prix que sur l'or.")
     if c.startswith(("video_gain_", "video_gain ")):
         v = c[len("video_gain_"):].strip().replace(",", ".")
         try:
@@ -298,8 +346,10 @@ def texte_video(maintenant=None):
         lignes.append(f"Compte …{str(c.get('login'))[-3:]} · {c.get('server')} · levier 1:{c.get('leverage')} · "
                       f"solde {c.get('balance', 0):.2f} · équité {c.get('equity', 0):.2f} {c.get('currency', '')}")
     p = e.get("panier")
-    lignes.append(f"Panier : {p['n']} × {p['lots']:g} lot {'ACHAT' if p['sens'] > 0 else 'VENTE'}, ouvert il y a "
-                  f"{(m - p['ts']) / 60:.0f} min" if p else "Panier : aucun")
+    lignes.append(f"Marché : {base.lire('video:symbole') or 'or'} (/or_video_symbole_eurusd, /or_video_symbole_or)")
+    lignes.append(f"Panier : {p['n']} × {p['lots']:g} lot {p.get('symbole') or ''} "
+                  f"{'ACHAT' if p['sens'] > 0 else 'VENTE'}, ouvert il y a {(m - p['ts']) / 60:.0f} min"
+                  if p else "Panier : aucun")
     lot = e.get("loterie")
     if lot:
         lignes.append(f"Loterie n°{lot['n']} depuis {(m - lot['ts']) / 60:.0f} min : départ {lot['depart']:.2f}, "

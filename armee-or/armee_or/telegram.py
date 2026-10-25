@@ -99,6 +99,7 @@ MENU = [("or_go", "Terminal : écran de lancement"), ("or_gp", "Terminal : graph
         ("or_maj", "Mettre à jour l'armée (sans terminal)"), ("or_journal", "Dernières lignes du journal"),
         ("or_prompt", "Prompt maître : à donner à une IA"),
         ("or_video", "Équipe vidéo : 2e compte démo, méthode des vidéos"),
+        ("or_marches", "Multi-marchés : forex, métaux, énergie, indices, crypto"),
         ("or_levier", "Fiches de levier x1 à x50"), ("or_bougies", "Les 40 chandeliers mesurés sur l'or"), ("or_bilan", "Bilan historique"), ("or_pause", "Pause des nouvelles positions"),
         ("or_reprise", "Reprise des positions"), ("or_bibliotheque", "Connaissances utilisées"), ("or_aide", "Toutes les commandes")]
 

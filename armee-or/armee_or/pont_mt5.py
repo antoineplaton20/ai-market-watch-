@@ -201,7 +201,27 @@ class Pont:
             raise ErreurPont(f"symbole {s} introuvable sur ce serveur (proches : {', '.join(proches[:10]) or 'aucun'})")
         return {k: getattr(i, k, None) for k in ("name", "digits", "point", "volume_min", "volume_step", "volume_max",
                                                   "trade_contract_size", "filling_mode", "trade_stops_level",
-                                                  "trade_mode", "currency_profit", "spread")}
+                                                  "trade_mode", "currency_profit", "spread", "swap_mode", "swap_long",
+                                                  "swap_short", "currency_base", "path", "description")}
+
+    def op_symboles(self, **_):
+        """Tous les instruments du serveur (forex, métaux, énergie, indices, actions, crypto…), en bref."""
+        self.exiger()
+        return [{k: getattr(x, k, None) for k in ("name", "path", "description", "trade_mode", "currency_profit")}
+                for x in (self.mt5.symbols_get() or ())]
+
+    def op_valeur_lot(self, symbole=None, **_):
+        """Valeur d'UN lot dans la devise du compte (conversions de devises faites par le terminal)."""
+        self.exiger()
+        s = symbole or self.symbole
+        self.mt5.symbol_select(s, True)
+        t = self.mt5.symbol_info_tick(s)
+        if t is None or not t.ask:
+            raise ErreurPont(f"aucun cours pour {s}")
+        gain = self.mt5.order_calc_profit(self.mt5.ORDER_TYPE_BUY, s, 1.0, float(t.ask), float(t.ask) * 1.01)
+        if gain is None:
+            raise ErreurPont(f"valeur du lot de {s} incalculable : {self.mt5.last_error()}")
+        return float(gain) * 100
 
     def op_bougies(self, tf="1h", n=300, symbole=None, **_):
         self.exiger()

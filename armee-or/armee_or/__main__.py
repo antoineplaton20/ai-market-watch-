@@ -19,7 +19,8 @@ from . import config
 
 COMMANDES = ("pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
              "mt5_entrainement", "mt5_ecran", "bougies", "apprentissage", "verif", "mt5_gain", "mt5_tendance", "mt5_permis", "mt5_agressif", "mt5_rentable",
-             "video_on", "video_off", "video_fermer", "video_gain")
+             "video_on", "video_off", "video_fermer", "video_gain", "video_symbole", "marches_on", "marches_off",
+             "marches_fermer")
 
 
 def _journal():
@@ -114,6 +115,9 @@ def main(argv=None):
     elif cmd == "video":
         from . import video
         print(video.texte_video())
+    elif cmd == "marches":
+        from . import marches
+        print(marches.texte_marches())
     elif cmd == "commande" and len(argv) > 1 and argv[1].split(" ")[0] in COMMANDES:
         texte = " ".join(argv[1:])
         fichier = config.RACINE / "runtime" / "commandes.txt"

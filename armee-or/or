@@ -55,12 +55,19 @@ case "$CMD" in
     case "${2:-etat}" in
       etat) en_bots "$PY -m armee_or video"; systemctl is-active --quiet armee-or-mt5-video && echo "● armee-or-mt5-video en marche" || echo "● armee-or-mt5-video ARRÊTÉ (or video journal)" ;;
       on|off|fermer) en_bots "$PY -m armee_or commande video_$2" ;;
+      symbole) [[ "${3:-}" =~ ^[A-Za-z0-9._#-]+$ ]] || { echo "Usage : or video symbole EURUSD (ou or)"; exit 1; }; en_bots "$PY -m armee_or commande video_symbole $3" ;;
       gain) [[ "${3:-}" =~ ^[0-9]+([.,][0-9]+)?$ ]] || { echo "Usage : or video gain 2 (\$ par once)"; exit 1; }; en_bots "$PY -m armee_or commande video_gain $3" ;;
       rejouer) en_bots "$PY -m armee_or video rejouer" ;;
       journal) journalctl -u armee-or-mt5-video -n 80 -f ;;
       compte) sed -i '/^# Équipe vidéo/d;/^OR_VIDEO_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_video.sh" ;;
       installer) bash "$DOSSIER/installer_video.sh" ;;
       *) echo "or video [etat|on|off|fermer|gain X|rejouer|journal|compte|installer]" ;;
+    esac ;;
+  marches)
+    case "${2:-etat}" in
+      etat) en_bots "$PY -m armee_or marches" ;;
+      on|off|fermer) en_bots "$PY -m armee_or commande marches_$2" ;;
+      *) echo "or marches [etat|on|off|fermer]" ;;
     esac ;;
   config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;
   maj)
@@ -122,6 +129,9 @@ Armée de l'or (indépendante de tes autres bots) :
   or video installer       équipe vidéo : 2e compte DÉMO à fort levier, méthode des deux vidéos
   or video                 ses paniers, ses loteries (départ, record, ruine) · or video on|off|fermer
   or video gain 2          panier fermé dès +2 \$ par once · or video rejouer : la méthode sur l'historique 1 min
+  or video symbole EURUSD  l'équipe vidéo sur un autre marché (or video symbole or : retour à l'or)
+  or marches               armée multi-marchés : forex, métaux, énergie, agricoles, indices, crypto (sous permis)
+  or marches on|off|fermer achats autorisés / en pause / tout fermer
   or journal       journal en direct
   or demarrer | arreter | redemarrer
   or test          contrôle complet

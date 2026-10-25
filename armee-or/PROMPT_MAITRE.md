@@ -77,7 +77,7 @@ commande à taper (/or_maj).
 
 ## 1. Ta mission
 
-Tu construis, fais tourner et améliores sans relâche une armée de bots qui trade l'or, et seulement l'or. Elle doit être :
+Tu construis, fais tourner et améliores sans relâche une armée de bots qui trade **tous les marchés de MT5** : forex, métaux (l'or en tête), énergie, matières agricoles, indices, crypto. C'est la décision du propriétaire du 25/10/2026. Elle doit être :
 
 - **savante** : elle connaît l'économie de l'or, les chandeliers et toute l'analyse technique, ainsi que la pensée et les méthodes des grands investisseurs, traders et économistes depuis 1900 ;
 - **rapide** : elle réagit en quelques secondes, et ses gains comme ses pertes se règlent sans attendre ;
@@ -146,6 +146,7 @@ Le propriétaire exige que rien n'échappe à l'armée. Voici comment rendre cet
 | Savoir des grands (§8) | `bibliotheque.py` | **à étendre (chantier 1)** |
 | Registre des hypothèses (§10) | — | **à créer (chantier 2)** |
 | Flux des ETF, achats des banques centrales, prime de Shanghai, demande indienne, volatilité implicite (GVZ) | — | **manquants (chantier 6)** |
+| Tous les marchés de MT5 (forex, métaux, énergie, agricoles, indices, crypto) | `marches.py` (`/or_marches`) | inventaire, archive journalière, banc, permis, équipe |
 
 ---
 
@@ -377,6 +378,29 @@ Pour le permis (frais estimés à 0,015 %, net par décision) : −1,4 pb sur la
 ### La veille
 
 50 signaux candidats ont été examinés : dollar, taux, VIX, argent, taux réels, inflation attendue, pente des taux… Aucun n'est admis au seuil corrigé.
+
+### Multi-marchés (25/10/2026)
+
+Test préliminaire sur 34 marchés de type MT5, bougies quotidiennes Yahoo de 2000 à 2026 :
+
+- 12 paires de forex, 4 métaux, 3 énergies, 5 matières agricoles, 8 indices et 2 cryptos ;
+- chaque marché à 10 % de volatilité, portefeuille à risque égal ;
+- frais par famille et financement de 0 à 3 % par an.
+
+| Règle | Sharpe (moitié 2000-2013 / moitié 2013-2026), selon le financement | Pire baisse |
+|---|---|---|
+| **Au-dessus de la moyenne 200 j, acheteur seulement** | +0,25 / +0,62 (3 %) · +0,51 / +0,82 (1 %) · +0,64 / +0,92 (0 %) | −10 à −14 % |
+| Toujours acheter le même panier (naïf) | +0,00 / +0,37 (3 %) · +0,31 / +0,64 (1 %) · +0,46 / +0,78 (0 %) | −20 à −35 % |
+| Croisement 20/50 j, acheteur (3e vidéo) | −0,03 / +0,37 (3 %) | −8 à −12 % |
+| Momentum 12 mois, long/court | égal au naïf | — |
+| Cassure 55/20 (Turtles), long/court | négatif après frais | — |
+
+- **La seule règle qui bat le naïf sur chaque moitié** est la règle des 200 jours.
+- **Le même banc, dans `marches.py`** (stop de catastrophe à 5 ATR, financement de 3 %), donne +0,31 / +0,51 contre +0,08 / +0,45 pour le naïf, avec une pire baisse de −14 % contre −31 % : le permis est accordé.
+- **Le forex seul ne rapporte rien.** Les familles ne gagnent qu'ensemble : c'est la diversification qui travaille.
+- **Le permis réel se calcule sur l'historique du courtier**, avec ses écarts et ses swaps.
+
+**La 3e vidéo** (tutoriel « Ray », Claude Code et Alpaca) : actions américaines, compte papier de 50 000 $, croisement 20/50 jours sur Apple. Elle ne montre aucun résultat réel, et la courbe affichée est une illustration. L'auteur dit lui-même que la règle perd en marché sans tendance.
 
 ### La méthode des vidéos (25/10/2026)
 
@@ -1243,6 +1267,11 @@ Les numéros sont fixes. L'ordre de test conseillé est celui du §17.
 
 **Testée et rejetée pour l'armée**
 
+- **H24 — Le croisement 20/50 jours** (3e vidéo).
+  - Sur 34 marchés : Sharpe −0,02 / +0,40 contre +0,08 / +0,45 pour le naïf.
+  - Il ne bat pas « toujours acheter », donc pas de permis.
+  - Il reste calculé par le banc multi-marchés.
+
 - **H23 — La méthode des vidéos** (panier sans stop, gain pris à quelques dollars, mise relancée au maximum de la marge).
   - Résultat : 1 loterie sur 42 000 atteint le résultat des vidéos, 99,98 % sont ruinées (§5).
   - Elle vit à part, sur un 2e compte démo (`video.py`, service `armee-or-mt5-video`), pour que le propriétaire voie le résultat en vrai.
@@ -1371,6 +1400,7 @@ Règle : une hypothèse est jugée sur la source 1 dès qu'elle existe pour l'un
 | `terminal.py`, `brief.py`, `alertes.py` | Les écrans façon terminal pro (`/or_go`…), le brief de 8 h, les alertes de prix. |
 | `sauvegarde.py`, `base.py`, `config.py`, `telegram.py`, `systemd.py` | Les sauvegardes de nuit, la base SQLite (mode WAL), les réglages `.env`, les messages, le chien de garde. |
 | `bibliotheque.py` | Les fiches de savoir, à étendre avec les grands. |
+| `marches.py` | L'armée multi-marchés : inventaire de tous les symboles MT5, archive journalière, banc d'essai sur deux moitiés contre « toujours acheter », permis, équipe (règle des 200 jours, taille selon la volatilité, lot minimum compatible avec le capital, stop de catastrophe, numéro magique 770050). |
 | `video.py` | L'équipe vidéo (H23) : la méthode des vidéos, sur un 2e compte démo séparé (port 18778, numéro magique 770077), avec son rejeu historique. |
 
 ### 12.2 La vitesse (mesurée, puis à tenir)
@@ -1404,7 +1434,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 137 tests au 25/10/2026. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 148 tests au 25/10/2026. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;
