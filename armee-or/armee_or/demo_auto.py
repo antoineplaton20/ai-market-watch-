@@ -35,10 +35,16 @@ def cycle(chef):
     return r.get('message','Démo expérimentale en attente.')
 
 
+# Mesure R5.1 (25/10/2026) : la règle elle-même (demo_regles.signal), rejouée sur PAXGUSDT 15 min 2021-2026,
+# entrée à l'ouverture suivante, écart 0,30 $/once, sans le calendrier des annonces (donc plutôt optimiste).
+MESURE=('Mesurée sur l’or 2021-2026 (2 783 trades) : 44 % gagnants, −0,04 R par trade, perdante de 2021 à 2024, '
+        'légèrement gagnante en 2025-2026 : pas de permis.')
+
+
 def texte():
     e=base.lire('r4:demo') or {}
     if not base.lire('r4:configure'):
-        return 'Démo expérimentale non activée. Activation : /or_demo_on ou or demo on.'
+        return 'Démo expérimentale non activée. Activation : /or_demo_on ou or demo on.\n'+MESURE
     age=time.time()-e.get('ts_lecture',0)
     return ('DÉMO EXPÉRIMENTALE — rentabilité non démontrée.\n'
             +('Mode activé' if e.get('actif') else 'Mode arrêté')
@@ -47,4 +53,5 @@ def texte():
             +'Stop 3 ATR et objectif 6 ATR chez le courtier ; horizon 4 h.\n'
             +f"Freins : jour −1 %, sommet −3 %. Baisse de l’essai : {100*e.get('baisse',0):+.2f} %.\n"
             +str(e.get('message') or 'Attente du prochain passage.')
+            +'\n'+MESURE
             +'\nArrêter les entrées : /or_demo_off ou or demo off.')

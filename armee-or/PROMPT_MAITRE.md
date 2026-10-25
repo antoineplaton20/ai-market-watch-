@@ -120,6 +120,13 @@ Tu construis, fais tourner et améliores sans relâche une armée de bots qui tr
 
 Le succès se mesure en euros nets sur le compte démo. Plus tard, peut-être, sur un compte réel, mais seulement si le propriétaire le décide par écrit. Le nombre de bots, d'indicateurs ou de théories ne compte pas.
 
+**« Positif à chaque trade, même petit »** (demande du propriétaire, 25/10/2026). L'armée la sert ainsi :
+
+- **le but est de gagner** : un résultat net positif, frais compris, sur chaque moitié de l'historique, puis en direct ;
+- **la part de trades gagnants n'est pas ce résultat** : la mesure H25 (§10.3) montre qu'en forçant 80 % de trades gagnants, la meilleure règle devient perdante, et qu'on n'atteint 90 à 97 % qu'en gardant ouvertes les positions perdantes ;
+- **chaque perte est donc petite, limitée et visible** (stop chez le courtier, plafonds du pont), jamais cachée dans une position qu'on refuse de fermer ;
+- **chaque rapport donne la vérité trade par trade** : part de gagnants, gain moyen, perte moyenne, pire trade.
+
 ### Tes cinq casquettes
 
 | Casquette | Ce qu'elle exige |
@@ -431,6 +438,8 @@ Test préliminaire sur 34 marchés de type MT5, bougies quotidiennes Yahoo de 20
 
 - **La seule règle qui bat le naïf sur chaque moitié** est la règle des 200 jours.
 - **Le même banc, dans `marches.py`** (stop de catastrophe à 5 ATR, financement de 3 %), donne +0,31 / +0,51 contre +0,08 / +0,45 pour le naïf, avec une pire baisse de −14 % contre −31 % : le permis est accordé.
+- **R5.1 (25/10/2026), banc recalibré** : chaque ordre est exécuté à l'ouverture qui SUIT la clôture de décision, comme l'équipe en direct (avant, le banc achetait au cours de clôture qui avait servi à décider). La règle des 200 jours donne +0,35 / +0,52, le naïf +0,08 / +0,46 : permis maintenu. Un test rejoue l'équipe bougie après bougie et vérifie qu'elle achète et vend les mêmes jours que le banc.
+- **Trade par trade** : 3 432 trades, **22 % gagnants**, gain moyen +3,9 %, perte moyenne −1,0 % (part de la mise du marché). La règle gagne par quelques gros gains, pas par la fréquence des gains.
 - **Le forex seul ne rapporte rien.** Les familles ne gagnent qu'ensemble : c'est la diversification qui travaille.
 - **Le permis réel se calcule sur l'historique du courtier**, avec ses écarts et ses swaps.
 
@@ -1306,6 +1315,28 @@ Les numéros sont fixes. L'ordre de test conseillé est celui du §17.
   - Il ne bat pas « toujours acheter », donc pas de permis.
   - Il reste calculé par le banc multi-marchés.
 
+- **H25 — « Positif à chaque trade »** (demande du propriétaire, 25/10/2026). Huit variantes de la règle des 200 jours, mêmes données (`etudes/variantes.py`) :
+
+  | Variante | Trades gagnants | Sharpe (moitiés) | Pire baisse |
+  |---|---|---|---|
+  | Règle de l'équipe (stop 5 ATR) | 22 % | +0,35 / +0,52 | −14 % |
+  | Prise de gain à 0,5 ATR | 81 % | −0,16 / −0,25 | −21 % |
+  | Prise de gain à 1 ATR | 70 % | +0,08 / −0,08 | −18 % |
+  | Prise de gain à 2 ATR | 54 % | +0,25 / +0,08 | −15 % |
+  | Prise de gain à 3 ATR | 44 % | +0,26 / +0,22 | −9 % |
+  | Prise de gain à 1 ATR, stop 10 ATR | 73 % | +0,11 / +0,20 | −22 % |
+  | Jamais de sortie à perte, sans stop | 90 % | +0,13 / +0,55 | −28 % |
+  | Jamais à perte + prise de gain à 1 ATR | 97 % | +0,11 / +0,35 | −31 % |
+
+  - Plus on force les trades gagnants, moins on gagne : chaque petit gain est payé par des pertes plus grosses et plus rares.
+  - Les variantes « jamais à perte » cachent les pertes dans les positions restées ouvertes : jusqu'à −310 % de la mise d'un marché, des positions gardées jusqu'à 18 ans, et le financement qui transforme des trades « gagnants » en pertes.
+  - Aucune ne bat le naïf sur chaque moitié : **rejetée**. Une règle n'est jugée que sur son résultat net, jamais sur sa part de trades gagnants.
+
+- **H26 — La règle de la démo R4** (EMA 20/50 en 15 min et 1 h, stop 3 ATR, objectif 6 ATR, 4 h). Rejouée avec sa propre fonction `signal` sur PAXGUSDT 15 min 2021-2026 (`etudes/regle_r4.py`) :
+  - 2 783 trades, 44 % gagnants, −0,04 R par trade ;
+  - perdante de 2021 à 2024, +0,07 R en 2025 et +0,06 R en 2026 : moitiés −0,09 R / +0,01 R ;
+  - **pas de permis**. Elle ne trade que par décision expérimentale du propriétaire (23/10/2026).
+
 - **H23 — La méthode des vidéos** (panier sans stop, gain pris à quelques dollars, mise relancée au maximum de la marge).
   - Résultat : 1 loterie sur 42 000 atteint le résultat des vidéos, 99,98 % sont ruinées (§5).
   - Elle vit à part, sur un 2e compte démo (`video.py`, service `armee-or-mt5-video`), pour que le propriétaire voie le résultat en vrai.
@@ -1468,7 +1499,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 215 tests au 25/10/2026 (R5, dont 1 ignoré sans TA-Lib). Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 221 tests au 25/10/2026 (R5.1) ; 230 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

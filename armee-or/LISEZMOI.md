@@ -1,4 +1,38 @@
-# Armée de l’or 2.5-R5 — R4 + multi-marchés + équipe vidéo
+# Armée de l’or 2.5-R5.1 — R4 + multi-marchés + équipe vidéo
+
+## 25 octobre 2026 (R5.1) — contrôle complet, banc recalibré
+
+**Gagner à chaque trade ?** Mesuré sur 34 marchés réels (2000-2026), trade par trade (`etudes/variantes.py`) :
+
+| Ce qu'on force | Trades gagnants | Résultat |
+|---|---|---|
+| Rien : règle des 200 jours, stop 5 ATR (l'équipe multi-marchés) | 22 % | **gagnante** : Sharpe +0,35 / +0,52, pire baisse −14 % |
+| Prise de gain rapide à 0,5 ATR | 81 % | **perdante** sur les deux moitiés |
+| Prise de gain à 1 ATR | 70 % | nulle |
+| Ne jamais fermer à perte | 90 à 97 % | pertes cachées (jusqu'à −310 % de la mise d'un marché), positions bloquées jusqu'à 18 ans, pire baisse −31 % |
+
+- Aucune règle connue ne rend chaque trade positif.
+- Viser la fréquence des petits gains fait perdre : chaque petit gain est payé par des pertes plus grosses et plus rares.
+- Les vidéos montrent l'autre façon d'avoir « 100 % de trades gagnants » : ne jamais fermer une perte, jusqu'à la ruine (99,98 % des tentatives).
+- L'armée vise donc un **résultat net positif**, avec des pertes petites, limitées par un stop et visibles. `/or_marches` montre désormais, trade par trade, la part de gagnants, le gain moyen, la perte moyenne et le pire trade.
+
+**La démo R4 est perdante sur l'historique.** Sa propre fonction de signal, rejouée sur l'or de 2021 à 2026 (`etudes/regle_r4.py`, données livrées) :
+
+- 2 783 trades, 44 % gagnants, −0,04 R par trade ;
+- perdante de 2021 à 2024, légèrement gagnante en 2025-2026 seulement, pendant la forte hausse de l'or.
+
+Si tu veux seulement ce qui a gagné sur l'historique : `/or_demo_off` (ou `or demo off`). `/or_demo` affiche maintenant cette mesure.
+
+**Le banc d'essai recalibré.** Il achetait au cours de clôture qui avait servi à décider. Il exécute maintenant à l'ouverture suivante, comme l'équipe en direct. Le résultat ne bouge presque pas (+0,35 / +0,52 au lieu de +0,31 / +0,51) et le permis est maintenu. Le permis exige aussi 30 entrées sur **chaque** moitié, et non plus 30 au total.
+
+**Tests ajoutés.** La suite compte 221 tests : tous réussis, 1 ignoré sans TA-Lib. Avec TA-Lib : 230 réussis, sous Python 3.11 (celui du pont sous Wine), 3.12 et 3.13, chaque fichier seul et trois fois de suite. Les nouveaux tests :
+
+- aucune donnée du futur : changer tout ce qui suit un jour ne change rien avant ce jour ;
+- l'équipe en direct, rejouée bougie après bougie, achète et vend les mêmes jours que le banc ;
+- 500 demandes d'ordre au hasard sur le chemin multi-marchés : jamais de vente, jamais d'ordre sans stop sous le cours, une position par marché, jamais plus de 2 % de pertes cumulées jusqu'aux stops, rien sur un compte réel ;
+- 400 demandes au hasard sur le chemin vidéo : jamais plus de 10 positions, jamais de stop.
+
+**Installation** : la procédure « Installation de R5 et R5.1 » ci-dessous, avec `armee-or-R5.1.zip`. Elle accepte un serveur en R4 ou en R5.
 
 ## 25 octobre 2026 — ce que R5 ajoute
 
@@ -39,26 +73,26 @@ Les deux activations lèvent la pause générale, comme `/or_demo_on`. `/or_marc
 
 **À savoir** : la démo R4 exige un compte sans aucune position. Une position multi-marchés ouverte bloque donc ses nouvelles entrées. Choisis l’une ou l’autre, ou accepte que la démo R4 attende.
 
-## Installation de R5 (Termius, en root)
+## Installation de R5 et R5.1 (Termius, en root)
 
-1. Enregistre `armee-or-R5.zip` dans l’app Fichiers de l’iPhone.
+1. Enregistre `armee-or-R5.1.zip` dans l’app Fichiers de l’iPhone.
 2. Dans Termius, ouvre ton serveur, puis SFTP, et envoie le zip dans `/root`.
 3. Dans le terminal :
 
 ```bash
-python3 -m zipfile -e /root/armee-or-R5.zip /root/or-r5
-bash /root/or-r5/armee-or/installer_or.sh verifier
+python3 -m zipfile -e /root/armee-or-R5.1.zip /root/or-r51
+bash /root/or-r51/armee-or/installer_or.sh verifier
 ```
 
 4. Si la version est déclarée compatible :
 
 ```bash
-bash /root/or-r5/armee-or/installer_or.sh installer
+bash /root/or-r51/armee-or/installer_or.sh installer
 ```
 
 L’installateur procède ainsi :
 
-- il refuse une version inconnue : seuls R4, ou la base acceptée par R4, sont migrés ;
+- il refuse une version inconnue : seuls R4, R5, ou la base acceptée par R4, sont migrés ;
 - il lance tous les tests sur le serveur avec son Python, et s’arrête au moindre échec ;
 - il sauvegarde le code, la base et les réglages dans `/var/backups/armee-or-r5/` ;
 - il pose les fichiers et redémarre uniquement les services de l’armée. Le pont du 2e compte n’est relancé que s’il tournait.
@@ -67,13 +101,13 @@ L’installateur procède ainsi :
 
 **2e compte pour l’équipe vidéo** (facultatif) : `or video installer`. Le login, le mot de passe PRINCIPAL et le serveur se tapent dans Termius, jamais dans une conversation. Ensuite : `/or_video_on`.
 
-**Retour à R4** : `bash /root/or-r5/armee-or/installer_or.sh retour IDENTIFIANT_AFFICHE`. Il est refusé dans trois cas :
+**Retour à la version précédente** (R4 ou R5) : `bash /root/or-r51/armee-or/installer_or.sh retour IDENTIFIANT_AFFICHE`. Il est refusé dans trois cas :
 
 - une position multi-marchés est ouverte : `or marches fermer` d’abord ;
 - un panier vidéo est ouvert : `or video fermer` d’abord ;
 - la démo R4 est active ou en incident, comme en R4.
 
-Le retour arrête et désactive le pont du 2e compte, que R4 ne sait pas piloter.
+Revenu à R4, le pont du 2e compte est arrêté et désactivé : R4 ne sait pas le piloter.
 
 `or maj` et `/or_maj` restent bloqués (règle R3) : chaque version s’installe par archive, comme celle-ci.
 

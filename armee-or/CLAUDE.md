@@ -50,4 +50,5 @@ La commande doit afficher `0`. Vérifie toujours ce code de sortie, jamais une f
 **Après chaque changement.**
 
 - Ajoute une section datée dans `LISEZMOI.md`.
-- Le propriétaire installe la nouvelle version depuis son iPhone avec `/or_maj`.
+- Le propriétaire installe la nouvelle version par archive auditée : zip envoyé dans `/root` par SFTP (Termius), puis `installer_or.sh verifier` et `installer_or.sh installer` (`deployer.py`, manifeste `PAQUET.json`). `/or_maj` est bloqué depuis R3.
+- Un chiffre de rentabilité n'est cité que s'il sort d'un script du dépôt (`etudes/`, banc, tests).

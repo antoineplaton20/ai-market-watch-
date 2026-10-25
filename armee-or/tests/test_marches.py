@@ -253,7 +253,7 @@ def test_equipe_multi_marches_sous_permis_et_activation(courtier):
     assert len(courtier.positions) == 2                                                  # une décision par bougie
     eur = courtier.series["EURUSD"]
     courtier.series["EURUSD"] = (eur[0], eur[1], np.concatenate((eur[2], eur[2][-1] * 0.97 ** np.arange(1, 41))))
-    marches.bot_marches()
+    assert marches.bot_marches().startswith("1 marchés en position")                     # le marché vendu ne compte plus
     assert {p.symbol for p in courtier.positions} == {"US500"} and any("sortie" in t for t in courtier.messages)
     assert "Positions : US500" in marches.texte_marches()
 
@@ -433,3 +433,139 @@ def test_deployer_r5_pause_les_equipes_et_refuse_le_retour_avec_positions(tmp_pa
     (tmp_path / "armee_or").mkdir()
     (tmp_path / "armee_or/pont_mt5.py").write_text("def main(): pass\n")                 # code R4 : pas d'instance
     assert not deployer.pont_multi_instance(tmp_path)
+
+
+# ============================================================================ R5.1 : calibrage et contrôles renforcés
+def _serie_ondulee(n=900, graine=7):
+    """Paire de forex autour de 1,00 qui passe plusieurs fois au-dessus et au-dessous de sa moyenne 200 jours."""
+    rng = np.random.default_rng(graine)
+    i = np.arange(n)
+    return (100 + 0.01 * i + 6 * np.sin(2 * np.pi * i / 260) + rng.normal(0, 0.15, n)) / 100
+
+
+def test_banc_sans_aucune_donnee_du_futur():
+    """Changer tout ce qui suit le jour k ne change ni les signaux, ni le résultat, ni les trades jusqu'au jour k."""
+    rng = np.random.default_rng(3)
+    c = serie_tendance(1500, 5)
+    o, h, l = c * (1 + rng.normal(0, 0.002, len(c))), c * 1.006, c * 0.994
+    h, l = np.maximum(h, np.maximum(o, c)), np.minimum(l, np.minimum(o, c))
+    cout = {"ecart": 0.0003, "swap_long": -0.0001}
+    for strat in ("sma200", "croisement_20_50", "toujours_acheter"):
+        j1 = []
+        net1, _ = marches.simuler_marche(o, h, l, c, strat, cout, journal=j1)
+        for k in (300, 640, 1111):
+            o2, h2, l2, c2 = (x.copy() for x in (o, h, l, c))
+            futur = rng.uniform(0.5, 1.5, len(c) - k - 1)
+            for x in (o2, h2, l2, c2):
+                x[k + 1:] *= futur
+            j2 = []
+            net2, _ = marches.simuler_marche(o2, h2, l2, c2, strat, cout, journal=j2)
+            assert np.array_equal(marches.signal(c, strat)[:k + 1], marches.signal(c2, strat)[:k + 1])
+            assert np.allclose(net1[:k + 1], net2[:k + 1]), (strat, k)
+            assert [t for t in j1 if t[1] is not None and t[1] <= k] == [t for t in j2 if t[1] is not None and t[1] <= k]
+
+
+def test_entree_a_l_ouverture_suivante_jamais_au_cours_de_decision():
+    c = np.concatenate((np.full(250, 100.0), 100 + np.arange(1, 51) * 0.5)) * bruit(300, 2, 0.001)
+    o = np.roll(c, 1) * 1.01                                                           # ouverture 1 % au-dessus
+    o[0] = c[0]
+    h, l = np.maximum(o, c) * 1.001, np.minimum(o, c) * 0.999
+    journal = []
+    net, entrees = marches.simuler_marche(o, h, l, c, "sma200", {"ecart": 0.0, "swap_long": 0.0}, journal=journal)
+    debut = journal[0][0]
+    sig = marches.signal(c, "sma200")
+    assert sig[debut - 1] == 1 and (debut == 1 or sig[debut - 2] == 0 or debut - 1 < 60)    # décidé la veille
+    taille = min(marches.LEVIER_MAX, marches.VOL_BANC / marches.volatilite(c, debut - 1))
+    assert net[debut] == pytest.approx(taille * (c[debut] / o[debut] - 1))              # payé au prix d'ouverture
+
+
+def test_trades_comptes_un_par_un_et_permis_par_moitie():
+    hausse = 100 * 1.002 ** np.arange(400)
+    c = np.concatenate((hausse, hausse[-1] * 0.995 ** np.arange(1, 101), hausse[-1] * 0.6 * 1.002 ** np.arange(1, 401)))
+    c = c * bruit(len(c), 4, 0.002)
+    journal = []
+    marches.simuler_marche(c, c * 1.003, c * 0.997, c, "sma200", {"ecart": 0.0002, "swap_long": 0.0}, journal=journal)
+    b = marches.bilan_trades([t for t in journal if t[1] is not None])
+    assert b["n"] >= 1 and 0 <= b["gagnants"] <= 1 and b["pire"] <= b["meilleur"]
+    assert marches.bilan_trades([]) == {"n": 0}
+    r = {"moitie1": {"sharpe": 0.4}, "moitie2": {"sharpe": 0.5}, "marches": 10, "entrees": 500, "entrees_moities": [480, 20]}
+    naif = {"moitie1": {"sharpe": 0.1}, "moitie2": {"sharpe": 0.2}}
+    p = marches.permis({"sma200": r, "croisement_20_50": r, "toujours_acheter": naif})
+    assert not p["sma200"]["ok"] and "20 entrées sur une moitié" in p["sma200"]["raison"]   # 30 sur CHAQUE moitié
+    r["entrees_moities"] = [250, 250]
+    assert marches.permis({"sma200": r, "toujours_acheter": naif})["sma200"]["ok"]
+
+
+def test_l_equipe_en_direct_decide_les_memes_jours_que_le_banc(monkeypatch):
+    """Calibrage : l'équipe, rejouée bougie après bougie sur un faux courtier, achète et vend exactement les jours où
+    le banc d'essai exécute ses ordres (décision à la clôture, ordre à la bougie suivante)."""
+    c = _serie_ondulee()
+    n = len(c)
+    journal = []
+    marches.simuler_marche(c, c * 1.002, c * 0.998, c, "sma200", {"ecart": 0.0, "swap_long": 0.0}, journal=journal)
+    sig = marches.signal(c, "sma200")
+    assert len(journal) >= 3 and all(t[1] is None or sig[t[1] - 1] == 0 for t in journal)   # sorties de règle seulement
+    f = FauxMulti({"EURUSD": ("Forex\\Majors\\EURUSD", 100_000.0, c[:261].copy())})
+    pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+    serveur = pont.serveur(0)
+    threading.Thread(target=serveur.serve_forever, daemon=True).start()
+    try:
+        monkeypatch.setattr(config, "MT5_PORT", serveur.server_address[1])
+        monkeypatch.setattr(config, "MT5_ACTIF", True)
+        monkeypatch.setattr(telegram, "envoyer", lambda *a, **k: True)
+        base.ecrire("mt5:etat", {"connecte": True, "compte": {"equity": 100_000.0, "currency": "USD", "demo": True,
+                                                             "margin_free": 100_000.0, "login": 1,
+                                                             "server": "MetaQuotes-Demo"}, "ts": 9e12})
+        base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+        activer()
+        entrees, sorties = [], []
+        depart = next(t[1] for t in journal if t[1] is not None and t[1] >= 261)
+        for k in range(depart + 1, n):                  # bougie k en cours : l'équipe voit les clôtures 0..k-1
+            f.series["EURUSD"] = (f.series["EURUSD"][0], 100_000.0, c[:k + 1].copy())
+            avant = bool(f.positions)
+            marches.bot_marches(maintenant=DEBUT + k * JOUR + 3600)
+            if bool(f.positions) != avant:
+                (entrees if f.positions else sorties).append(k)
+        depart = next(t[1] for t in journal if t[1] is not None and t[1] >= 261)   # le banc est à plat ce jour-là
+        entrees = [k for k in entrees if k > depart]
+        sorties = [k for k in sorties if k > depart]
+        assert entrees and entrees == [t[0] for t in journal if t[0] > depart]
+        assert sorties == [t[1] for t in journal if t[1] is not None and t[1] > depart]
+        assert all(d["magic"] == marches.MAGIQUE and d["type"] == 0 for d in f.envois if "position" not in d)
+    finally:
+        serveur.shutdown()
+        serveur.server_close()
+
+
+def test_chemin_marches_au_hasard_ne_franchit_jamais_un_plafond(courtier):
+    """500 demandes au hasard (symboles, volumes, stops, sens, valeurs absurdes) : aucune vente, aucun ordre sans
+    stop sous le cours, une position par marché, pertes cumulées jusqu'aux stops ≤ 2 % du compte."""
+    import random
+    rnd = random.Random(11)
+    pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+    symboles = ["EURUSD", "USDJPY", "XAUUSD", "US500", "INCONNU", "", None, 42]
+    passes = 0
+    for _ in range(500):
+        s = rnd.choice(symboles)
+        prix = courtier.prix(s) if s in courtier.series else 1.0
+        demande = {"op": "marches_ouvrir", "symbole": s, "sens": rnd.choice([1, 1, 1, -1, 0, 2]),
+                   "volume": rnd.choice([0.01, 0.5, 5.0, 1e9, -1.0, 0.0, float("nan"), "x"]),
+                   "sl": rnd.choice([prix * rnd.uniform(0.3, 1.2), 0.0, -5.0, float("nan"), prix])}
+        r = pont.traiter(dict(demande))
+        assert r["ok"] is True                                                         # jamais d'exception
+        passes += bool(r["r"]["ok"])
+        if rnd.random() < 0.05 and courtier.positions:                                 # sortie de temps en temps
+            courtier.positions.pop(rnd.randrange(len(courtier.positions)))
+        perte = 0.0
+        for p in courtier.positions:
+            t = courtier.symbol_info_tick(p.symbol)
+            perte += max(0.0, (t.bid - p.sl)) * p.volume * courtier.series[p.symbol][1] * pont_mt5.RESERVE_COUTS
+            assert p.type == 0 and 0 < p.sl < t.bid and p.magic == marches.MAGIQUE
+        assert perte <= 0.02 * courtier.solde + 1e-6
+        assert len({p.symbol for p in courtier.positions}) == len(courtier.positions)
+    assert passes >= 3                                                                 # le chemin sert vraiment
+    courtier.account_info = lambda: NS(login=1, server="Reel", trade_mode=2, balance=1e5, equity=1e5, margin=0.0,
+                                       margin_free=1e5, leverage=100, currency="USD", trade_allowed=True, margin_mode=2)
+    courtier.positions, envois = [], len(courtier.envois)
+    r = pont.traiter({"op": "marches_ouvrir", "symbole": "EURUSD", "volume": 0.01, "sl": 0.5})["r"]
+    assert not r["ok"] and len(courtier.envois) == envois                              # compte réel : rien ne part

@@ -73,6 +73,7 @@ UNIVERS = [
     ("crypto", "Bitcoin", ("BTCUSD",)), ("crypto", "Ether", ("ETHUSD",)),
 ]
 FAMILLES = ("forex", "métaux", "énergie", "agricoles", "indices", "crypto")
+GAGNANTS_MESURES = "22 %"           # étude du 25/10/2026, 3 432 trades (LISEZMOI : « Gagner à chaque trade ? »)
 
 
 def lire():
@@ -210,44 +211,80 @@ def volatilite(c, i, n=60):
     return float(r.std() * math.sqrt(252)) if len(r) >= 20 else 0.0
 
 
-def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC):
-    """-> (rendement net quotidien en part du capital, nombre d'entrées). Décision à la clôture du jour i, appliquée
-    à partir du jour i+1 ; taille fixée à l'entrée ; stop de catastrophe : touché, on attend que le signal retombe
-    avant de reprendre. « Toujours acheter » (l'étalon) n'a pas de stop et sa taille est revue chaque mois, pour
-    rester à risque constant sur vingt ans."""
+def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None):
+    """-> (rendement net quotidien en part du capital, nombre d'entrées). Comme l'équipe en direct, qui n'agit
+    qu'après la clôture : décision à la clôture du jour i, exécutée à l'OUVERTURE du jour i+1 (jamais au cours de
+    clôture qui a servi à décider). Taille fixée à l'entrée ; stop de catastrophe à 5 ATR(20) sous le prix d'entrée,
+    ATR des bougies closes ; touché, on attend que le signal retombe avant de reprendre. « Toujours acheter »
+    (l'étalon) n'a pas de stop et sa taille est revue chaque mois, pour rester à risque constant sur vingt ans.
+    journal : liste qui reçoit chaque trade (jour d'entrée, jour de sortie ou None, résultat net en part du capital)."""
     o, h, l, c = (np.asarray(x, dtype=float) for x in (o, h, l, c))
     n = len(c)
     sig = signal(c, strategie)
     atr = I.atr(h, l, c, 20)
     avec_stop = strategie != "toujours_acheter"
+    ecart, swap = cout["ecart"], cout["swap_long"]
     net = np.zeros(n)
-    w, stop, bloque, entrees = 0.0, 0.0, False, 0
+    w, stop, bloque, entrees, ordre, taille, debut, resultat = 0.0, 0.0, False, 0, None, 0.0, 0, 0.0
+
+    def clore(i, r):
+        nonlocal w, resultat
+        net[i] += r
+        if journal is not None:
+            journal.append((debut, i, resultat + r))
+        w = 0.0
     for i in range(1, n):
-        if w:
+        if ordre == "sortir":                                     # vendu à l'ouverture : l'écart de la nuit est subi
+            clore(i, w * (o[i] / c[i - 1] - 1) - w * ecart)
+        elif ordre == "entrer":                                   # acheté à l'ouverture
+            w, debut = taille, i
+            stop = o[i] - STOP_ATR * atr[i - 1]
+            entrees += 1
+            if avec_stop and l[i] <= stop:
+                net[i] -= w * ecart
+                resultat = -w * ecart
+                clore(i, w * (stop / o[i] - 1) - w * ecart)
+                bloque = True
+            else:
+                net[i] += w * (c[i] / o[i] - 1) - w * ecart + w * swap
+                resultat = net[i]
+        elif w:
             if avec_stop and l[i] <= stop:                        # stop touché dans la journée (au pire : l'ouverture)
-                net[i] = w * (min(o[i], stop) / c[i - 1] - 1) - w * cout["ecart"] + w * cout["swap_long"]
-                w, bloque = 0.0, True
-                continue
-            net[i] = w * (c[i] / c[i - 1] - 1) + w * cout["swap_long"]
-            if not avec_stop and i % 21 == 0:                     # étalon : retour au risque visé chaque mois
-                vol = volatilite(c, i)
-                if vol > 0:
-                    nouveau = min(LEVIER_MAX, vol_cible / vol)
-                    net[i] -= abs(nouveau - w) * cout["ecart"]
-                    w = nouveau
-        if sig[i] == 0:
+                clore(i, w * (min(o[i], stop) / c[i - 1] - 1) - w * ecart)
+                bloque = True
+            else:
+                r = w * (c[i] / c[i - 1] - 1) + w * swap
+                if not avec_stop and i % 21 == 0:                 # étalon : retour au risque visé chaque mois
+                    vol = volatilite(c, i)
+                    if vol > 0:
+                        nouveau = min(LEVIER_MAX, vol_cible / vol)
+                        r -= abs(nouveau - w) * ecart
+                        w = nouveau
+                net[i] += r
+                resultat += r
+        ordre = None
+        if sig[i] == 0:                                           # décisions à la clôture, pour le lendemain
             if w:
-                net[i] -= w * cout["ecart"]
-                w = 0.0
+                ordre = "sortir"
             bloque = False
-        elif not w and not bloque and i >= 60:
+        elif not w and not bloque and i >= 60 and i + 1 < n:
             vol = volatilite(c, i)
             if vol > 0 and np.isfinite(atr[i]):
-                w = min(LEVIER_MAX, vol_cible / vol)
-                stop = c[i] - STOP_ATR * atr[i]
-                net[i] -= w * cout["ecart"]
-                entrees += 1
+                ordre, taille = "entrer", min(LEVIER_MAX, vol_cible / vol)
+    if w and journal is not None:
+        journal.append((debut, None, resultat))                   # encore ouvert à la fin de l'historique
     return net, entrees
+
+
+def bilan_trades(trades):
+    """Résultat de chaque trade -> part de gagnants, gain moyen, perte moyenne, pire et meilleur (part du capital)."""
+    r = np.array([t[2] for t in trades], dtype=float)
+    if not len(r):
+        return {"n": 0}
+    g, p = r[r > 0], r[r <= 0]
+    return {"n": int(len(r)), "gagnants": float(len(g) / len(r)), "gain_moyen": float(g.mean()) if len(g) else 0.0,
+            "perte_moyenne": float(p.mean()) if len(p) else 0.0, "pire": float(r.min()), "meilleur": float(r.max()),
+            "esperance": float(r.mean())}
 
 
 def statistiques(x):
@@ -272,20 +309,25 @@ def banc(marches, strategies=("sma200", "croisement_20_50", "toujours_acheter"))
     out = {}
     for strat in strategies:
         somme, nb = np.zeros(len(jours)), np.zeros(len(jours))
-        entrees, par_marche = 0, {}
+        entrees, par_marche, trades, moities = 0, {}, [], [0, 0]
         for s, d in garde.items():
-            net, k = simuler_marche(d["o"], d["h"], d["l"], d["c"], strat, d["cout"])
+            journal = []
+            net, k = simuler_marche(d["o"], d["h"], d["l"], d["c"], strat, d["cout"], journal=journal)
             idx = np.array([position[int(t) // 86_400_000] for t in d["ts"]])
             somme[idx] += net
             nb[idx] += 1
             entrees += k
+            for debut, _, _ in journal:
+                moities[int(jours[idx[debut]] >= coupe)] += 1
+            trades += [t for t in journal if t[1] is not None]           # trades terminés seulement
             st = statistiques(net[200:])
             par_marche[s] = round(st["sharpe"], 2) if st else None
         ok = nb > 0
         p, j = somme[ok] / nb[ok], jours[ok]
         out[strat] = {"tout": statistiques(p), "moitie1": statistiques(p[j < coupe]),
-                      "moitie2": statistiques(p[j >= coupe]), "entrees": entrees, "marches": len(garde),
-                      "par_marche": par_marche, "coupe_jour": int(coupe)}
+                      "moitie2": statistiques(p[j >= coupe]), "entrees": entrees, "entrees_moities": moities,
+                      "marches": len(garde), "par_marche": par_marche, "coupe_jour": int(coupe),
+                      "trades": bilan_trades(trades)}
     return out
 
 
@@ -300,9 +342,11 @@ def permis(resultats):
             continue
         s1, s2 = r["moitie1"]["sharpe"], r["moitie2"]["sharpe"]
         n1, n2 = naif["moitie1"]["sharpe"], naif["moitie2"]["sharpe"]
+        par_moitie = r.get("entrees_moities") or [r["entrees"], r["entrees"]]
         raisons = [m for m, faux in (
             (f"seulement {r['marches']} marchés (minimum {MIN_MARCHES})", r["marches"] < MIN_MARCHES),
-            (f"seulement {r['entrees']} entrées (minimum {MIN_ENTREES})", r["entrees"] < MIN_ENTREES),
+            (f"seulement {min(par_moitie)} entrées sur une moitié (minimum {MIN_ENTREES} sur chacune)",
+             min(par_moitie) < MIN_ENTREES),
             ("perd sur une moitié", s1 <= 0 or s2 <= 0),
             ("ne bat pas « toujours acheter » sur chaque moitié", s1 <= n1 or s2 <= n2)) if faux]
         out[strat] = {"ok": not raisons, "raison": " ; ".join(raisons) or "gagne sur chaque moitié et bat le naïf",
@@ -502,6 +546,7 @@ def bot_marches(chef=None, maintenant=None):
                 msgs.append(f"{s} : sortie refusée ({refus[0].get('retcode')}), nouvel essai")
                 continue
             gain = sum((p.get("profit") or 0) + (p.get("swap") or 0) for p in ouverte)
+            positions.pop(s, None)
             regle = (suivi.pop(s, None) or {}).get("strategie") or strat or "sma200"
             annonces.append(f"{s} ({univers[s]['nom']}) : sortie, plus « {STRATEGIES[regle]} » · "
                             f"{gain:+.2f} {compte.get('currency', '')}")
@@ -661,6 +706,11 @@ def texte_marches():
                               f"{r['moitie2']['sharpe']:+.2f} (moitiés), {r['tout']['rendement'] * 100:+.1f} %/an, pire "
                               f"baisse {r['tout']['pire_baisse'] * 100:.0f} %, {r['marches']} marchés, {r['entrees']} "
                               f"entrées · {p.get('raison', '')}")
+                tr = r.get("trades") or {}
+                if tr.get("n"):
+                    lignes.append(f"   trades : {tr['gagnants'] * 100:.0f} % gagnants, gain moyen {tr['gain_moyen'] * 100:+.2f} %, "
+                                  f"perte moyenne {tr['perte_moyenne'] * 100:+.2f} %, pire {tr['pire'] * 100:+.1f} % "
+                                  "(part de la mise du marché)")
         if naif.get("tout"):
             lignes.append(f"   étalon « toujours acheter » : Sharpe {naif['moitie1']['sharpe']:+.2f} / "
                           f"{naif['moitie2']['sharpe']:+.2f}, pire baisse {naif['tout']['pire_baisse'] * 100:.0f} %")
@@ -680,6 +730,8 @@ def texte_marches():
         lignes.append("Refusés par le pont : " + " · ".join(f"{s} ({r})" for s, r in sorted(e["refus"].items())))
     if base.lire(INCERTAIN):
         lignes.append("⚠️ Ordre incertain non réconcilié : entrées verrouillées (/or_diagnostic).")
-    lignes.append("Rappel : 34 marchés, Yahoo 2000-2026 → règle 200 jours Sharpe +0,47 à +0,81 selon le financement, "
-                  "positive sur les deux moitiés. /or_marches_off · /or_marches_on · /or_marches_fermer")
+    lignes.append("Rappel : 34 marchés, Yahoo 2000-2026, exécution à l'ouverture suivante → règle 200 jours Sharpe "
+                  f"+0,35 / +0,52 (moitiés), mais {GAGNANTS_MESURES} des trades gagnants : beaucoup de petites pertes, quelques "
+                  "gros gains. Viser 80 % de trades gagnants (prise de gain rapide) la rend perdante. "
+                  "/or_marches_off · /or_marches_on · /or_marches_fermer")
     return "\n".join(lignes)

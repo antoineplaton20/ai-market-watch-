@@ -1,4 +1,4 @@
-"""Migration locale R5 d'une installation connue (R4, ou la base acceptée par R4). Pas d'installation Wine ni de
+"""Migration locale R5.1 d'une installation connue (R4, R5, ou la base acceptée par R4). Pas d'installation Wine ni de
 changement des autres bots. R5 = R4 + équipe multi-marchés + équipe vidéo (2e compte démo), toutes deux désactivées."""
 import argparse
 import fcntl
@@ -21,7 +21,7 @@ SAUVEGARDES = Path('/var/backups/armee-or-r5')
 TELECOMMANDE = Path('/usr/local/bin/or')
 SERVICES = ('armee-or-mt5.service','armee-or-flux.service','armee-or-chef.service')
 VIDEO = 'armee-or-mt5-video.service'  # pont du 2e compte : relancé s'il tournait, jamais exigé pour valider
-VERSION = '2.5-R5'
+VERSION = '2.5-R5.1'
 
 
 def sha(p):
@@ -234,7 +234,7 @@ def installer():
         debut=time.time();service('start',*en_marche);sain(en_marche,debut)
         if video:service('start',*video)
         (CIBLE/'runtime/version-r5.json').write_text(json.dumps({'version':VERSION,'sauvegarde':str(dossier),'ts':time.time()}))
-        print('R5 installée en pause. Multi-marchés et équipe vidéo DÉSACTIVÉS : or marches on / or video on '
+        print('R5.1 installée en pause. Multi-marchés et équipe vidéo DÉSACTIVÉS : or marches on / or video on '
               '(ou /or_marches_on, /or_video_on) quand tu le décides. Démo R4 : or demo on. Sauvegarde : '+str(dossier))
         print('Vérifier : or diagnostic, or mt5, or marches. 2e compte (équipe vidéo) : or video installer. '
               'Retour du code : bash '+str(CIBLE/'installer_or.sh')+' retour '+dossier.name)

@@ -290,3 +290,21 @@ def test_rejeu_historique_avec_les_memes_regles():
     r = video.rejouer(bougies, 9.88, 1e12, pas=20)
     assert r["departs"] == 12 and r["ruines"] == 12 and r["meilleur"] > 1
     assert "ruinés 12 sur 12" in video.texte_rejeu(r, 9.88, 1e12)
+
+
+def test_chemin_video_au_hasard_reste_dans_ses_limites():
+    import random
+    rnd = random.Random(5)
+    f = FauxCourtier()
+    vid = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN_VIDEO), "OR_MT5_SYMBOLE": "XAUUSDm"}, instance="video")
+    for _ in range(400):
+        f.order_calc_margin = (lambda m: (lambda t, s, v, p: m * v))(rnd.choice([0.001, 1.0, 50.0, 1e6]))
+        r = vid.traiter({"op": "video_ouvrir", "sens": rnd.choice([1, -1, 0, 3]),
+                         "volume": rnd.choice([0.01, 0.02, 1.0, 1e6, -1, float("nan"), "x"]),
+                         "symbole": rnd.choice([None, "XAUUSDm", "EURUSDm", ""])})
+        assert r["ok"] is True
+        assert len([p for p in f.positions if p.magic == video.MAGIQUE]) <= 10
+        assert all(d["sl"] == 0.0 and d["magic"] == video.MAGIQUE for d in f.envois)
+        if rnd.random() < 0.1:
+            f.positions = []
+    assert f.envois
