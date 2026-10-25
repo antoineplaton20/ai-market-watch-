@@ -29,6 +29,8 @@ def ligne(nom, r):
 
 
 base = charger(sys.argv[1], M)
+for d in base.values():                # R6 publié : risque égal PAR MARCHÉ (R6.1 : par famille, robustesse_r61.py)
+    d.pop("famille", None)
 print("1) Moteur de l'équipe (stop 5 ATR compris), coûts standard")
 r0 = banc(base)
 ligne("34 marchés", r0)

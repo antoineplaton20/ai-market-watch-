@@ -307,8 +307,9 @@ def statistiques(x):
 
 
 def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
-    """marches : {symbole: {"ts": ms, "o","h","l","c": tableaux, "cout": {...}}} -> résultats par règle :
-    portefeuille à risque égal (moyenne des marchés présents chaque jour), deux moitiés, entrées, Sharpe par marché."""
+    """marches : {symbole: {"ts": ms, "o","h","l","c": tableaux, "cout": {...}, "famille": ...}} -> résultats par règle :
+    portefeuille à risque égal PAR FAMILLE (R6.1, Dalio : chaque famille présente pèse autant, ses marchés se la
+    partagent ; sans famille, chaque marché pèse autant), deux moitiés, entrées, Sharpe par marché."""
     garde = {s: d for s, d in marches.items() if len(d["c"]) >= MIN_BOUGIES}
     if not garde:
         return {}
@@ -317,12 +318,13 @@ def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
     coupe = jours[len(jours) // 2]
     out = {}
     for strat in strategies:
-        somme, nb = np.zeros(len(jours)), np.zeros(len(jours))
+        familles = {}
         entrees, par_marche, trades, moities = 0, {}, [], [0, 0]
         for s, d in garde.items():
             journal = []
             net, k = simuler_marche(d["o"], d["h"], d["l"], d["c"], strat, d["cout"], journal=journal)
             idx = np.array([position[int(t) // 86_400_000] for t in d["ts"]])
+            somme, nb = familles.setdefault(d.get("famille") or "?", (np.zeros(len(jours)), np.zeros(len(jours))))
             somme[idx] += net
             nb[idx] += 1
             entrees += k
@@ -331,8 +333,10 @@ def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
             trades += [t for t in journal if t[1] is not None]           # trades terminés seulement
             st = statistiques(net[200:])
             par_marche[s] = round(st["sharpe"], 2) if st else None
-        ok = nb > 0
-        p, j = somme[ok] / nb[ok], jours[ok]
+        moyennes = np.array([np.where(n > 0, s / np.maximum(n, 1), np.nan) for s, n in familles.values()])
+        presentes = np.isfinite(moyennes).sum(axis=0)
+        ok = presentes > 0
+        p, j = np.nansum(moyennes, axis=0)[ok] / presentes[ok], jours[ok]
         out[strat] = {"tout": statistiques(p), "moitie1": statistiques(p[j < coupe]),
                       "moitie2": statistiques(p[j >= coupe]), "entrees": entrees, "entrees_moities": moities,
                       "marches": len(garde), "par_marche": par_marche, "coupe_jour": int(coupe),
@@ -375,7 +379,8 @@ def charger_marches(e=None):
     for s, info in (e.get("univers") or {}).items():
         d = donnees.charger(source(s), "1d")
         if len(d["c"]) >= MIN_BOUGIES:
-            out[s] = {**d, "cout": couts((e.get("specs") or {}).get(s) or {}, info["famille"], float(d["c"][-1]))}
+            out[s] = {**d, "cout": couts((e.get("specs") or {}).get(s) or {}, info["famille"], float(d["c"][-1])),
+                      "famille": info["famille"]}
     return out
 
 
@@ -429,14 +434,27 @@ def lots_marche(equite, valeur_lot, vol, budget, specs):
     return round(min(lots, specs.get("volume_max") or lots), 8), f"{_n(lots * valeur_lot)} de notionnel"
 
 
-def selection(candidats, equite):
-    """candidats : {symbole: (valeur_lot, vol, specs)} -> (marchés retenus, budget par marché, exclus avec raison).
-    Le budget dépend du nombre de marchés : on recommence tant que la liste bouge."""
+def budgets_par_famille(symboles, familles=None):
+    """Risque égal PAR FAMILLE (R6.1) : chaque famille reçoit le budget d'un marché d'un portefeuille de F familles ;
+    ses n marchés se le partagent à parts égales (prudent : comme si ses marchés bougeaient ensemble). Sans familles,
+    chaque marché est sa propre famille (budget égal par marché)."""
+    familles = familles or {}
+    compte = {}
+    for s in symboles:
+        compte[familles.get(s, s)] = compte.get(familles.get(s, s), 0) + 1
+    b = budget_risque(len(compte))
+    return {s: b / compte[familles.get(s, s)] for s in symboles}
+
+
+def selection(candidats, equite, familles=None):
+    """candidats : {symbole: (valeur_lot, vol, specs)} -> (marchés retenus, budget de chacun, exclus avec raison).
+    Le budget dépend des marchés retenus et de leurs familles : on recommence tant que la liste bouge."""
     garde, exclus = dict(candidats), {}
-    for _ in range(6):
-        budget = budget_risque(len(garde))
+    for _ in range(8):
+        budgets = budgets_par_famille(garde, familles)
         nouveaux = {}
         for s, (valeur, vol, specs) in candidats.items():
+            budget = budgets[s] if s in budgets else budgets_par_famille([*garde, s], familles)[s]
             lots, note = lots_marche(equite, valeur, vol, budget, specs)
             if lots:
                 nouveaux[s] = (valeur, vol, specs)
@@ -445,7 +463,7 @@ def selection(candidats, equite):
         if set(nouveaux) == set(garde):
             break
         garde = nouveaux
-    return garde, budget_risque(len(garde)), {s: r for s, r in exclus.items() if s not in garde}
+    return garde, budgets_par_famille(garde, familles), {s: r for s, r in exclus.items() if s not in garde}
 
 
 # ============================================================================ 5) l'équipe (toutes les 5 minutes)
@@ -538,8 +556,8 @@ def bot_marches(chef=None, maintenant=None):
         except mt5.ErreurMT5:
             continue
         candidats[s] = (valeur, vol, specs_tous.get(s) or {})
-    retenus, budget, exclus = selection(candidats, equite)
-    e.update(tradables=sorted(retenus), budget=budget, exclus=exclus,
+    retenus, budgets, exclus = selection(candidats, equite, {s: univers[s]["famille"] for s in candidats})
+    e.update(tradables=sorted(retenus), budgets=budgets, exclus=exclus,
              intentions=sorted(s for s, v in signaux.items() if v[0] == 1 and s in retenus and s not in positions))
     for s, (sig, t_barre, c, h, l) in signaux.items():
         ouverte = positions.get(s)
@@ -562,7 +580,7 @@ def bot_marches(chef=None, maintenant=None):
             msgs.append(f"{s} sortie {gain:+.2f}")
         elif not ouverte and sig == 1 and s in retenus and entrees_ok and not e.get("bloque", {}).get(s):
             valeur, vol, specs = retenus[s]
-            lots, note = lots_marche(equite, valeur, vol, budget, specs)
+            lots, note = lots_marche(equite, valeur, vol, budgets[s], specs)
             atr = I.atr(h, l, c, 20)[-1]
             tick = mt5.appel("tick", symbole=s)
             stop = round(tick["ask"] - STOP_ATR * atr, int(specs.get("digits") or 5))
@@ -728,8 +746,9 @@ def texte_marches():
         lignes.append("Banc d'essai : historique journalier en cours d'archivage.")
     tradables, exclus = e.get("tradables") or [], e.get("exclus") or {}
     if tradables or exclus:
-        lignes.append(f"Capital : {len(tradables)} marchés tenables (budget {e.get('budget', 0) * 100:.2f} % de volatilité "
-                      f"chacun) · trop gros pour ce capital : {', '.join(sorted(exclus)) or 'aucun'}")
+        fams = sorted({univers[s]["famille"] for s in tradables if s in univers})
+        lignes.append(f"Capital : {len(tradables)} marchés tenables, risque égal entre {len(fams)} familles "
+                      f"({', '.join(fams) or '—'}) · trop gros pour ce capital : {', '.join(sorted(exclus)) or 'aucun'}")
     pos = e.get("positions") or {}
     lignes.append("Positions : " + (", ".join(f"{s} {v['lots']:g} lot" for s, v in sorted(pos.items())) or "aucune"))
     intentions = e.get("intentions") or []
@@ -740,9 +759,9 @@ def texte_marches():
         lignes.append("Refusés par le pont : " + " · ".join(f"{s} ({r})" for s, r in sorted(e["refus"].items())))
     if base.lire(INCERTAIN):
         lignes.append("⚠️ Ordre incertain non réconcilié : entrées verrouillées (/or_diagnostic).")
-    lignes.append("Rappel : 34 marchés, Yahoo 2000-2026, exécution à l'ouverture suivante, stop 5 ATR → momentum 12 mois "
-                  "Sharpe +0,38 / +0,66 (moitiés), 34 % de trades gagnants ; règle 200 jours +0,35 / +0,52, "
-                  f"{GAGNANTS_MESURES} de trades gagnants ; « toujours acheter » +0,08 / +0,46. Viser 80 % de trades "
-                  "gagnants (prise de gain rapide) rend la règle perdante. /or_marches_off · /or_marches_on · "
+    lignes.append("Rappel : 34 marchés, Yahoo 2000-2026, exécution à l'ouverture suivante, stop 5 ATR, risque égal par "
+                  "famille → momentum 12 mois Sharpe +0,51 / +0,92 (moitiés), 34 % de trades gagnants ; règle 200 jours "
+                  f"+0,47 / +0,83, {GAGNANTS_MESURES} de trades gagnants ; « toujours acheter » +0,37 / +0,77. Viser 80 % "
+                  "de trades gagnants (prise de gain rapide) rend la règle perdante. /or_marches_off · /or_marches_on · "
                   "/or_marches_fermer")
     return "\n".join(lignes)

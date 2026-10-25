@@ -18,6 +18,8 @@
 > R6 (25/10/2026) : recherche sur internet demandée par le propriétaire (« être positifs quoi qu'il arrive »).
 > Seul le momentum 12 mois passe tous les contrôles : ajouté aux candidats du permis multi-marchés (§5).
 >
+> R6.1 (25/10/2026) : risque égal par FAMILLE d'actifs (Bridgewater), au banc comme en direct.
+>
 > R5.3 : une activation ne doit jamais en relancer une autre. Toute installation arrête la démo R4 (actif = False
 > dans runtime/demo-r4.json, compteurs gardés) ; seule /or_demo_on la relance.
 
@@ -474,6 +476,22 @@ Demande du propriétaire : fouiller internet (recherche, forums, vidéos, prompt
 - **Les règles à fort taux de réussite** (RSI(2), IBS : 63 à 70 % de trades gagnants) ne battent pas « toujours acheter » sur 2013-2026. Mélangé au momentum (25 % du risque), le RSI(2) donne +0,45 / +0,68 et 59 % de mois positifs : un écart trop faible pour être distingué du hasard, donc pas déployé.
 - **Écartées sur pièces** : la dérive avant la Fed (disparue après 2015, Kurov, Wolfe et Gilbert) ; le portage des devises (Koijen et al., 2018 : Sharpe brut ~0,7, krachs groupés ; non testable sans l'historique des swaps) ; les robots « 100 % gagnants » (grilles et martingales : un seul mouvement défavorable vide le compte) ; les IA qui tradent seules (banc de l'université de Hong Kong, 2026 : plusieurs modèles autour de zéro en six semaines).
 - **Rappel des régulateurs** : 74 à 89 % des comptes CFD de particuliers perdent de l'argent (ESMA, 2018).
+
+### R6.1 (25/10/2026) : les méthodes publiques des plus grandes maisons
+
+Question du propriétaire : « t'es-tu inspiré des plus grands groupes, de Paris, New York, l'Asie, et des plus grands dirigeants ? ». Ce que ces maisons publient (leur cœur reste secret) a été testé comme le reste (`etudes/grands_r61.py`, `etudes/robustesse_r61.py`, fiches H40 à H43) :
+
+| Maison (méthode publique) | Résultat sur nos 34 marchés | Verdict |
+|---|---|---|
+| **Bridgewater** (Dalio : « 15 à 20 sources de rendement peu corrélées ») → même risque par FAMILLE d'actifs | momentum +0,51 / +0,92 au lieu de +0,38 / +0,66 ; mieux sur les 5 périodes de 5 ans et 171 sous-paniers sur 200 | **adopté** (banc et tailles) |
+| **Millennium / Citadel** (limite de perte des équipes, ≈ 5 % puis 7,5 à 10 %) → taille ÷ 2 après une perte | pire baisse −8,6 % au lieu de −12,8 %, Sharpe −0,02 | mesuré, au propriétaire de décider |
+| **CFM**, Paris (Bouchaud et al., tendance exponentielle 5 mois) → acheteur seulement | +0,37 / +0,43 : ne bat pas le naïf sur la 2e moitié | rejeté (leur force vient aussi de la vente) |
+| Places d'Asie et d'Europe, obligations US (Dalio : plus de sources) | 44 marchés : +0,34 / +0,63, pire baisse −22 % (obligations en 2022) | rejeté |
+
+- **Le gain de Bridgewater** vient surtout du forex : 12 paires presque toutes liées au dollar pesaient un tiers du risque. Par famille, il pèse un sixième. C'est la leçon de Dalio : combiner les sources compte autant que les choisir.
+- **Attention** : la force de la 2e moitié doit beaucoup aux cryptos. Sans elles, le momentum par famille donne +0,53 / +0,32. Si le courtier ne propose pas BTCUSD et ETHUSD, le permis le dira.
+- **Renaissance** (Simons) : selon un propos rapporté de Robert Mercer (formulation exacte non vérifiée), le fonds le plus rentable de l'histoire n'aurait raison qu'environ 50,75 % du temps. Même chez eux, le gain vient du nombre de paris et de la taille, pas d'un trade toujours gagnant.
+- **Les dirigeants des grandes entreprises** (Apple, Microsoft, LVMH…) ne sont pas des traders. Les grands gérants déjà au §8 (Buffett, Dalio, Simons, Soros, Druckenmiller, Tudor Jones, Bouchaud) disent la même chose : survivre d'abord, diversifier, couper les pertes.
 - **Le forex seul ne rapporte rien.** Les familles ne gagnent qu'ensemble : c'est la diversification qui travaille.
 - **Le permis réel se calcule sur l'historique du courtier**, avec ses écarts et ses swaps.
 
@@ -1533,7 +1551,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 232 tests au 25/10/2026 (R6) ; 241 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 233 tests au 25/10/2026 (R6.1) ; 242 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

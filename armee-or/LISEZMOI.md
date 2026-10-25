@@ -1,4 +1,39 @@
-# Armée de l’or 2.5-R6 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R6.1 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 25 octobre 2026 (R6.1) — les méthodes des plus grandes maisons, et un contrôle complet
+
+**Les plus grands groupes.** Les grandes maisons ne publient pas leur cœur. On a testé ce qu’elles publient, comme le reste :
+
+| Maison | Ce qu’elle publie | Résultat sur nos marchés | Verdict |
+|---|---|---|---|
+| **Bridgewater** (New York, Ray Dalio) | « 15 à 20 sources de rendement peu corrélées » | même risque par famille d’actifs : momentum +0,51 / +0,92 au lieu de +0,38 / +0,66 | **adopté** |
+| **Millennium, Citadel** (New York, Chicago) | équipes coupées après ≈ 5 % de perte | pire baisse −8,6 % au lieu de −12,8 %, gain un peu plus bas | à toi de décider |
+| **CFM** (Paris, Jean-Philippe Bouchaud) | tendance 5 mois, deux siècles de données | version acheteuse seule : battue par le naïf | rejeté |
+| Places d’Asie et d’Europe, obligations US | plus de marchés | pire baisse −22 % (obligations en 2022) | rejeté |
+
+**Ce qui change** : chaque famille (forex, métaux, énergie, agricoles, indices, crypto) reçoit maintenant la même part du risque, au banc comme en direct. Avant, les 12 paires de forex, presque toutes liées au dollar, pesaient un tiers du risque. Le gain tient sur chaque période de 5 ans depuis 2001, sur 171 paniers tirés au hasard sur 200, avec des frais triplés, et même sans les cryptos.
+
+**Les dirigeants et les grands gérants** disent tous la même chose :
+
+- Buffett : ne pas perdre d’abord ;
+- Dalio : diversifier ;
+- Simons (Renaissance) : son fonds n’aurait raison qu’environ une fois sur deux, selon un propos rapporté ;
+- Millennium : couper vite les équipes qui perdent.
+
+Aucun ne gagne à chaque trade.
+
+**Contrôle complet de R6.1 :**
+
+- **Études** : les 7 études (`etudes/`) relancées deux fois donnent des résultats identiques à l’octet près, et chaque chiffre cité ici en sort.
+- **Tests** : 233 tests (242 avec TA-Lib), tous réussis :
+  - sous Python 3.11 (celui du pont sous Wine), 3.12 et 3.13 ;
+  - chacun des 14 fichiers seul ;
+  - trois fois de suite avec des graines différentes ;
+  - sur une copie limitée aux fichiers du manifeste, comme sur le serveur.
+- **Calibrage** : l’équipe en direct, rejouée jour par jour, achète et vend les mêmes jours que le banc, pour la règle 200 jours comme pour le momentum.
+- **Installation** : migrations simulées depuis R4, R5.3 et R6, retour arrière compris ; paquet téléchargé depuis GitHub et vérifié.
+
+Pour l’installer : `/or_maj` (Telegram) ou `or maj` (Termius), puis seulement `/or_marches_on`.
 
 ## 25 octobre 2026 (R6) — la recherche sur internet, testée sur nos données
 

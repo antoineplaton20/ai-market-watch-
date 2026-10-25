@@ -227,7 +227,8 @@ def test_taille_selon_volatilite_et_lot_minimum_trop_gros():
     assert lots == 0 and "trop gros" in note                                             # or : 4 000 pour ~350 visés
     garde, b, exclus = marches.selection({"EURUSD": (110_000, 0.07, forex), "XAUUSD": (400_000, 0.16, forex),
                                           "US500": (4_000, 0.18, forex)}, 2700)
-    assert set(garde) == {"EURUSD", "US500"} and "XAUUSD" in exclus and b == marches.budget_risque(2)
+    assert set(garde) == {"EURUSD", "US500"} and "XAUUSD" in exclus
+    assert b == {"EURUSD": marches.budget_risque(2), "US500": marches.budget_risque(2)}  # sans familles : égal
 
 
 def test_equipe_multi_marches_sous_permis_et_activation(courtier):
@@ -586,3 +587,22 @@ def test_momentum_12_mois_et_choix_du_permis():
     base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.35, 0.52)},
                                    "momentum_12m": {"ok": False, "sharpe": (0.38, 0.66)}})
     assert marches.strategie_permise() == "sma200"
+
+
+def test_risque_egal_par_famille_banc_et_tailles():
+    """R6.1 (Dalio) : 12 paires de forex ne pèsent pas plus qu'une seule crypto ; même règle au banc et en direct."""
+    fam = {**{f"FX{i}": "forex" for i in range(12)}, "BTCUSD": "crypto", "ETHUSD": "crypto", "US500": "indices"}
+    b = marches.budgets_par_famille(list(fam), fam)
+    assert b["US500"] == pytest.approx(marches.budget_risque(3))                     # 3 familles
+    assert b["BTCUSD"] == pytest.approx(b["US500"] / 2) and b["FX0"] == pytest.approx(b["US500"] / 12)
+    assert sum(b[s] for s in fam if fam[s] == "forex") == pytest.approx(b["US500"])  # une famille = un budget
+    def marche(c, famille):
+        return {"ts": (DEBUT + np.arange(len(c)) * JOUR) * 1000, "o": c, "h": c * 1.004, "l": c * 0.996, "c": c,
+                "cout": {"ecart": 0.0001, "swap_long": 0.0}, "famille": famille}
+    hausse = {"H0": marche(100 * 1.0006 ** np.arange(1600) * bruit(1600, 3, 0.002), "indices")}
+    plats = {f"P{i}": marche(serie_sans_tendance(1600, 50 + i), "forex") for i in range(6)}
+    par_famille = marches.banc({**hausse, **plats}, strategies=("toujours_acheter",))
+    sans = {s: {k: v for k, v in d.items() if k != "famille"} for s, d in {**hausse, **plats}.items()}
+    par_marche = marches.banc(sans, strategies=("toujours_acheter",))
+    # l'indice en tendance pèse 1/2 du portefeuille par famille, 1/7 par marché : son rendement compte plus
+    assert par_famille["toujours_acheter"]["tout"]["rendement"] > par_marche["toujours_acheter"]["tout"]["rendement"]

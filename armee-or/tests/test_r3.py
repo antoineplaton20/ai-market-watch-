@@ -68,7 +68,7 @@ def test_file_expire_et_ack():
 def test_registre_declare_avant_resultat_et_interdit_modification():
     identifiant=registre.declarer('H05','v0','sha256:faux','periode-test','regle fixee','commit-test')
     registre.conclure(identifiant,{'net':-1},'rejete')
-    r=registre.resume();assert r['hypotheses']==len(registre.catalogue())==39 and r['essais_declares']==1 and r['permis'] is False
+    r=registre.resume();assert r['hypotheses']==len(registre.catalogue())==43 and r['essais_declares']==1 and r['permis'] is False
     with base.connexion() as c:
         with pytest.raises(sqlite3.IntegrityError):c.execute('DELETE FROM essais')
         with pytest.raises(sqlite3.IntegrityError):c.execute("UPDATE resultats_essais SET verdict='admis'")

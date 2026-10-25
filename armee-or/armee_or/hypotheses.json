@@ -327,5 +327,41 @@
   "etat": "rejetee_sources",
   "resultat": "Gain linéaire, perte quadratique : une seule série défavorable vide le compte. Interdit par la loi 7.",
   "parametres_a_formaliser": false
+ },
+ {
+  "id": "H40",
+  "nom": "CFM (Paris) : tendance exponentielle 5 mois",
+  "description": "Prix moins sa moyenne exponentielle de 5 mois (hors prix du jour), divisé par la volatilité ; ici acheteur seulement.",
+  "source": "Lempérière, Deremble, Seager, Potters et Bouchaud (CFM), « Two Centuries of Trend Following », 2014 (t ≈ 5 depuis 1960, achat et vente) ; etudes/grands_r61.py",
+  "etat": "rejetee_R6.1",
+  "resultat": "Acheteur seulement, moteur de l'équipe : +0,37 / +0,43 contre +0,08 / +0,46 : ne bat pas le naïf sur la 2e moitié. La force publiée vient aussi de la vente à découvert.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H41",
+  "nom": "Bridgewater (Dalio) : risque égal par famille d'actifs",
+  "description": "Chaque famille (forex, métaux, énergie, agricoles, indices, crypto) reçoit la même part du risque ; ses marchés se la partagent.",
+  "source": "Dalio, « 15 à 20 sources de rendement peu corrélées » (Principles) ; etudes/grands_r61.py, etudes/robustesse_r61.py",
+  "etat": "adoptee_R6.1",
+  "resultat": "Momentum 12 mois +0,51 / +0,92 contre +0,38 / +0,66 par marché ; mieux sur les 5 périodes de 5 ans, sur 171 sous-paniers sur 200, avec frais triplés et sans les cryptos. Le gain vient surtout du forex, qui ne pèse plus 12 marchés sur 34. Adopté : banc et tailles en direct.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H42",
+  "nom": "Millennium / Citadel : limite de perte de l'équipe",
+  "description": "Taille divisée par deux après une perte de 0,5 volatilité annuelle depuis le sommet, rétablie sous 0,25.",
+  "source": "Presse spécialisée sur les fonds multi-gérants (≈ 5 % puis 7,5 à 10 %) ; etudes/grands_r61.py",
+  "etat": "mesuree_non_deployee",
+  "resultat": "Momentum : pire baisse −8,6 % au lieu de −12,8 %, Sharpe +0,36 / +0,64 au lieu de +0,38 / +0,66. Moins de baisse, un peu moins de gain : décision du propriétaire.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H43",
+  "nom": "Plus de sources : Asie, Europe, obligations US",
+  "description": "8 indices (Hong Kong, Australie, Corée, Singapour, Inde, Shanghai, Suisse, Espagne) et 2 obligations (10 et 30 ans) ajoutés aux 34 marchés.",
+  "source": "Yahoo 2000-2026 ; etudes/grands_r61.py",
+  "etat": "rejetee_R6.1",
+  "resultat": "Momentum 44 marchés +0,34 / +0,63, pire baisse −22 % (obligations en 2022) : pas mieux que 34 marchés.",
+  "parametres_a_formaliser": false
  }
 ]
