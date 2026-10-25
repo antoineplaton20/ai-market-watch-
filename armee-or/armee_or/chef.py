@@ -23,6 +23,7 @@ import numpy as np
 from . import apprentissage, archive_mt5, base, bibliotheque, chandeliers, config, donnees, executant, flux, indicateurs as I, \
     levier as L, mt5, papier, pronostiqueurs as P, rythme, strategie as S, telegram, terminal, veille
 from . import alertes, brief, marches, risque, sauvegarde, video
+from . import __version__
 
 _log = logging.getLogger("or.chef")
 SOURCE_DECISION = "PAXGUSDT"            # plus long historique (2020→) + flux direct ; XAUUSDT sert de référence de prix
@@ -972,8 +973,9 @@ def _boucle_principale():
     chef = Chef()
     notifier("READY=1")
     telegram.envoyer(f"🎼 Chef d'orchestre en poste : {len(chef.bots)} bots de l'armée de l'or au travail. "
-                     "R4 : mode démo expérimental disponible avec /or_demo_on. Rapport toutes les " f"{config.RAPPORT_HEURES:g} h. "
-                     + ("MT5 DÉMO : anciennes équipes verrouillées ; mode expérimental séparé /or_demo."
+                     f"Version {__version__}. Rapport toutes les {config.RAPPORT_HEURES:g} h. "
+                     + ("MT5 DÉMO : chaque équipe ne trade qu'après SON activation — multi-marchés /or_marches, "
+                        "équipe vidéo /or_video, démo R4 /or_demo ; anciennes équipes verrouillées."
                         if config.MT5_ACTIF else "Tout est simulé sur papier."))
     while True:
         try:

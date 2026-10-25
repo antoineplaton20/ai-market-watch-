@@ -1,4 +1,15 @@
-# Armée de l’or 2.5-R5.2 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R5.3 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 25 octobre 2026 (R5.3) — une activation ne relance plus une autre équipe
+
+Défaut vu sur le serveur après l’installation de R5.2 :
+
+- la démo R4 était restée notée « active », retenue seulement par les pauses ;
+- `/or_marches_on` lève la pause MT5, ce qui l’aurait relancée lundi à 8 h (heure de Paris), sans que tu l’aies demandé.
+
+Corrigé : toute installation arrête désormais vraiment la démo R4, comme `/or_demo_off`, en gardant ses compteurs, ses freins et ses incidents. Seule `/or_demo_on` la relance. Le message de démarrage du chef donne maintenant la version installée et la commande de chaque équipe.
+
+Pour l’installer : `or maj` (Termius) ou `/or_maj` (Telegram).
 
 ## 25 octobre 2026 (R5.2) — tout depuis Termius et Telegram, comme avant
 

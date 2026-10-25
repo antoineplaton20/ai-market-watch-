@@ -105,3 +105,26 @@ def test_le_paquet_publie_est_a_jour():
               if p.is_file() and "__pycache__" not in p.parts and not p.name.endswith(".pyc")}
     assert suivis <= set(m["fichiers"]), sorted(suivis - set(m["fichiers"]))
     assert deployer.version("2.5-R5.1") < deployer.version(m["version"])            # chaque publication monte la version
+
+
+def test_installer_arrete_vraiment_la_demo_r4(tmp_path):
+    """Avant R5.3, la démo R4 n'était retenue que par les pauses : /or_marches_on (qui lève la pause MT5) la
+    relançait. Toute installation l'arrête maintenant comme /or_demo_off, sans effacer ses compteurs ni ses incidents."""
+    (tmp_path / "runtime").mkdir(exist_ok=True)
+    with sqlite3.connect(tmp_path / "runtime/or.db") as c:
+        c.execute("CREATE TABLE kv(cle TEXT PRIMARY KEY, valeur TEXT, maj REAL)")
+    etat = {"version": "R4-demo-ema20-50-v1", "actif": True, "pic": 3012.5, "entrees_jour": 2, "incident": None}
+    demo = tmp_path / "runtime/demo-r4.json"
+    demo.write_text(json.dumps(etat))
+    demo.chmod(0o640)
+    avant = demo.stat()
+    assert deployer.equipes_actives(tmp_path)[-1][1] == "or demo on"                  # proposé pour reprendre
+    deployer.pause(tmp_path)
+    apres = json.loads(demo.read_text())
+    assert apres == {**etat, "actif": False}                                          # compteurs gardés
+    assert (demo.stat().st_uid, demo.stat().st_gid, demo.stat().st_mode) == (avant.st_uid, avant.st_gid, avant.st_mode)
+    assert not deployer.arreter_demo(tmp_path) and not (tmp_path / "runtime/demo-r4.json.arret").exists()
+    with sqlite3.connect(tmp_path / "runtime/or.db") as c:
+        kv = dict(c.execute("SELECT cle, valeur FROM kv").fetchall())
+    assert kv["mt5:pause"] == "true" and kv["marches:actif"] == "false"
+    assert not deployer.arreter_demo(tmp_path / "absent")

@@ -1,4 +1,4 @@
-"""Migration locale R5.2 d'une installation connue (R4, R5, R5.1, ou la base acceptée par R4). Pas d'installation Wine
+"""Migration locale R5.3 d'une installation connue (R4, R5 à R5.2, ou la base acceptée par R4). Pas d'installation Wine
 ni de changement des autres bots. R5 = R4 + équipe multi-marchés + équipe vidéo (2e compte démo), toutes deux
 désactivées. R5.2 : mise à jour depuis Termius (or maj) et Telegram (/or_maj), version plus récente seulement."""
 import argparse
@@ -22,7 +22,7 @@ SAUVEGARDES = Path('/var/backups/armee-or-r5')
 TELECOMMANDE = Path('/usr/local/bin/or')
 SERVICES = ('armee-or-mt5.service','armee-or-flux.service','armee-or-chef.service')
 VIDEO = 'armee-or-mt5-video.service'  # pont du 2e compte : relancé s'il tournait, jamais exigé pour valider
-VERSION = '2.5-R5.2'
+VERSION = '2.5-R5.3'
 UNITE_MAJ = Path('/etc/systemd/system/armee-or-maj.service')
 CHEMIN_MAJ = Path('/etc/systemd/system/armee-or-maj.path')
 DEJA_A_JOUR, PLUS_ANCIENNE = 3, 4  # codes de sortie de « comparer », lus par « or maj »
@@ -215,11 +215,28 @@ def copie_base(cible,destination):
     destination.chmod(0o600)
 
 
+def arreter_demo(cible):
+    """La démo R4 n'était retenue que par les pauses : /or_marches_on (qui lève la pause MT5) l'aurait relancée sans
+    qu'on le demande. Toute installation l'arrête donc vraiment, comme /or_demo_off : compteurs, freins et incidents
+    conservés ; seul /or_demo_on la relance. Le pont est arrêté à ce moment ; propriétaire et droits gardés."""
+    f=cible/'runtime/demo-r4.json'
+    if f.is_symlink() or not f.is_file():return False
+    e=json.loads(f.read_text())
+    if not isinstance(e,dict) or not e.get('actif'):return False
+    e['actif']=False
+    st=f.stat();tmp=f.with_name('demo-r4.json.arret')
+    if tmp.is_symlink():raise RuntimeError('fichier temporaire symbolique refusé')
+    tmp.write_text(json.dumps(e,allow_nan=False))
+    os.chown(tmp,st.st_uid,st.st_gid);tmp.chmod(st.st_mode&0o777);os.replace(tmp,f)
+    return True
+
+
 def pause(cible):
     with sqlite3.connect(cible/'runtime/or.db',timeout=30) as c:
         for k,v in {'pause':True,'mt5:pause':True,'mt5:permis_exige':True,'mt5:permis':{},
                     'mt5:entrainement':False,'marches:actif':False,'video:actif':False}.items():
             c.execute('INSERT OR REPLACE INTO kv(cle,valeur,maj) VALUES (?,?,?)',(k,json.dumps(v),time.time()))
+    arreter_demo(cible)
 
 
 def sauvegarder(m,cible=CIBLE,racine=SAUVEGARDES):

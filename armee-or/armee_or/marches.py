@@ -652,8 +652,9 @@ def activer(chef=None):
     return ("▶️ Multi-marchés ACTIVÉ sur le compte DÉMO (pause levée). "
             + (f"Permis : {STRATEGIES[strat]}. " if strat else "Pas encore de permis : aucun achat tant que le banc "
                "ne l'accorde pas (/or_marches). ")
-            + "Plafond R3 : 2 % de pertes cumulées jusqu'aux stops, tout le compte. Attention : une position "
-            "multi-marchés bloque les entrées de la démo R4 (elle exige un compte vide). /or_marches_off pour arrêter.")
+            + "Plafond R3 : 2 % de pertes cumulées jusqu'aux stops, tout le compte. La démo R4 n'est pas relancée "
+            "(sa commande : /or_demo_on) ; une position multi-marchés bloque d'ailleurs ses entrées. "
+            "/or_marches_off pour arrêter.")
 
 
 def commande(c, chef=None):

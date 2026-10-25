@@ -14,6 +14,9 @@
 > publiée ; plus de zip. Garde-fou qui remplace le blocage R3 : seule une version STRICTEMENT plus récente que celle
 > notée par root (/var/lib/armee-or) s'installe, après les tests sur le serveur, en pause. Chaque publication monte
 > donc la version et régénère PAQUET.json (test_le_paquet_publie_est_a_jour).
+>
+> R5.3 : une activation ne doit jamais en relancer une autre. Toute installation arrête la démo R4 (actif = False
+> dans runtime/demo-r4.json, compteurs gardés) ; seule /or_demo_on la relance.
 
 > Décision du propriétaire — 23 octobre 2026 : « Démo expérimentale ».
 > Le propriétaire autorise explicitement les achats et ventes automatiques de test
@@ -1505,7 +1508,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 229 tests au 25/10/2026 (R5.2) ; 238 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 230 tests au 25/10/2026 (R5.3) ; 239 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;
