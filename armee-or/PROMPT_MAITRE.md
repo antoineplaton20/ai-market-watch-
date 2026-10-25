@@ -18,6 +18,9 @@
 > R6 (25/10/2026) : recherche sur internet demandée par le propriétaire (« être positifs quoi qu'il arrive »).
 > Seul le momentum 12 mois passe tous les contrôles : ajouté aux candidats du permis multi-marchés (§5).
 >
+> R6.2 (25/10/2026) : historiques contrôlés (qualite.py : un marché écarté ne sert ni de preuve ni d'achat) ;
+> verrou de gain (+2 ATR → stop à +0,5 ATR, marches_stop ne fait que monter), au banc comme en direct.
+>
 > R6.1 (25/10/2026) : risque égal par FAMILLE d'actifs (Bridgewater), au banc comme en direct.
 >
 > R5.3 : une activation ne doit jamais en relancer une autre. Toute installation arrête la démo R4 (actif = False
@@ -492,6 +495,21 @@ Question du propriétaire : « t'es-tu inspiré des plus grands groupes, de Pari
 - **Attention** : la force de la 2e moitié doit beaucoup aux cryptos. Sans elles, le momentum par famille donne +0,53 / +0,32. Si le courtier ne propose pas BTCUSD et ETHUSD, le permis le dira.
 - **Renaissance** (Simons) : selon un propos rapporté de Robert Mercer (formulation exacte non vérifiée), le fonds le plus rentable de l'histoire n'aurait raison qu'environ 50,75 % du temps. Même chez eux, le gain vient du nombre de paris et de la taille, pas d'un trade toujours gagnant.
 - **Les dirigeants des grandes entreprises** (Apple, Microsoft, LVMH…) ne sont pas des traders. Les grands gérants déjà au §8 (Buffett, Dalio, Simons, Soros, Druckenmiller, Tudor Jones, Bouchaud) disent la même chose : survivre d'abord, diversifier, couper les pertes.
+
+### R6.2 (25/10/2026) : les données testées, et un verrou de gain
+
+- **Contrôle des données** (`armee_or/qualite.py`, seuils fixés d'avance ; `etudes/donnees_r62.py`) : 9 historiques Yahoo sur 44 sont écartés (contrats à terme agricoles, platine, cuivre, or COMEX, NZD/USD : 6 à 18 % de lignes invalides). Sans eux, le momentum bat toujours le naïf (+0,31 / +0,92 contre +0,23 / +0,74, risque égal par famille). L'or recoupé par trois sources (COMEX, PAXG, XAUUSDT) : corrélation 0,88 à 0,90. En direct, l'historique du courtier est contrôlé chaque heure ; un marché écarté ne sert ni de preuve ni d'achat.
+- **Méthodes « un petit gain par trade »** (`etudes/methodes_r62.py`, `etudes/robustesse_r62.py`, fiches H44 à H47) :
+
+  | Méthode | Sharpe moitiés | Trades gagnants | Verdict |
+  |---|---|---|---|
+  | Momentum 12 mois (référence, par famille) | +0,51 / +0,92 | 34 % | candidat |
+  | + verrou de gain (+2 ATR → stop +0,5 ATR), rachat | +0,51 / +0,91 | 42 % | **adopté** (neutre, choix du propriétaire) |
+  | + stop suiveur 3 ATR (LeBeau), rachat | +0,52 / +1,02 | 39 % | rejeté : 3 fois plus de trades, pas mieux avec frais triplés, mieux sur 81 sous-paniers sur 200 seulement |
+  | + stop suiveur 3 ATR, sans rachat | −0,07 / +0,14 | 38 % | rejeté |
+  | Ensemble ½ momentum + ½ 200 jours | +0,51 / +0,93 | — | inutile |
+
+- **Le verrou en direct** : l'équipe enregistre l'ATR à l'entrée ; dès une clôture à +2 ATR, elle demande au pont `marches_stop` (qui ne fait que monter un stop 770050, jamais au contact du cours, jamais sur le 2e compte). Une position sortie par un stop verrouillé est un gain encaissé : rachat permis si la règle tient. Le banc du permis juge l'équipe avec ce verrou (`SORTIES`).
 - **Le forex seul ne rapporte rien.** Les familles ne gagnent qu'ensemble : c'est la diversification qui travaille.
 - **Le permis réel se calcule sur l'historique du courtier**, avec ses écarts et ses swaps.
 
@@ -1517,7 +1535,8 @@ Règle : une hypothèse est jugée sur la source 1 dès qu'elle existe pour l'un
 | `terminal.py`, `brief.py`, `alertes.py` | Les écrans façon terminal pro (`/or_go`…), le brief de 8 h, les alertes de prix. |
 | `sauvegarde.py`, `base.py`, `config.py`, `telegram.py`, `systemd.py` | Les sauvegardes de nuit, la base SQLite (mode WAL), les réglages `.env`, les messages, le chien de garde. |
 | `bibliotheque.py` | Les fiches de savoir, à étendre avec les grands. |
-| `marches.py` | L'armée multi-marchés : inventaire de tous les symboles MT5, archive journalière, banc d'essai sur deux moitiés contre « toujours acheter », permis, équipe (règle des 200 jours, taille selon la volatilité, lot minimum compatible avec le capital, stop de catastrophe, numéro magique 770050). |
+| `marches.py` | L'armée multi-marchés : inventaire de tous les symboles MT5, archive journalière, banc d'essai sur deux moitiés contre « toujours acheter », permis, équipe (règle des 200 jours ou momentum 12 mois, le meilleur permis ; même risque par famille d'actifs ; taille selon la volatilité, lot minimum compatible avec le capital, stop de catastrophe, verrou de gain, numéro magique 770050). |
+| `qualite.py` | Le contrôleur des données (R6.2) : lignes invalides, trous, prix figés, sauts aberrants, ouvertures recopiées ; verdict bon, réserve ou écarté (un marché écarté ne sert ni de preuve ni d'achat). |
 | `video.py` | L'équipe vidéo (H23) : la méthode des vidéos, sur un 2e compte démo séparé (port 18778, numéro magique 770077), avec son rejeu historique. |
 
 ### 12.2 La vitesse (mesurée, puis à tenir)
@@ -1551,7 +1570,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 233 tests au 25/10/2026 (R6.1) ; 242 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 237 tests au 25/10/2026 (R6.2) ; 246 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

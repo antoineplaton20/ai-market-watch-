@@ -363,5 +363,41 @@
   "etat": "rejetee_R6.1",
   "resultat": "Momentum 44 marchés +0,34 / +0,63, pire baisse −22 % (obligations en 2022) : pas mieux que 34 marchés.",
   "parametres_a_formaliser": false
+ },
+ {
+  "id": "H44",
+  "nom": "Verrou de gain (+2 ATR → stop à +0,5 ATR)",
+  "description": "Dès une clôture à +2 ATR de l'entrée, stop remonté à +0,5 ATR ; rachat si la règle tient.",
+  "source": "Pratique courante (« break-even stop ») ; demande du propriétaire ; etudes/methodes_r62.py, etudes/robustesse_r62.py",
+  "etat": "adoptee_R6.2",
+  "resultat": "Momentum : +0,51 / +0,91 contre +0,51 / +0,92 (neutre, aussi avec frais triplés) ; trades gagnants 42 % au lieu de 34 %. Adopté pour le propriétaire : un trade parti à +2 ATR ne peut plus finir en perte, sauf trou de cotation.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H45",
+  "nom": "Stop suiveur de LeBeau (« chandelier », 3 ATR)",
+  "description": "Stop au plus haut atteint − 3 ATR, avec ou sans rachat.",
+  "source": "LeBeau ; etudes/methodes_r62.py, etudes/robustesse_r62.py",
+  "etat": "rejetee_R6.2",
+  "resultat": "Avec rachat : +0,52 / +1,02 en frais standards, mais 3 fois plus de trades : pas mieux avec frais triplés, mieux sur 81 sous-paniers sur 200 seulement. Sans rachat : −0,07 / +0,14.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H46",
+  "nom": "Ensemble ½ momentum + ½ règle 200 jours",
+  "description": "Deux demi-équipes moyennées.",
+  "source": "Ensembles (H11) ; etudes/methodes_r62.py",
+  "etat": "rejetee_R6.2",
+  "resultat": "+0,51 / +0,93, pire baisse −11 % contre −14 % : quasi identique au momentum seul ; pas déployé (deux équipes pour rien).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H47",
+  "nom": "Contrôle des données",
+  "description": "Lignes invalides, trous, prix figés, sauts aberrants et erreurs de cotation, ouvertures recopiées ; seuils fixés d'avance.",
+  "source": "armee_or/qualite.py ; etudes/donnees_r62.py",
+  "etat": "adoptee_R6.2",
+  "resultat": "Yahoo : 9 historiques sur 44 écartés (contrats à terme agricoles, platine, cuivre, or COMEX, NZD/USD : 6 à 18 % de lignes invalides). Sur les 25 marchés propres, le momentum bat toujours le naïf (+0,31 / +0,92 contre +0,23 / +0,74). L'or recoupé COMEX / PAXG / XAUUSDT : corrélation 0,88-0,90. En service : l'historique du courtier est contrôlé chaque heure, un marché écarté ne sert ni de preuve ni d'achat.",
+  "parametres_a_formaliser": false
  }
 ]

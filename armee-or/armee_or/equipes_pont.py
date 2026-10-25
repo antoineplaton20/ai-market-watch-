@@ -4,7 +4,9 @@
   par symbole, 0,5 % du compte risqué au plus par ordre, et le plafond cumulé R3 (2 % de pertes jusqu'aux stops,
   toutes positions du compte comprises) inchangé ;
 - vidéo (770077) : 2e compte démo seulement (instance « video »), sans stop comme dans les vidéos, 10 positions et
-  95 % de la marge au plus.
+  95 % de la marge au plus ;
+- verrou de gain multi-marchés (R6.2) : un stop 770050 ne peut que MONTER (le risque ne fait que baisser), jamais au
+  contact du cours.
 Les deux refusent tout compte réel. Un refus AVANT l'envoi revient en réponse (ok False, avant_envoi True) : côté
 Linux, seule une réponse perdue reste un ordre incertain.
 """
@@ -75,6 +77,33 @@ class EquipesMixin:
         r = self._envoyer(demande, info)
         r.update(volume_demande=volume, risque=controle["risque"], devise=a.currency)
         return r
+
+    def op_marches_stop(self, ticket, sl, **_):
+        """Remonte le stop d'une position multi-marchés (verrou de gain). Jamais vers le bas, jamais au contact."""
+        if self.instance:
+            raise RuntimeError("multi-marchés : compte de l'armée seulement")
+        try:
+            self._demo_exige()
+            pos = [p for p in self._positions(ticket=int(ticket)) if p.magic == MAGIQUE_MARCHES]
+            if not pos:
+                raise RuntimeError("position multi-marchés introuvable")
+            p = pos[0]
+            info = self.mt5.symbol_info(p.symbol)
+            if info is None:
+                raise RuntimeError(f"{p.symbol} indisponible")
+            sl = round(float(sl), info.digits)
+            if not math.isfinite(sl) or sl <= 0 or sl <= p.sl:
+                raise RuntimeError("le stop ne peut que monter")
+            tick = self._cours_valide(p.symbol)
+            if sl >= tick.bid - max(0, info.trade_stops_level) * info.point:
+                raise RuntimeError("stop trop proche du cours")
+        except Exception as ex:
+            return refus(ex)
+        r = self.mt5.order_send({"action": self.mt5.TRADE_ACTION_SLTP, "position": p.ticket, "symbol": p.symbol,
+                                 "sl": sl, "tp": p.tp, "magic": MAGIQUE_MARCHES})
+        if r is None:
+            raise RuntimeError(f"modification refusée par le terminal : {self.mt5.last_error()}")
+        return {"ok": r.retcode in (10008, 10009, 10010), "retcode": r.retcode, "commentaire": r.comment, "sl": sl}
 
     def op_video_ouvrir(self, sens, volume, symbole=None, **_):
         if self.instance != "video":

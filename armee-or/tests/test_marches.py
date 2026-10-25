@@ -39,7 +39,7 @@ def bruit(n, graine, amplitude=0.01):
 
 class FauxMulti:
     ORDER_TYPE_BUY, ORDER_TYPE_SELL, POSITION_TYPE_BUY = 0, 1, 0
-    TRADE_ACTION_DEAL, ORDER_TIME_GTC = 1, 0
+    TRADE_ACTION_DEAL, ORDER_TIME_GTC, TRADE_ACTION_SLTP = 1, 0, 6
     ORDER_FILLING_FOK, ORDER_FILLING_IOC, ORDER_FILLING_RETURN = 0, 1, 2
     TIMEFRAME_M1, TIMEFRAME_M15, TIMEFRAME_H1, TIMEFRAME_H4, TIMEFRAME_D1 = 1, 15, 16385, 16388, 16408
 
@@ -94,7 +94,8 @@ class FauxMulti:
         r["time"] = DEBUT + np.array(indices) * JOUR
         r["close"] = c[indices]
         r["open"] = np.concatenate(([c[indices[0]]], c[np.array(indices[:-1])])) if len(indices) else []
-        r["high"], r["low"] = r["close"] * 1.004, r["close"] * 0.996
+        r["high"] = np.maximum(r["open"], r["close"]) * 1.004            # bougies cohérentes (contrôlées par qualite.py)
+        r["low"] = np.minimum(r["open"], r["close"]) * 0.996
         return r
 
     def copy_rates_from_pos(self, s, tf, debut, n):
@@ -118,6 +119,10 @@ class FauxMulti:
 
     def order_send(self, d):
         self.envois.append(d)
+        if d["action"] == self.TRADE_ACTION_SLTP:                      # modification du stop d'une position
+            p = next(x for x in self.positions if x.ticket == d["position"])
+            p.sl, p.tp = d["sl"], d["tp"]
+            return NS(retcode=10009, comment="Request executed", order=0, deal=0, price=0.0, volume=0.0)
         if d["type_filling"] != self.ORDER_FILLING_IOC:
             return NS(retcode=10030, comment="Unsupported filling mode", order=0, deal=0, price=0.0, volume=0.0)
         self.suivant += 1
@@ -606,3 +611,97 @@ def test_risque_egal_par_famille_banc_et_tailles():
     par_marche = marches.banc(sans, strategies=("toujours_acheter",))
     # l'indice en tendance pèse 1/2 du portefeuille par famille, 1/7 par marché : son rendement compte plus
     assert par_famille["toujours_acheter"]["tout"]["rendement"] > par_marche["toujours_acheter"]["tout"]["rendement"]
+
+
+# ============================================================================ R6.2 : données contrôlées, verrou de gain
+def _lignes(c, o=None, h=None, l=None):
+    c = np.asarray(c, dtype=float)
+    o = np.concatenate(([c[0]], c[:-1])) if o is None else o
+    h = np.maximum(o, c) * 1.002 if h is None else h
+    l = np.minimum(o, c) * 0.998 if l is None else l
+    return list(zip((DEBUT + np.arange(len(c)) * JOUR) * 1000, o, h, l, c))
+
+
+def test_controleur_de_donnees():
+    from armee_or import qualite as Q
+    rng = np.random.default_rng(4)
+    c = 100 * np.exp(np.cumsum(rng.normal(0, 0.01, 800)))
+    o = c * (1 + rng.normal(0, 0.002, 800))
+    propre = Q.controler(_lignes(c, o=o))
+    assert propre["verdict"] == "bon" and propre["rejetees"] == propre["sauts"] == propre["figes"] == 0
+    sale = _lignes(c, o=o)
+    sale[10:60] = [(t, None, h, l, x) for t, _, h, l, x in sale[10:60]]                 # 6 % de lignes vides
+    assert Q.controler(sale)["verdict"] == "écarté"
+    fige = c.copy()
+    fige[100:160] = fige[100]                                                        # 60 clôtures identiques
+    assert Q.controler(_lignes(fige))["figes"] >= 60 and Q.controler(_lignes(fige))["verdict"] == "écarté"
+    erreur = c.copy()
+    for i in (200, 400, 600):                                                        # pics aussitôt annulés
+        erreur[i] *= 1.6
+    r = Q.controler(_lignes(erreur))
+    assert r["erreurs"] == 3 and r["verdict"] == "écarté"
+    krach = c.copy()
+    krach[300:] *= 0.75                                                              # vrai krach : gardé, signalé
+    ok = krach * (1 + rng.normal(0, 0.002, 800))
+    assert Q.controler(_lignes(krach, o=ok))["verdict"] == "réserve"
+    assert Q.controler(_lignes(krach, o=ok), famille="crypto")["verdict"] == "bon"    # seuil plus large en crypto
+    assert Q.controler(_lignes(c))["verdict"] == "réserve"                           # ouvertures recopiées
+    desordre = _lignes(c, o=o)
+    desordre[5], desordre[6] = desordre[6], desordre[5]
+    assert Q.controler(desordre)["verdict"] == "écarté"
+
+
+def test_le_stop_multi_marches_ne_fait_que_monter(courtier):
+    pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+    prix = courtier.prix("US500")
+    r = pont.traiter({"op": "marches_ouvrir", "symbole": "US500", "volume": 0.1, "sl": prix * 0.95})["r"]
+    assert r["ok"]
+    p = courtier.positions[0]
+    stop = lambda sl, **k: pont.traiter({"op": "marches_stop", "ticket": k.get("ticket", p.ticket), "sl": sl})["r"]
+    assert not stop(p.sl * 0.99)["ok"] and "ne peut que monter" in stop(p.sl * 0.99)["commentaire"]
+    assert not stop(prix * 1.01)["ok"] and "trop proche" in stop(prix * 1.01)["commentaire"]
+    assert stop(prix * 0.98)["ok"] and p.sl == pytest.approx(prix * 0.98)
+    assert not stop(prix * 0.97)["ok"]                                               # redescendre : refusé
+    p.magic = 770001                                                                 # pas une position 770050
+    assert "introuvable" in stop(prix * 0.985)["commentaire"]
+    p.magic = marches.MAGIQUE
+    video = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1"}, instance="video")
+    assert not video.traiter({"op": "marches_stop", "ticket": p.ticket, "sl": prix * 0.985})["ok"]
+
+
+def test_verrou_de_gain_en_direct_puis_rachat(courtier):
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
+    marches.bot_marches()
+    eur = [p for p in courtier.positions if p.symbol == "EURUSD"][0]
+    atr = marches.lire()["positions"]["EURUSD"]["atr"]
+    assert atr > 0 and eur.sl < eur.price_open
+    serie = courtier.series["EURUSD"]
+    hausse = serie[2][-1] * (1 + np.linspace(0.001, 1, 5) * 3 * atr / serie[2][-1])  # +3 ATR en 5 jours
+    courtier.series["EURUSD"] = (serie[0], serie[1], np.concatenate((serie[2], hausse)))
+    marches.bot_marches()
+    cible = round(eur.price_open + marches.VERROU[1] * atr, 5)
+    assert eur.sl == pytest.approx(cible) and any("gain verrouillé" in t for t in courtier.messages)
+    n = len(courtier.envois)
+    marches.bot_marches()
+    assert len(courtier.envois) == n                                                 # déjà posé : rien de renvoyé
+    courtier.positions.remove(eur)                                                   # le courtier exécute le stop
+    marches.bot_marches()
+    assert any("gain verrouillé encaissé" in t for t in courtier.messages)
+    assert marches.lire()["bloque"]["EURUSD"] is False                                # rachat permis si la règle tient
+    assert "🔒" not in marches.texte_marches() or "EURUSD" not in marches.texte_marches()
+
+
+def test_le_banc_juge_avec_le_verrou_et_sans_les_historiques_douteux(courtier, monkeypatch):
+    marches.bot_marches()
+    for _ in range(6):
+        marches.archiver(par_passage=4)
+    vus = {}
+    vrai = marches.banc
+    monkeypatch.setattr(marches, "banc", lambda m, **k: vus.update(marches=set(m), **k) or vrai(m, **k))
+    with base.connexion() as c:                                                      # l'historique d'USDJPY se fige
+        c.execute("UPDATE bougies SET c = 150.0 WHERE source = 'MT5:USDJPY' AND ts > ?", ((DEBUT + 400 * JOUR) * 1000,))
+    marches.bot_banc()
+    assert vus["sorties"] == marches.SORTIES and "USDJPY" not in vus["marches"]
+    assert base.lire("marches:qualite")["USDJPY"]["verdict"] == "écarté"
+    assert "Données contrôlées" in marches.texte_marches() and "USDJPY" in marches.texte_marches()

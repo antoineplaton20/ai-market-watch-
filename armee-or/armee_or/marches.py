@@ -32,7 +32,7 @@ import time
 
 import numpy as np
 
-from . import base, config, donnees, indicateurs as I, mt5, risque, telegram
+from . import base, config, donnees, indicateurs as I, mt5, qualite as Q, risque, telegram
 
 _log = logging.getLogger("or.marches")
 
@@ -79,6 +79,11 @@ UNIVERS = [
 ]
 FAMILLES = ("forex", "métaux", "énergie", "agricoles", "indices", "crypto")
 GAGNANTS_MESURES = "22 %"           # étude du 25/10/2026, 3 432 trades (LISEZMOI : « Gagner à chaque trade ? »)
+# R6.2 : verrou de gain — dès une clôture à +2 ATR (ATR de l'entrée), stop remonté à +0,5 ATR : le trade ne peut plus
+# finir en perte (sauf trou de cotation) ; rachat si la règle tient encore. Neutre sur le résultat (etudes/
+# robustesse_r62.py), 42 % de trades gagnants au lieu de 34 % : choix du propriétaire (« un petit gain par trade »).
+VERROU = (2.0, 0.5)
+SORTIES = {"verrou": VERROU, "rachat": True}
 
 
 def lire():
@@ -220,13 +225,17 @@ def volatilite(c, i, n=60):
     return float(r.std() * math.sqrt(252)) if len(r) >= 20 else 0.0
 
 
-def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None):
+def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None, sorties=None):
     """-> (rendement net quotidien en part du capital, nombre d'entrées). Comme l'équipe en direct, qui n'agit
     qu'après la clôture : décision à la clôture du jour i, exécutée à l'OUVERTURE du jour i+1 (jamais au cours de
     clôture qui a servi à décider). Taille fixée à l'entrée ; stop de catastrophe à 5 ATR(20) sous le prix d'entrée,
     ATR des bougies closes ; touché, on attend que le signal retombe avant de reprendre. « Toujours acheter »
     (l'étalon) n'a pas de stop et sa taille est revue chaque mois, pour rester à risque constant sur vingt ans.
-    journal : liste qui reçoit chaque trade (jour d'entrée, jour de sortie ou None, résultat net en part du capital)."""
+    journal : liste qui reçoit chaque trade (jour d'entrée, jour de sortie ou None, résultat net en part du capital).
+    sorties (R6.2, études) : {"verrou": (k, m)} → dès une clôture à +k ATR d'entrée, stop remonté à +m ATR (le trade
+    ne peut plus finir en perte, sauf trou de cotation) ; {"suiveur": k} → stop suiveur de LeBeau, plus haut atteint
+    − k ATR ; {"rachat": True} → après une sortie qui protège un gain, rachat possible si la règle tient encore."""
+    sorties = sorties or {}
     o, h, l, c = (np.asarray(x, dtype=float) for x in (o, h, l, c))
     n = len(c)
     sig = signal(c, strategie)
@@ -235,6 +244,18 @@ def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None
     ecart, swap = cout["ecart"], cout["swap_long"]
     net = np.zeros(n)
     w, stop, bloque, entrees, ordre, taille, debut, resultat = 0.0, 0.0, False, 0, None, 0.0, 0, 0.0
+    entree, atr_entree, plus_haut, stop_initial = 0.0, 0.0, 0.0, 0.0
+
+    def proteger(i):                                              # à la clôture i : le stop ne fait que monter
+        nonlocal stop, plus_haut
+        plus_haut = max(plus_haut, h[i])
+        if "verrou" in sorties and c[i] >= entree + sorties["verrou"][0] * atr_entree:
+            stop = max(stop, entree + sorties["verrou"][1] * atr_entree)
+        if "suiveur" in sorties and np.isfinite(atr[i]):
+            stop = max(stop, plus_haut - sorties["suiveur"] * atr[i])
+
+    def apres_stop():
+        return not (sorties.get("rachat") and stop > stop_initial)  # gain protégé : rachat permis si la règle tient
 
     def clore(i, r):
         nonlocal w, resultat
@@ -247,7 +268,8 @@ def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None
             clore(i, w * (o[i] / c[i - 1] - 1) - w * ecart)
         elif ordre == "entrer":                                   # acheté à l'ouverture
             w, debut = taille, i
-            stop = o[i] - STOP_ATR * atr[i - 1]
+            stop = stop_initial = o[i] - STOP_ATR * atr[i - 1]
+            entree, atr_entree, plus_haut = o[i], atr[i - 1], o[i]
             entrees += 1
             if avec_stop and l[i] <= stop:
                 net[i] -= w * ecart
@@ -257,10 +279,12 @@ def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None
             else:
                 net[i] += w * (c[i] / o[i] - 1) - w * ecart + w * swap
                 resultat = net[i]
+                if avec_stop:
+                    proteger(i)
         elif w:
             if avec_stop and l[i] <= stop:                        # stop touché dans la journée (au pire : l'ouverture)
                 clore(i, w * (min(o[i], stop) / c[i - 1] - 1) - w * ecart)
-                bloque = True
+                bloque = apres_stop()
             else:
                 r = w * (c[i] / c[i - 1] - 1) + w * swap
                 if not avec_stop and i % 21 == 0:                 # étalon : retour au risque visé chaque mois
@@ -271,6 +295,8 @@ def simuler_marche(o, h, l, c, strategie, cout, vol_cible=VOL_BANC, journal=None
                         w = nouveau
                 net[i] += r
                 resultat += r
+                if avec_stop:
+                    proteger(i)
         ordre = None
         if sig[i] == 0:                                           # décisions à la clôture, pour le lendemain
             if w:
@@ -306,7 +332,7 @@ def statistiques(x):
             "pire_baisse": float((courbe - np.maximum.accumulate(courbe)).min())}
 
 
-def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
+def banc(marches, strategies=(*CANDIDATES, "toujours_acheter"), sorties=None, serie=False):
     """marches : {symbole: {"ts": ms, "o","h","l","c": tableaux, "cout": {...}, "famille": ...}} -> résultats par règle :
     portefeuille à risque égal PAR FAMILLE (R6.1, Dalio : chaque famille présente pèse autant, ses marchés se la
     partagent ; sans famille, chaque marché pèse autant), deux moitiés, entrées, Sharpe par marché."""
@@ -322,7 +348,7 @@ def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
         entrees, par_marche, trades, moities = 0, {}, [], [0, 0]
         for s, d in garde.items():
             journal = []
-            net, k = simuler_marche(d["o"], d["h"], d["l"], d["c"], strat, d["cout"], journal=journal)
+            net, k = simuler_marche(d["o"], d["h"], d["l"], d["c"], strat, d["cout"], journal=journal, sorties=sorties)
             idx = np.array([position[int(t) // 86_400_000] for t in d["ts"]])
             somme, nb = familles.setdefault(d.get("famille") or "?", (np.zeros(len(jours)), np.zeros(len(jours))))
             somme[idx] += net
@@ -341,6 +367,8 @@ def banc(marches, strategies=(*CANDIDATES, "toujours_acheter")):
                       "moitie2": statistiques(p[j >= coupe]), "entrees": entrees, "entrees_moities": moities,
                       "marches": len(garde), "par_marche": par_marche, "coupe_jour": int(coupe),
                       "trades": bilan_trades(trades)}
+        if serie:                                                     # études seulement (jamais stocké en base)
+            out[strat]["serie"] = (j, p)
     return out
 
 
@@ -389,9 +417,13 @@ def bot_banc(chef=None):
         return "MT5 non configuré"
     e = lire()
     marches = charger_marches(e)
+    controles = {s: Q.controler(list(zip(d["ts"], d["o"], d["h"], d["l"], d["c"])), famille=d.get("famille", ""))
+                 for s, d in marches.items()}              # aucune preuve sur un historique douteux
+    base.ecrire("marches:qualite", {s: {"verdict": q["verdict"], "raisons": q["raisons"]} for s, q in controles.items()})
+    marches = {s: d for s, d in marches.items() if controles[s]["verdict"] != "écarté"}
     tradables = set(e.get("tradables") or [])
     sous = {s: d for s, d in marches.items() if s in tradables}
-    res = banc(sous if len(sous) >= MIN_MARCHES else marches)
+    res = banc(sous if len(sous) >= MIN_MARCHES else marches, sorties=SORTIES)  # le banc juge l'équipe telle qu'elle trade
     if not res:
         return "pas encore assez d'historique journalier"
     ancien = base.lire("marches:permis") or {}
@@ -523,6 +555,10 @@ def bot_marches(chef=None, maintenant=None):
         if s not in positions:
             if coupe:                                       # fermée par le coupe-circuit : rachat permis à la reprise
                 annonces.append(f"{s} : fermée par le coupe-circuit")
+            elif suivi[s].get("verrou"):                    # stop au-dessus de l'entrée : gain encaissé, rachat permis
+                annonces.append(f"{s} : gain verrouillé encaissé (stop {suivi[s]['verrou']} au-dessus de l'entrée "
+                                f"{suivi[s].get('prix')}) ; rachat si la règle tient encore")
+                e.setdefault("bloque", {})[s] = False
             else:
                 annonces.append(f"{s} : sortie par le stop de catastrophe (ou à la main), pas de rachat tant que le "
                                 "signal n'est pas retombé")
@@ -555,8 +591,32 @@ def bot_marches(chef=None, maintenant=None):
             valeur = mt5.appel("valeur_lot", symbole=s)
         except mt5.ErreurMT5:
             continue
+        if (base.lire("marches:qualite") or {}).get(s, {}).get("verdict") == "écarté":
+            msgs.append(f"{s} : historique douteux, aucun achat")     # ses sorties restent gérées
+            continue
         candidats[s] = (valeur, vol, specs_tous.get(s) or {})
     retenus, budgets, exclus = selection(candidats, equite, {s: univers[s]["famille"] for s in candidats})
+    for s, ps in positions.items():                         # verrou de gain : le stop ne fait que monter
+        if s not in suivi or s not in signaux:
+            continue
+        _, _, c_s, h_s, l_s = signaux[s]
+        atr_e = suivi[s].get("atr") or float(I.atr(h_s, l_s, c_s, 20)[-1])
+        suivi[s]["atr"] = atr_e
+        chiffres = int((specs_tous.get(s) or {}).get("digits") or 5)
+        for p in ps:
+            cible = round(p["price_open"] + VERROU[1] * atr_e, chiffres)
+            if c_s[-1] >= p["price_open"] + VERROU[0] * atr_e and (p.get("sl") or 0) < cible:
+                try:
+                    r = mt5.appel("marches_stop", ticket=p["ticket"], sl=cible)
+                except mt5.ErreurMT5 as ex:                 # rien de grave : le stop de catastrophe reste en place
+                    msgs.append(f"{s} : verrou non posé ({ex}), nouvel essai")
+                    continue
+                if r.get("ok"):
+                    suivi[s]["verrou"] = cible
+                    annonces.append(f"{s} : gain verrouillé, stop remonté à {cible} (entrée {p['price_open']}, "
+                                    f"+{VERROU[1]:g} ATR) : ce trade ne peut plus finir en perte, sauf trou de cotation")
+                else:
+                    msgs.append(f"{s} : verrou refusé ({r.get('commentaire')})")
     e.update(tradables=sorted(retenus), budgets=budgets, exclus=exclus,
              intentions=sorted(s for s, v in signaux.items() if v[0] == 1 and s in retenus and s not in positions))
     for s, (sig, t_barre, c, h, l) in signaux.items():
@@ -614,7 +674,8 @@ def bot_marches(chef=None, maintenant=None):
             base.ecrire(INCERTAIN, None)
             p = confirme[0]
             lots = p["volume"]
-            suivi[s] = {"strategie": strat, "ts": m, "lots": lots, "prix": p["price_open"], "stop": p["sl"]}
+            suivi[s] = {"strategie": strat, "ts": m, "lots": lots, "prix": p["price_open"], "stop": p["sl"],
+                        "atr": float(atr)}
             positions[s] = confirme
             e.get("refus", {}).pop(s, None)
             annonces.append(f"ACHAT {lots:g} lot {s} ({univers[s]['nom']}, {univers[s]['famille']}) à "
@@ -750,7 +811,14 @@ def texte_marches():
         lignes.append(f"Capital : {len(tradables)} marchés tenables, risque égal entre {len(fams)} familles "
                       f"({', '.join(fams) or '—'}) · trop gros pour ce capital : {', '.join(sorted(exclus)) or 'aucun'}")
     pos = e.get("positions") or {}
-    lignes.append("Positions : " + (", ".join(f"{s} {v['lots']:g} lot" for s, v in sorted(pos.items())) or "aucune"))
+    lignes.append("Positions : " + (", ".join(f"{s} {v['lots']:g} lot" + (" 🔒 gain verrouillé" if v.get("verrou") else "")
+                                         for s, v in sorted(pos.items())) or "aucune"))
+    qual = base.lire("marches:qualite") or {}
+    if qual:
+        ecartes = sorted(s for s, q in qual.items() if q.get("verdict") == "écarté")
+        reserve = sum(q.get("verdict") == "réserve" for q in qual.values())
+        lignes.append(f"Données contrôlées : {len(qual) - len(ecartes) - reserve} bonnes, {reserve} sous réserve, "
+                      f"{len(ecartes)} écartées" + (f" ({', '.join(ecartes)} : ni preuve ni achat)" if ecartes else ""))
     intentions = e.get("intentions") or []
     if intentions:
         lignes.append(("Achats qu'elle ferait (pas de permis ou désactivée) : " if not actif() or not strategie_permise()

@@ -106,7 +106,7 @@ except ImportError:
     from equipes_pont import EquipesMixin
 
 # Le 2e compte (équipe vidéo) n'a droit qu'à la lecture, aux fermetures de l'armée et à son propre chemin d'ordres.
-RESERVEES_ARMEE = ("ouvrir", "dimensionner", "demo_etat", "demo_mode", "demo_cycle", "marches_ouvrir")
+RESERVEES_ARMEE = ("ouvrir", "dimensionner", "demo_etat", "demo_mode", "demo_cycle", "marches_ouvrir", "marches_stop")
 
 
 class Pont(EquipesMixin, DemoMixin):

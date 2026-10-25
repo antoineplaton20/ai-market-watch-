@@ -1,4 +1,47 @@
-# Armée de l’or 2.5-R6.1 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R6.2 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 25 octobre 2026 (R6.2) — les données contrôlées, et un verrou de gain sur chaque trade
+
+**Les données testées une par une** (`armee_or/qualite.py`, `etudes/donnees_r62.py`). On cherche :
+
+- les lignes invalides et les trous ;
+- les prix figés ;
+- les sauts aberrants et les erreurs de cotation (un pic aussitôt annulé) ;
+- les ouvertures recopiées sur la clôture de la veille.
+
+| Ce qu’on a trouvé | Conséquence |
+|---|---|
+| 9 historiques Yahoo sur 44 sont mauvais : cacao, café, sucre, blé, maïs, platine, cuivre, or COMEX, NZD/USD (6 à 18 % de lignes invalides, jusqu’à 69 trous) | refaits sans eux : sur les 25 marchés propres, le momentum bat toujours le naïf (+0,31 / +0,92 contre +0,23 / +0,74) ; nos conclusions tiennent |
+| L’or vu par trois sources (COMEX, PAXG, XAUUSDT) | corrélation 0,88 à 0,90, écart médian 0,4 à 0,6 % : cohérent |
+| Le faux courtier des tests fabriquait des bougies incohérentes | corrigé : le contrôleur l’a vu tout de suite |
+
+**En service** : chaque heure, l’historique de TON courtier passe au contrôleur. Un marché écarté ne sert plus de preuve au permis, et l’équipe ne l’achète plus. Ses positions gardent leurs sorties. `/or_marches` affiche le bilan des données.
+
+**Les méthodes « un petit gain par trade »**, testées sur le moteur de l’équipe (`etudes/methodes_r62.py`, `etudes/robustesse_r62.py`) :
+
+| Méthode | Résultat | Verdict |
+|---|---|---|
+| **Verrou de gain** : dès +2 ATR, le stop passe au-dessus de l’entrée (+0,5 ATR) | même résultat à 0,01 près (+0,51 / +0,91), et à 0,02 près avec des frais triplés ; **42 % de trades gagnants au lieu de 34 %** | **adopté** |
+| Stop suiveur 3 ATR (LeBeau), rachat | meilleur avec les frais normaux, mais 3 fois plus de trades : moins bon avec des frais triplés, mieux sur 81 paniers seulement sur 200 | rejeté |
+| Stop suiveur sans rachat | sort des tendances et n’y revient pas : −0,07 / +0,14 | rejeté |
+| Ensemble ½ momentum + ½ règle 200 jours | presque identique au momentum seul | inutile |
+
+**Le verrou de gain en pratique** : dès qu’une position a gagné 2 fois sa volatilité journalière moyenne, l’équipe remonte son stop chez le courtier, juste au-dessus du prix d’entrée. Ce trade ne peut plus finir en perte, sauf trou de cotation. Si le stop est touché, le petit gain est encaissé, et l’équipe rachète si la tendance tient encore. Le pont ne sait que remonter un stop, jamais le baisser. Telegram annonce 🔒 « gain verrouillé ».
+
+**Ce que le verrou ne fait pas** : il ne rend pas chaque trade gagnant. 58 % des trades finissent encore en petite perte (−1,2 % en moyenne, contre +1,9 % pour un gain), avant d’avoir atteint +2 ATR. Aucune méthode testée depuis R5.1 n’y arrive sans perdre plus ailleurs ou cacher ses pertes. Le gain vient de la somme : les gains moyens dépassent les pertes moyennes.
+
+**Contrôle complet de R6.2 :**
+
+- **Études** : les 10 études (`etudes/`) relancées deux fois donnent des résultats identiques à l’octet près. Les 7 études d’avant donnent exactement les chiffres de R6.1 : le moteur sans verrou n’a pas bougé.
+- **Tests** : 237 tests (246 avec TA-Lib), tous réussis :
+  - sous Python 3.11 (celui du pont sous Wine), 3.12 et 3.13 ;
+  - chacun des 14 fichiers seul ;
+  - trois fois de suite avec des graines différentes ;
+  - sur une copie limitée aux fichiers du manifeste, comme sur le serveur.
+- **Nouveaux tests** : le contrôleur de données, le stop qui ne fait que monter (refusé s’il baisse, s’il touche le cours, sur le 2e compte, sur une position qui n’est pas à l’équipe), le verrou puis le rachat en direct, le banc qui juge avec le verrou et sans les historiques douteux.
+- **Installation** : migrations simulées depuis R4, R6 et R6.1, retour arrière compris ; paquet téléchargé depuis GitHub et vérifié.
+
+Pour l’installer : `/or_maj` (Telegram) ou `or maj` (Termius), puis seulement `/or_marches_on`.
 
 ## 25 octobre 2026 (R6.1) — les méthodes des plus grandes maisons, et un contrôle complet
 
