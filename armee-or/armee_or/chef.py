@@ -737,12 +737,25 @@ def bot_commandes(chef):
 
 
 TELEGRAM_COLONNES = 36                                          # largeur d'un écran d'iPhone en police fixe
-UNITE_MAJ = "/etc/systemd/system/armee-or-maj.path"             # installée par installer_or.sh (service root)
+UNITE_MAJ = "/etc/systemd/system/armee-or-maj.path"             # posée par deployer.py (service root)
 
 
 def demander_maj():
-    return ("R3 : paquet local audité. La mise à jour distante est suspendue pour éviter un retour "
-            "à une version qui contourne le permis. Installer la prochaine archive auditée depuis Termius.")
+    """/or_maj : un service root surveille ce fichier et lance « or maj ». Rien n'est lu dans le fichier : seule la
+    version publiée sur GitHub s'installe, et seulement si elle est plus récente que l'installée (contrôle root) et
+    que ses tests passent sur ce serveur. Installée en pause, comme toute nouvelle version."""
+    import os
+    if not os.path.exists(UNITE_MAJ):
+        return ("⚠️ Mise à jour depuis Telegram pas encore installée sur ce serveur : une fois, dans Termius, la ligne "
+                "d'installation du LISEZMOI. Ensuite /or_maj (ou « or maj ») suffit.")
+    drapeau = config.RACINE / "runtime" / "demande_maj"
+    if drapeau.exists():
+        return "⏳ Mise à jour déjà demandée : le résultat arrive ici."
+    drapeau.parent.mkdir(parents=True, exist_ok=True)
+    drapeau.touch()
+    return ("🔄 Mise à jour demandée : téléchargement de la version publiée, contrôle « plus récente seulement », "
+            "tests sur ce serveur, sauvegarde, redémarrage (5 à 15 min). Le résultat arrive ici, avec les commandes "
+            "pour reprendre ce qui était actif. Les positions MT5 gardent leurs stops.")
 
 
 def fin_du_journal(n=25):

@@ -1,5 +1,6 @@
-"""Migration locale R5.1 d'une installation connue (R4, R5, ou la base acceptée par R4). Pas d'installation Wine ni de
-changement des autres bots. R5 = R4 + équipe multi-marchés + équipe vidéo (2e compte démo), toutes deux désactivées."""
+"""Migration locale R5.2 d'une installation connue (R4, R5, R5.1, ou la base acceptée par R4). Pas d'installation Wine
+ni de changement des autres bots. R5 = R4 + équipe multi-marchés + équipe vidéo (2e compte démo), toutes deux
+désactivées. R5.2 : mise à jour depuis Termius (or maj) et Telegram (/or_maj), version plus récente seulement."""
 import argparse
 import fcntl
 import hashlib
@@ -21,7 +22,94 @@ SAUVEGARDES = Path('/var/backups/armee-or-r5')
 TELECOMMANDE = Path('/usr/local/bin/or')
 SERVICES = ('armee-or-mt5.service','armee-or-flux.service','armee-or-chef.service')
 VIDEO = 'armee-or-mt5-video.service'  # pont du 2e compte : relancé s'il tournait, jamais exigé pour valider
-VERSION = '2.5-R5.1'
+VERSION = '2.5-R5.2'
+UNITE_MAJ = Path('/etc/systemd/system/armee-or-maj.service')
+CHEMIN_MAJ = Path('/etc/systemd/system/armee-or-maj.path')
+DEJA_A_JOUR, PLUS_ANCIENNE = 3, 4  # codes de sortie de « comparer », lus par « or maj »
+# Copie ROOT du contrôle de version : le dossier de l'armée appartient au compte bots, root n'y exécute rien.
+ETAT_ROOT = Path('/var/lib/armee-or')
+
+
+def version(texte):
+    """« 2.5-R5.2 » -> (2, 5, 5, 2). Illisible : (0,), toujours plus ancienne."""
+    import re
+    m=re.fullmatch(r'(\d+)\.(\d+)-R(\d+)(?:\.(\d+))?',str(texte or '').strip())
+    return tuple(int(x or 0) for x in m.groups()) if m else (0,)
+
+
+def version_installee(cible=CIBLE,etat=ETAT_ROOT):
+    """La plus récente des deux : celle notée par root à la dernière installation, celle du dossier de l'armée."""
+    vues=[]
+    for f in (etat/'version.json',cible/'PAQUET.json'):
+        try:vues.append(json.loads(f.read_text()).get('version',''))
+        except (OSError,ValueError,AttributeError):pass
+    return max(vues,key=version,default='')
+
+
+def noter_version(m,etat=ETAT_ROOT,source=SOURCE):
+    """Après une installation réussie : version et contrôle de version recopiés en root (lus par « or maj »)."""
+    etat.mkdir(mode=0o755,parents=True,exist_ok=True)
+    if etat.is_symlink():raise RuntimeError('dossier root symbolique refusé')
+    for nom,contenu in (('deployer.py',(source/'deployer.py').read_bytes()),
+                        ('version.json',json.dumps({'version':m['version'],'ts':time.time()}).encode())):
+        tmp=etat/(nom+'.nouveau');tmp.write_bytes(contenu);tmp.chmod(0o644);os.replace(tmp,etat/nom)
+
+
+def comparer(paquet,cible=CIBLE,etat=ETAT_ROOT):
+    """Lancé par « or maj » avec la copie root du deployer : la version publiée doit être strictement plus récente."""
+    publiee=json.loads(Path(paquet).read_text()).get('version','')
+    installee=version_installee(cible,etat)
+    if version(publiee)==(0,):raise RuntimeError('version publiée illisible : rien installé')
+    if version(publiee)<version(installee):
+        print(f'REFUS : la version publiée ({publiee}) est plus ANCIENNE que la tienne ({installee}). Rien installé.')
+        return PLUS_ANCIENNE
+    if version(publiee)==version(installee):
+        print(f'Déjà à jour ({installee}).')
+        return DEJA_A_JOUR
+    print(f'Nouvelle version : {installee or "inconnue"} -> {publiee}.')
+    return 0
+
+
+def equipes_actives(cible=CIBLE):
+    """Ce qui passait des ordres avant la mise à jour (elle installe tout en pause) -> [(nom, Termius, Telegram)]."""
+    out=[]
+    try:
+        with sqlite3.connect(f"file:{cible/'runtime/or.db'}?mode=ro",uri=True) as c:
+            kv={k:json.loads(v) for k,v in c.execute("SELECT cle,valeur FROM kv WHERE cle IN ('marches:actif','video:actif')")}
+    except (sqlite3.Error,ValueError):kv={}
+    try:demo=json.loads((cible/'runtime/demo-r4.json').read_text()).get('actif') is True
+    except (OSError,ValueError,AttributeError):demo=False
+    for actif,nom,termius,telegram in ((kv.get('marches:actif') is True,'multi-marchés','or marches on','/or_marches_on'),
+                                       (kv.get('video:actif') is True,'équipe vidéo','or video on','/or_video_on'),
+                                       (demo,'démo R4','or demo on','/or_demo_on')):
+        if actif:out.append((nom,termius,telegram))
+    return out
+
+
+def poser_maj(cible=CIBLE):
+    """/or_maj : le chef (compte bots) dépose runtime/demande_maj ; ce service root lance « or maj ». Rien n'est lu
+    dans le fichier : seule la version publiée sur GitHub, plus récente que l'installée et testée ici, s'installe."""
+    UNITE_MAJ.write_text(f"""[Unit]
+Description=Armée de l'or : mise à jour demandée depuis Telegram (/or_maj)
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/rm -f {cible}/runtime/demande_maj
+ExecStart={TELECOMMANDE} maj-auto
+TimeoutStartSec=3600
+""")
+    CHEMIN_MAJ.write_text(f"""[Unit]
+Description=Armée de l'or : surveille les demandes de mise à jour Telegram
+
+[Path]
+PathExists={cible}/runtime/demande_maj
+
+[Install]
+WantedBy=multi-user.target
+""")
+    appeler(['systemctl','daemon-reload'])
+    service('enable','armee-or-maj.path')
+    service('start','armee-or-maj.path')
 
 
 def sha(p):
@@ -205,6 +293,10 @@ def sain(noms,debut):
 
 def installer():
     m=verifier_installation();controles_systeme()
+    installee=version_installee()
+    if version(m['version'])<version(installee):
+        raise RuntimeError(f"paquet {m['version']} plus ancien que la version installée {installee} : refusé "
+                           "(retour arrière : installer_or.sh retour IDENTIFIANT)")
     compte=pwd.getpwnam('bots')
     tester(SOURCE,CIBLE,compte.pw_uid,compte.pw_gid)
     # Vérifier de nouveau après les tests, avant la première mutation de production.
@@ -221,6 +313,7 @@ def installer():
         service('stop',*en_marche,*video)
         dossier=sauvegarder(m)
         (dossier/'services.json').write_text(json.dumps(en_marche))
+        avant=equipes_actives()
         pause(CIBLE)
         ancien_fichier=chemin(CIBLE,'runtime/commandes.txt')
         if ancien_fichier.exists():
@@ -234,10 +327,17 @@ def installer():
         debut=time.time();service('start',*en_marche);sain(en_marche,debut)
         if video:service('start',*video)
         (CIBLE/'runtime/version-r5.json').write_text(json.dumps({'version':VERSION,'sauvegarde':str(dossier),'ts':time.time()}))
-        print('R5.1 installée en pause. Multi-marchés et équipe vidéo DÉSACTIVÉS : or marches on / or video on '
-              '(ou /or_marches_on, /or_video_on) quand tu le décides. Démo R4 : or demo on. Sauvegarde : '+str(dossier))
-        print('Vérifier : or diagnostic, or mt5, or marches. 2e compte (équipe vidéo) : or video installer. '
-              'Retour du code : bash '+str(CIBLE/'installer_or.sh')+' retour '+dossier.name)
+        try:noter_version(m);poser_maj()
+        except (OSError,subprocess.SubprocessError,RuntimeError) as ex:
+            print('Mise à jour Telegram (/or_maj) non posée : '+str(ex)+' ; « or maj » reste possible dans Termius.')
+        print(f"{m['version']} installée, en pause (rien ne passe d'ordre sans toi). Sauvegarde : {dossier.name}")
+        if avant:
+            print('Pour reprendre comme avant : '+' · '.join(t for _,t,_ in avant)
+                  +' (Telegram : '+' · '.join(g for _,_,g in avant)+')')
+        else:
+            print('Aucune équipe n’était active. Activer : or marches on (/or_marches_on), or video on (/or_video_on).')
+        print('Vérifier : or diagnostic, or mt5, or marches. Mises à jour suivantes : or maj (Termius) ou /or_maj '
+              '(Telegram). Retour à la version d’avant : or retour '+dossier.name)
     except BaseException:
         service('stop',*en_marche,*video)
         if dossier and (dossier/'anciens.json').exists():
@@ -290,9 +390,12 @@ def verifier_retour(cible=CIBLE):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('action',choices=('verifier','installer','retour'),nargs='?',default='installer')
+    p.add_argument('action',choices=('verifier','installer','retour','comparer'),nargs='?',default='installer')
     p.add_argument('sauvegarde',nargs='?');args=p.parse_args()
     if os.geteuid()!=0:raise RuntimeError('commande à exécuter en root dans Termius')
+    if args.action=='comparer':
+        if not args.sauvegarde:raise RuntimeError('PAQUET.json de la version publiée requis')
+        sys.exit(comparer(args.sauvegarde))
     with open('/run/lock/armee-or-r3.lock','a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         if args.action=='verifier':

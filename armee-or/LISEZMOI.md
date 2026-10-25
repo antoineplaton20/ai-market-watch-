@@ -1,4 +1,15 @@
-# Armée de l’or 2.5-R5.1 — R4 + multi-marchés + équipe vidéo
+# Armée de l’or 2.5-R5.2 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 25 octobre 2026 (R5.2) — tout depuis Termius et Telegram, comme avant
+
+Décision du propriétaire : l’armée se pilote et se met à jour **uniquement depuis Termius et Telegram**, comme avant R3. Plus de zip à enregistrer dans Fichiers ni à envoyer par SFTP.
+
+- `or maj` (Termius) et `/or_maj` (Telegram) sont rétablis : ils téléchargent la version publiée sur GitHub et l’installent, avec les contrôles de R4 (tests sur le serveur, sauvegarde, pause).
+- Le risque qui avait fait bloquer `/or_maj` en R3, revenir à une version plus ancienne qui contournerait le permis, est fermé : seule une version **strictement plus récente** s’installe. Le contrôle est fait par une copie root, que le compte des bots ne peut pas modifier.
+- Après l’installation, l’armée est en pause, et on te donne les commandes pour reprendre exactement ce qui tournait.
+- `or retour IDENTIFIANT` revient à la version d’avant, depuis Termius.
+- Première fois : la ligne à coller est dans « Installer et mettre à jour » ci-dessous.
+- Tests : 229 (238 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13. Les 8 nouveaux couvrent l’ordre des versions, le refus d’une version plus ancienne (même si le compte des bots falsifie son dossier), les services `/or_maj`, les commandes de reprise, et un garde-fou : le paquet publié doit avoir ses empreintes et sa version à jour.
 
 ## 25 octobre 2026 (R5.1) — contrôle complet, banc recalibré
 
@@ -32,7 +43,7 @@ Si tu veux seulement ce qui a gagné sur l'historique : `/or_demo_off` (ou `or d
 - 500 demandes d'ordre au hasard sur le chemin multi-marchés : jamais de vente, jamais d'ordre sans stop sous le cours, une position par marché, jamais plus de 2 % de pertes cumulées jusqu'aux stops, rien sur un compte réel ;
 - 400 demandes au hasard sur le chemin vidéo : jamais plus de 10 positions, jamais de stop.
 
-**Installation** : la procédure « Installation de R5 et R5.1 » ci-dessous, avec `armee-or-R5.1.zip`. Elle accepte un serveur en R4 ou en R5.
+**Installation** : voir « Installer et mettre à jour » ci-dessous (R5.2 : plus de zip).
 
 ## 25 octobre 2026 — ce que R5 ajoute
 
@@ -73,45 +84,39 @@ Les deux activations lèvent la pause générale, comme `/or_demo_on`. `/or_marc
 
 **À savoir** : la démo R4 exige un compte sans aucune position. Une position multi-marchés ouverte bloque donc ses nouvelles entrées. Choisis l’une ou l’autre, ou accepte que la démo R4 attende.
 
-## Installation de R5 et R5.1 (Termius, en root)
+## Installer et mettre à jour : Termius et Telegram seulement
 
-1. Enregistre `armee-or-R5.1.zip` dans l’app Fichiers de l’iPhone.
-2. Dans Termius, ouvre ton serveur, puis SFTP, et envoie le zip dans `/root`.
-3. Dans le terminal :
+**Une seule fois**, pour passer ton serveur de R4 (ou R5) à R5.2, colle cette ligne dans Termius, en root :
 
 ```bash
-python3 -m zipfile -e /root/armee-or-R5.1.zip /root/or-r51
-bash /root/or-r51/armee-or/installer_or.sh verifier
+D=$(mktemp -d) && curl -fsSL https://github.com/antoineplaton20/ai-market-watch-/archive/refs/heads/claude/termius-binance-bot-optimization-g98ihl.tar.gz | tar -xz -C "$D" && bash "$D/ai-market-watch--claude-termius-binance-bot-optimization-g98ihl/armee-or/installer_or.sh" installer
 ```
 
-4. Si la version est déclarée compatible :
+**Ensuite, chaque mise à jour** se fait avec `or maj` (Termius) ou `/or_maj` (Telegram, le résultat arrive dans Telegram).
 
-```bash
-bash /root/or-r51/armee-or/installer_or.sh installer
-```
+Dans les deux cas, l’installateur procède ainsi :
 
-L’installateur procède ainsi :
-
-- il refuse une version inconnue : seuls R4, R5, ou la base acceptée par R4, sont migrés ;
-- il lance tous les tests sur le serveur avec son Python, et s’arrête au moindre échec ;
+- **jamais de retour en arrière** : la version publiée doit être strictement plus récente que celle notée par root à la dernière installation (`/var/lib/armee-or`, que le compte `bots` ne peut pas modifier) ;
+- il refuse une installation inconnue : seuls R4, R5, R5.1 ou la base acceptée par R4 sont migrés ;
+- il lance tous les tests sur le serveur avec son Python, et s’arrête au moindre échec, sans rien modifier ;
 - il sauvegarde le code, la base et les réglages dans `/var/backups/armee-or-r5/` ;
 - il pose les fichiers et redémarre uniquement les services de l’armée. Le pont du 2e compte n’est relancé que s’il tournait.
 
-**R5 démarre en pause**, avec le multi-marchés et l’équipe vidéo désactivés. Vérifie ensuite avec `or diagnostic`, `or mt5` et `or marches`.
+**Chaque nouvelle version démarre en pause** : rien ne passe d’ordre sans toi. L’installateur, et le message Telegram après `/or_maj`, donnent les commandes pour reprendre exactement ce qui était actif, par exemple `/or_marches_on` · `/or_demo_on`. Vérifie avec `or diagnostic`, `or mt5` et `or marches`.
 
 **2e compte pour l’équipe vidéo** (facultatif) : `or video installer`. Le login, le mot de passe PRINCIPAL et le serveur se tapent dans Termius, jamais dans une conversation. Ensuite : `/or_video_on`.
 
-**Retour à la version précédente** (R4 ou R5) : `bash /root/or-r51/armee-or/installer_or.sh retour IDENTIFIANT_AFFICHE`. Il est refusé dans trois cas :
+**Retour à la version d’avant** : `or retour IDENTIFIANT`, avec l’identifiant affiché à l’installation. Il est refusé dans trois cas :
 
 - une position multi-marchés est ouverte : `or marches fermer` d’abord ;
 - un panier vidéo est ouvert : `or video fermer` d’abord ;
 - la démo R4 est active ou en incident, comme en R4.
 
-Revenu à R4, le pont du 2e compte est arrêté et désactivé : R4 ne sait pas le piloter.
+Revenu à R4, le pont du 2e compte est arrêté et désactivé, car R4 ne sait pas le piloter. Après un retour, `or maj` n’installe que la version suivante, pas celle qu’on vient de quitter.
 
-`or maj` et `/or_maj` restent bloqués (règle R3) : chaque version s’installe par archive, comme celle-ci.
+Plus aucun zip ni SFTP. `or mettre-a-jour` renvoie vers `or maj`.
 
-Résultats des tests R5 (terminal MT5 simulé, aucun compte réel) : `validation/tests_R5.txt`. Ceux de R4 restent dans `validation/tests_R4.txt`.
+Résultats des tests (terminal MT5 simulé, aucun compte réel) : `validation/tests_R5.2.txt`. Ceux de R4, R5 et R5.1 restent à côté.
 
 ## Armée multi-marchés : tout MT5 (`/or_marches`)
 

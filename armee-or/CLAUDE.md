@@ -50,5 +50,6 @@ La commande doit afficher `0`. Vérifie toujours ce code de sortie, jamais une f
 **Après chaque changement.**
 
 - Ajoute une section datée dans `LISEZMOI.md`.
-- Le propriétaire installe la nouvelle version par archive auditée : zip envoyé dans `/root` par SFTP (Termius), puis `installer_or.sh verifier` et `installer_or.sh installer` (`deployer.py`, manifeste `PAQUET.json`). `/or_maj` est bloqué depuis R3.
+- Le propriétaire ne passe que par **Termius et Telegram** (décision du 25/10/2026) : il installe la nouvelle version avec `or maj` ou `/or_maj`, qui téléchargent la branche publiée sur GitHub. Aucun zip, aucun SFTP.
+- Donc **chaque publication monte la version** (`deployer.VERSION`, `armee_or.__version__`, diagnostic) et régénère `PAQUET.json` : `or maj` refuse une version qui n'est pas strictement plus récente que celle notée par root. Le test `test_le_paquet_publie_est_a_jour` échoue tant que ce n'est pas fait.
 - Un chiffre de rentabilité n'est cité que s'il sort d'un script du dépôt (`etudes/`, banc, tests).

@@ -357,8 +357,9 @@ def test_mise_a_jour_et_journal_depuis_telegram(monkeypatch, tmp_path):
     assert "Termius" in chef.demander_maj() and not (tmp_path / "runtime" / "demande_maj").exists()
     (tmp_path / "armee-or-maj.path").write_text("")
     monkeypatch.setattr(chef, "UNITE_MAJ", str(tmp_path / "armee-or-maj.path"))
-    assert "suspendue" in chef.demander_maj() and not (tmp_path / "runtime" / "demande_maj").exists()
-    assert "suspendue" in chef.demander_maj()
+    assert "plus récente seulement" in chef.demander_maj() and (tmp_path / "runtime" / "demande_maj").exists()
+    assert "déjà demandée" in chef.demander_maj()
+    assert (tmp_path / "runtime" / "demande_maj").read_text() == ""                   # rien n'est lu dans ce fichier
     journal = tmp_path / "or.log"
     journal.write_text("".join(f"2026-10-06 10:00:{i:02d} | chef | ligne {i}\n" for i in range(40)))
     monkeypatch.setattr(config, "JOURNAL", journal)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Télécommande R5 : arguments transmis comme données, jamais évalués par le shell.
+# Télécommande R5.2 : arguments transmis comme données, jamais évalués par le shell.
 set -euo pipefail
 DOSSIER=/home/bots/armee-or
 [ "$(id -u)" -eq 0 ] || { echo 'Utilise Termius en root.'; exit 1; }
@@ -53,9 +53,38 @@ case "${CMD,,}" in
       *) echo 'or mt5 [etat|fermer|reprendre|profil|gain|journal]. Installation/compte : utiliser la procédure auditée.'; exit 2 ;;
     esac ;;
   journal) journalctl -u armee-or-chef -n 80 --no-pager ;;
-  maj|maj-auto|mettre-a-jour)
-    echo 'R3 : aucune mise à jour distante autorisée par ce paquet. Utiliser une nouvelle archive auditée et son installer_or.sh.'
-    exit 2 ;;
+  maj)
+    # Dernière version publiée sur GitHub. La copie ROOT du contrôle de version (/var/lib/armee-or, posée à la
+    # dernière installation) exige qu'elle soit plus récente : jamais de retour à une version plus ancienne. Puis
+    # l'installateur de la nouvelle version teste sur ce serveur, sauvegarde et installe en pause.
+    URL='https://github.com/antoineplaton20/ai-market-watch-/archive/refs/heads/claude/termius-binance-bot-optimization-g98ihl.tar.gz'
+    CONTROLE=/var/lib/armee-or/deployer.py
+    [ -f "$CONTROLE" ] || { echo "Contrôle de version absent : une fois, la ligne d'installation du LISEZMOI. Ensuite : or maj."; exit 1; }
+    TMP=$(mktemp -d /root/armee-or-maj.XXXXXX); trap 'rm -rf "$TMP"' EXIT
+    echo 'Téléchargement de la dernière version publiée…'
+    curl -fsSL --retry 3 --max-time 900 "$URL" | tar -xz -C "$TMP" || { echo 'Téléchargement impossible (réseau ?). Réessaie : or maj'; exit 1; }
+    NOUVEAU="$TMP/ai-market-watch--claude-termius-binance-bot-optimization-g98ihl/armee-or"
+    { [ -f "$NOUVEAU/deployer.py" ] && [ -f "$NOUVEAU/PAQUET.json" ]; } || { echo 'Version publiée incomplète : rien installé.'; exit 1; }
+    RC=0; python3 -I "$CONTROLE" comparer "$NOUVEAU/PAQUET.json" || RC=$?
+    [ "$RC" -eq 0 ] || exit "$RC"
+    python3 -I "$NOUVEAU/deployer.py" installer ;;
+  maj-auto)
+    # Lancée par le service root armee-or-maj (demande /or_maj sur Telegram) : même mise à jour, résultat sur Telegram.
+    LOG=/var/log/armee-or-maj.log                    # journal root, hors du dossier modifiable par « bots »
+    RC=0; "$0" maj < /dev/null > "$LOG" 2>&1 || RC=$?
+    case "$RC" in
+      0) RES='✅ Mise à jour installée (en pause : commandes pour reprendre ci-dessous).' ;;
+      3) RES='ℹ️ Déjà à jour : rien installé.' ;;
+      4) RES='⛔ La version publiée est plus ancienne que la tienne : rien installé.' ;;
+      *) RES='❌ Mise à jour non installée : ton armée continue avec sa version actuelle. Envoie-moi ce message.' ;;
+    esac
+    FIN=$(tail -n 12 "$LOG" | sed 's/\x1b\[[0-9;]*m//g')
+    runuser -u bots -- bash -c 'cd "$1" && exec .venv/bin/python -c "import sys; from armee_or import telegram; telegram.envoyer(sys.argv[1], True)" "$2"' \
+      _ "$DOSSIER" "$RES"$'\n'"$FIN" || true ;;
+  mettre-a-jour) echo 'Plus besoin de zip : or maj (Termius) ou /or_maj (Telegram).'; exit 2 ;;
+  retour)
+    [[ "${1:-}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || { echo "Usage : or retour IDENTIFIANT (affiché à l'installation, ex. 20261025T101500Z)"; exit 2; }
+    python3 -I /var/lib/armee-or/deployer.py retour "$1" ;;
   restaurer) echo 'R3 : restauration de base suspendue ; une ancienne sauvegarde peut rejouer des commandes ou effacer des transactions. Utiliser le retour du code documenté.'; exit 2 ;;
   redemarrer) systemctl restart armee-or-flux armee-or-chef ;;   # le pont vidéo garde son compte et ses paniers
   arreter) systemctl stop armee-or-chef armee-or-flux; echo 'Chef et flux arrêtés. Le pont et les stops existants restent en place.' ;;
@@ -78,6 +107,8 @@ Armée de l'or R5 — chaque équipe qui passe des ordres exige ton activation e
   or pause           suspendre les nouvelles positions papier et MT5
   or mt5 fermer      demander la fermeture des positions de l'armée
   or sauvegarde      copie cohérente locale et envoi Telegram configuré
+  or maj             mettre à jour depuis GitHub (plus récente seulement, testée ici) · Telegram : /or_maj
+  or retour ID       revenir à la version d'avant (identifiant affiché à l'installation)
   or journal         dernières lignes, sans rester bloqué dans le journal
   or go              terminal en direct, Ctrl+C pour sortir
 AIDE

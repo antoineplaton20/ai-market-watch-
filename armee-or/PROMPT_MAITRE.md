@@ -7,7 +7,13 @@
 > - vidéo (770077) : 2e compte démo séparé (pont « video », port 18778), après /or_video_on ; chemin
 >   video_ouvrir refusé par le pont de l'armée ; ce pont-là refuse ouvrir, dimensionner, demo_*, marches_ouvrir.
 > Les verrous R3 des anciennes équipes (OUVERTURES_VALIDEES = False, or seul pour dimensionner) et la démo R4
-> ne changent pas. Toute nouvelle version : archive auditée + installer_or.sh (verifier, puis installer).
+> ne changent pas.
+>
+> Décision du propriétaire — 25 octobre 2026 (R5.2) : « on doit tourner uniquement sur Termius et sur Telegram
+> comme auparavant ». Mises à jour par `or maj` (Termius) et `/or_maj` (Telegram), qui téléchargent la branche
+> publiée ; plus de zip. Garde-fou qui remplace le blocage R3 : seule une version STRICTEMENT plus récente que celle
+> notée par root (/var/lib/armee-or) s'installe, après les tests sur le serveur, en pause. Chaque publication monte
+> donc la version et régénère PAQUET.json (test_le_paquet_publie_est_a_jour).
 
 > Décision du propriétaire — 23 octobre 2026 : « Démo expérimentale ».
 > Le propriétaire autorise explicitement les achats et ventes automatiques de test
@@ -1499,7 +1505,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 221 tests au 25/10/2026 (R5.1) ; 230 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 229 tests au 25/10/2026 (R5.2) ; 238 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;
