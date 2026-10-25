@@ -1,3 +1,37 @@
+> Décision du propriétaire — 25 octobre 2026 : « R4 + mes ajouts », installée par archive (R5).
+> R5 = R4 inchangée + deux équipes, toutes deux DÉSACTIVÉES à l'installation :
+> - multi-marchés (770050) : achats seulement sous le permis de son banc (gagner sur chaque moitié de
+>   l'historique du courtier ET battre « toujours acheter ») ET après /or_marches_on ; chemin dédié du pont
+>   (marches_ouvrir) : achat seulement, stop obligatoire, 0,5 % par ordre, plafond R3 de 2 % cumulés sur
+>   tout le compte conservé ; intention écrite avant l'envoi (verrou R2 si la réponse se perd) ;
+> - vidéo (770077) : 2e compte démo séparé (pont « video », port 18778), après /or_video_on ; chemin
+>   video_ouvrir refusé par le pont de l'armée ; ce pont-là refuse ouvrir, dimensionner, demo_*, marches_ouvrir.
+> Les verrous R3 des anciennes équipes (OUVERTURES_VALIDEES = False, or seul pour dimensionner) et la démo R4
+> ne changent pas. Toute nouvelle version : archive auditée + installer_or.sh (verifier, puis installer).
+
+> Décision du propriétaire — 23 octobre 2026 : « Démo expérimentale ».
+> Le propriétaire autorise explicitement les achats et ventes automatiques de test
+> sur MT5 DÉMO sans rentabilité démontrée. Cette exception concerne uniquement
+> la nouvelle équipe R4 (770090), avec activation explicite /or_demo_on.
+> Risque visé 0,25 % par ordre, une position, trois tentatives par jour maximum,
+> stop et objectif courtier, freins supplémentaires −1 % par jour et −3 % depuis
+> le sommet de l’expérience. Aucun permis statistique n’est prétendu acquis.
+> Les anciennes équipes restent verrouillées. Voir LISEZMOI.md pour les règles
+> réellement livrées et la portée de l’exception. Les sections anciennes ci-dessous
+> constituent le cahier de recherche, pas une preuve de qualification de R4.
+
+> État livré au 22 octobre 2026 — R3 observation
+>
+> Ce document conserve le cahier des charges original ci-dessous. Ses objectifs et
+> les résultats historiques rapportés ne constituent pas une certification de R3.
+> Consulter LISEZMOI.md pour le comportement réellement livré et les limites.
+> Aucune stratégie n'est qualifiée. Les nouvelles ouvertures MT5 sont bloquées
+> dans le chef/exécutant ET dans le pont. Les anciennes commandes de permis forcé
+> ne peuvent pas lever ce blocage. La recherche reste exploratoire.
+> Le banc d'essai complet, les 1 000 références aléatoires, la validation shadow
+> et la qualification statistique de toutes les hypothèses restent à réaliser.
+> Les mises à jour distantes sont suspendues ; utiliser le paquet R3 contrôlé.
+
 # PROMPT MAÎTRE — L'Armée de l'or
 
 *Version 1 du 22 octobre 2026.*
@@ -1434,7 +1468,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 148 tests au 25/10/2026. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 215 tests au 25/10/2026 (R5, dont 1 ignoré sans TA-Lib). Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

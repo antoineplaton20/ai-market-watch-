@@ -96,3 +96,13 @@ def texte(theme=None):
         lignes.append(f"• [{f['theme']}] {f['reference']}\n  Idée : {f['idee']}\n  Usage : {f['usage']}"
                       + (f"\n  Mesure : {f['mesure']}" if f["mesure"] != "—" else ""))
     return "\n".join(lignes)
+
+
+def grands(page=1):
+    from pathlib import Path
+    from .telegram import decouper
+    texte=(Path(__file__).parent/'grands.md').read_text(encoding='utf-8')
+    pages=decouper(texte,3000)
+    if not 1 <= page <= len(pages):
+        return f"Page inconnue : /or_grands 1 à {len(pages)}"
+    return f"Bibliothèque fournie — page {page}/{len(pages)} — non vérifiée indépendamment\n" + pages[page-1] + f"\n/or_grands {min(page+1,len(pages))}"

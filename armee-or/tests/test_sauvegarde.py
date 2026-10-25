@@ -111,7 +111,7 @@ def test_envoi_du_document(monkeypatch, tmp_path):
     class S:
         def post(self, url, data=None, files=None, timeout=None):
             assert url.endswith("/sendDocument") and files["document"].read() == b"123"
-            return type("R", (), {"json": lambda self: {"ok": True, "result": {"document": {"file_id": "ABC"}}}})()
+            return type("R", (), {"raise_for_status": lambda self: None, "json": lambda self: {"ok": True, "result": {"document": {"file_id": "ABC"}}}})()
     assert telegram.envoyer_document(f, "x", session=S()) == "ABC"
 
 

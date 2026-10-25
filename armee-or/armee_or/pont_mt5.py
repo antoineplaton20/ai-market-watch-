@@ -2,7 +2,7 @@
 
 La bibliothèque officielle « MetaTrader5 » n'existe que pour Windows : ce fichier tourne donc sous Wine, avec un
 Python Windows, à côté du terminal MT5 (service armee-or-mt5). Il ne dépend QUE de la bibliothèque standard et de
-MetaTrader5 (il n'importe rien du reste de l'armée).
+MetaTrader5, et des modules autonomes demo_pont/demo_regles/equipes_pont (bibliothèque standard).
 
 Le reste de l'armée (Linux) lui parle par 127.0.0.1 uniquement : une ligne JSON par demande, une ligne par réponse.
 
@@ -20,6 +20,7 @@ Usage : python pont_mt5.py              (service)
 import datetime as dt
 import json
 import ntpath
+import math
 import os
 import socketserver
 import subprocess
@@ -32,6 +33,11 @@ DEMO = 0                                             # ACCOUNT_TRADE_MODE_DEMO
 TIMEFRAMES = {"1m": "TIMEFRAME_M1", "15m": "TIMEFRAME_M15", "1h": "TIMEFRAME_H1", "4h": "TIMEFRAME_H4",
               "1d": "TIMEFRAME_D1"}
 RETCODE_OK = (10008, 10009, 10010)                   # placé, exécuté, exécuté partiellement
+OUVERTURES_VALIDEES = False  # R3 : protocole du prompt maître non validé ; aucun bouton ne contourne ce verrou.
+RISQUE_ORDRE = 0.01
+RISQUE_CUMULE = 0.02
+RESERVE_COUTS = 1.25
+AGE_COURS_MAX = 60
 RETCODE_REMPLISSAGE = 10030                          # mode de remplissage refusé
 
 
@@ -92,7 +98,18 @@ def choisir_or(noms):
     return candidats[0][1] if candidats else None
 
 
-class Pont:
+try:
+    from .demo_pont import DemoMixin
+    from .equipes_pont import EquipesMixin
+except ImportError:
+    from demo_pont import DemoMixin
+    from equipes_pont import EquipesMixin
+
+# Le 2e compte (équipe vidéo) n'a droit qu'à la lecture, aux fermetures de l'armée et à son propre chemin d'ordres.
+RESERVEES_ARMEE = ("ouvrir", "dimensionner", "demo_etat", "demo_mode", "demo_cycle", "marches_ouvrir")
+
+
+class Pont(EquipesMixin, DemoMixin):
     def __init__(self, mt5, reglages, dossier=None, instance=""):
         self.mt5 = mt5
         self.r = reglages
@@ -135,7 +152,8 @@ class Pont:
             if erreur and erreur[0] == -6:                       # « Authorization failed »
                 self.derniere_erreur = (f"le serveur {options['server']} REFUSE le login …{str(options['login'])[-3:]} "
                                         "et son mot de passe (mot de passe changé ou mal tapé ?). Dans Termius : "
-                                        "« or mt5 compte », puis le mot de passe PRINCIPAL actuel")
+                                        f"« or {'video' if self.instance else 'mt5'} compte », puis le mot de passe "
+                                        "PRINCIPAL actuel")
             journal(self.derniere_erreur)
             return False
         self.choisir_symbole()
@@ -178,7 +196,7 @@ class Pont:
         compte = None
         if a is not None:
             compte = {k: getattr(a, k, None) for k in ("login", "server", "trade_mode", "balance", "equity", "margin",
-                                                       "margin_free", "leverage", "currency", "trade_allowed")}
+                                                       "margin_free", "leverage", "currency", "trade_allowed", "margin_mode")}
             compte["demo"] = a.trade_mode == DEMO
         return {"connecte": ok, "erreur": self.derniere_erreur, "compte": compte, "symbole": self.symbole,
                 "terminal": None if t is None else {k: getattr(t, k, None) for k in
@@ -232,15 +250,14 @@ class Pont:
                  float(x["tick_volume"])] for x in r]
 
     def op_bougies_periode(self, tf="1d", debut=0, fin=0, symbole=None, **_):
-        """Historique du courtier entre deux instants (secondes, heure du SERVEUR MT5). Liste vide si le serveur
+        """Historique du courtier entre deux instants (secondes, UTC). Liste vide si le serveur
         n'a rien pour cette période (début de l'historique atteint)."""
         self.exiger()
         s = symbole or self.symbole
         self.mt5.symbol_select(s, True)
         r = self.mt5.copy_rates_range(s, getattr(self.mt5, TIMEFRAMES[tf]), int(debut), int(fin))
         if r is None:
-            journal("historique", tf, "indisponible :", self.mt5.last_error())
-            return []
+            raise ErreurPont("historique des bougies indisponible")
         return [[int(x["time"]), float(x["open"]), float(x["high"]), float(x["low"]), float(x["close"]),
                  float(x["tick_volume"])] for x in r]
 
@@ -257,7 +274,11 @@ class Pont:
         return float(m)
 
     def _positions(self, **filtre):
-        return [p for p in (self.mt5.positions_get(**filtre) or ()) if MAGIQUE_MIN <= p.magic <= MAGIQUE_MAX]
+        positions = self.mt5.positions_get(**filtre)
+        if positions is None:
+            raise ErreurPont(f"positions indisponibles : {self.mt5.last_error()}")
+        return [p for p in positions if MAGIQUE_MIN <= p.magic <= MAGIQUE_MAX]
+
 
     def op_positions(self, **_):
         self.exiger()
@@ -267,9 +288,11 @@ class Pont:
 
     def op_historique(self, depuis=0, **_):
         self.exiger()
-        debut = dt.datetime.fromtimestamp(max(0, float(depuis) - 2 * 86400))
-        fin = dt.datetime.fromtimestamp(time.time() + 2 * 86400)
-        deals = self.mt5.history_deals_get(debut, fin) or ()
+        debut = dt.datetime.fromtimestamp(max(0, float(depuis) - 2 * 86400), dt.timezone.utc)
+        fin = dt.datetime.fromtimestamp(time.time() + 2 * 86400, dt.timezone.utc)
+        deals = self.mt5.history_deals_get(debut, fin)
+        if deals is None:
+            raise ErreurPont("historique indisponible")
         # positions de l'armée : celles qu'elle a ouvertes ; leur sortie compte même si elle porte un autre numéro
         # magique (fermeture à la main dans l'app, stop, coupure du courtier)
         armee = {x.position_id for x in deals if MAGIQUE_MIN <= x.magic <= MAGIQUE_MAX}
@@ -278,6 +301,93 @@ class Pont:
                 for x in deals if x.position_id in armee]
 
     # ------------------------------------------------------------------ ordres (démo seulement)
+    def _cours_valide(self, symbole, age_max=AGE_COURS_MAX):
+        tick = self.mt5.symbol_info_tick(symbole)
+        if tick is None or not all(math.isfinite(x) and x > 0 for x in (tick.bid, tick.ask)) or tick.ask < tick.bid:
+            raise ErreurPont("cours invalide")
+        age = time.time() - tick.time
+        if not -5 <= age <= age_max:
+            raise ErreurPont("cours périmé ou horloge incohérente")
+        return tick
+
+
+    def _perte(self, sens, symbole, volume, entree, sortie):
+        resultat = self.mt5.order_calc_profit(
+            self.mt5.ORDER_TYPE_BUY if sens > 0 else self.mt5.ORDER_TYPE_SELL,
+            symbole, volume, entree, sortie)
+        if resultat is None or not math.isfinite(resultat):
+            raise ErreurPont("calcul du risque indisponible")
+        return max(0.0, -resultat) * RESERVE_COUTS
+
+
+    def op_dimensionner(self, sens, sl, volume, symbole=None, **_):
+        """Plafonne tout profil, entraînement compris, en devise du compte.
+
+        Le plafond cumulé porte sur les pertes SUPPLÉMENTAIRES jusqu'aux stops
+        depuis les cours actuels, toutes positions du compte comprises.
+        """
+        return self._dimensionner(sens, sl, volume, symbole or self.symbole)
+
+    def _dimensionner(self, sens, sl, volume, s, risque_ordre=RISQUE_ORDRE, or_seul=True, age_positions=AGE_COURS_MAX):
+        """Contrôle commun. Équipe multi-marchés : tout symbole, budget par ordre plus petit ; le plafond CUMULÉ
+        (RISQUE_CUMULE, toutes positions du compte) reste celui de R3. age_positions : un marché déjà tenu mais
+        fermé (dernier cours ancien) compte quand même dans ce plafond, depuis son dernier cours."""
+        self.exiger()
+        compte = self.mt5.account_info()
+        if compte is None or compte.trade_mode != DEMO:
+            raise ErreurPont("compte démo obligatoire")
+        if getattr(compte, "margin_mode", None) != 2:
+            raise ErreurPont("compte démo hedging requis pour séparer les équipes")
+        if sens not in (-1, 1) or not all(math.isfinite(float(x)) and float(x) > 0 for x in (sl, volume)):
+            raise ErreurPont("sens, volume ou stop invalide")
+        if not all(math.isfinite(x) and x > 0 for x in (compte.equity, compte.margin_free)):
+            raise ErreurPont("fonds ou marge indisponibles")
+        if or_seul and s != self.symbole:
+            raise ErreurPont("symbole non autorisé")
+        info = self.mt5.symbol_info(s)
+        if info is None or not all(math.isfinite(x) and x > 0 for x in (info.volume_min, info.volume_step, info.volume_max)):
+            raise ErreurPont("spécifications de volume invalides")
+        tick = self._cours_valide(s)
+        prix = tick.ask if sens > 0 else tick.bid
+        sl = round(float(sl), info.digits)
+        ecart = max(0, info.trade_stops_level) * info.point
+        if sl <= 0 or (sens > 0 and sl >= tick.bid - ecart) or (sens < 0 and sl <= tick.ask + ecart):
+            raise ErreurPont("stop absent, trop proche ou du mauvais côté")
+        positions = self.mt5.positions_get()
+        ordres = self.mt5.orders_get()
+        if positions is None or ordres is None:
+            raise ErreurPont("positions ou ordres indisponibles : aucune ouverture")
+        if ordres:
+            raise ErreurPont("ordres en attente sur le compte : exposition non prise en charge")
+        utilise = 0.0
+        for p in positions:
+            if not math.isfinite(p.sl) or p.sl <= 0:
+                raise ErreurPont("position existante sans stop : aucune nouvelle ouverture")
+            t = self._cours_valide(p.symbol, age_positions)
+            sens_p = 1 if p.type == self.mt5.POSITION_TYPE_BUY else -1
+            courant = t.bid if sens_p > 0 else t.ask
+            if (sens_p > 0 and p.sl >= courant) or (sens_p < 0 and p.sl <= courant):
+                raise ErreurPont("stop existant atteint ou incohérent : attendre la réconciliation")
+            utilise += self._perte(sens_p, p.symbol, p.volume, courant, p.sl)
+        budget = min(compte.equity * risque_ordre, compte.equity * RISQUE_CUMULE - utilise)
+        minimum = info.volume_min
+        perte_min = self._perte(sens, s, minimum, prix, sl)
+        marge_min = self.mt5.order_calc_margin(self.mt5.ORDER_TYPE_BUY if sens > 0 else self.mt5.ORDER_TYPE_SELL,
+                                             s, minimum, prix)
+        if perte_min <= 0 or marge_min is None or not math.isfinite(marge_min) or marge_min <= 0:
+            raise ErreurPont("calcul du risque ou de marge invalide")
+        limite = min(float(volume), info.volume_max, max(0, budget) / perte_min * minimum,
+                     0.9 * compte.margin_free / marge_min * minimum)
+        lots = round(math.floor(limite / info.volume_step + 1e-9) * info.volume_step, 8)
+        if lots < minimum:
+            return {"volume": 0.0, "motif": "lot minimum supérieur au budget de risque ou de marge"}
+        perte = self._perte(sens, s, lots, prix, sl)
+        if perte > budget + 1e-8:
+            return {"volume": 0.0, "motif": "risque après arrondi supérieur au budget"}
+        return {"volume": lots, "risque": perte, "budget": budget, "devise": compte.currency, "prix": prix,
+                "motif": f"risque estimé avec réserve {perte:.2f} {compte.currency}"}
+
+
     def _remplissages(self, info):
         modes = []
         if info.filling_mode & 1:
@@ -299,11 +409,17 @@ class Pont:
                 "ordre": resultat.order, "deal": resultat.deal, "prix": resultat.price, "volume": resultat.volume}
 
     def op_ouvrir(self, sens, volume, sl=0.0, magic=MAGIQUE_MIN, commentaire="armee-or", symbole=None, **_):
+        if not OUVERTURES_VALIDEES:
+            raise ErreurPont("R3 observation : aucune stratégie qualifiée, nouvelles ouvertures bloquées")
         self.exiger()
         if not self.est_demo():
             raise ErreurPont("REFUS : ce compte n'est pas un compte démo. L'armée ne passe aucun ordre en réel.")
         if not MAGIQUE_MIN <= int(magic) <= MAGIQUE_MAX:
             raise ErreurPont("numéro magique hors de la plage de l'armée")
+        if sens not in (-1, 1) or not math.isfinite(float(volume)) or float(volume) <= 0:
+            raise ErreurPont("sens ou volume invalide")
+        if any(p.magic == int(magic) for p in self._positions()):
+            raise ErreurPont("une position de cette équipe existe déjà")
         s = symbole or self.symbole
         self.mt5.symbol_select(s, True)
         info, tick = self.mt5.symbol_info(s), self.mt5.symbol_info_tick(s)
@@ -313,7 +429,10 @@ class Pont:
         volume = round(int(float(volume) / pas_vol + 1e-9) * pas_vol, 8)
         if volume < info.volume_min or volume > info.volume_max:
             raise ErreurPont(f"volume {volume} hors limites ({info.volume_min} – {info.volume_max})")
-        prix = tick.ask if sens > 0 else tick.bid
+        controle = self.op_dimensionner(sens=sens, sl=sl, volume=volume, symbole=s)
+        if controle["volume"] < volume:
+            raise ErreurPont("ordre refusé : plafond de risque dépassé")
+        prix = controle["prix"]
         sl = round(float(sl or 0), info.digits)
         ecart_min = (info.trade_stops_level or 0) * info.point
         if sl and ((sens > 0 and sl > prix - ecart_min) or (sens < 0 and sl < prix + ecart_min)):
@@ -325,6 +444,7 @@ class Pont:
         r = self._envoyer(demande, info)
         journal("ouverture", "ACHAT" if sens > 0 else "VENTE", volume, s, "->", r["retcode"], r["commentaire"])
         return r
+
 
     def op_fermer(self, ticket, commentaire="armee-or fin", **_):
         self.exiger()
@@ -342,11 +462,17 @@ class Pont:
                    "comment": str(commentaire)[:25], "type_time": self.mt5.ORDER_TIME_GTC}
         r = self._envoyer(demande, info)
         journal("fermeture", p.ticket, "->", r["retcode"], r["commentaire"])
+        if r["ok"] and self._positions(ticket=int(ticket)):
+            r["ok"] = False
+            r["commentaire"] = "fermeture partielle ou non confirmée : position toujours suivie"
         return r
+
 
     # ------------------------------------------------------------------ service
     def traiter(self, demande):
         op = demande.pop("op", "")
+        if self.instance and op in RESERVEES_ARMEE:
+            return {"ok": False, "erreur": f"opération {op} réservée au compte de l'armée (instance {self.instance})"}
         fonction = getattr(self, "op_" + op, None)
         if fonction is None:
             return {"ok": False, "erreur": f"opération inconnue : {op}"}
@@ -459,6 +585,9 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     ici = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     instance = argv[argv.index("--instance") + 1] if "--instance" in argv[:-1] else ""
+    if instance not in ("", "video"):
+        print("instance inconnue :", instance)
+        return 2
     reglages = reglages_instance(lire_env(os.path.join(ici, ".env")), instance)
     terminal = reglages.get("OR_MT5_TERMINAL")
     import MetaTrader5 as mt5

@@ -3,6 +3,7 @@
 # Son propre terminal (copie du préfixe Wine de l'armée), son propre pont (127.0.0.1:18778), son propre service
 # (armee-or-mt5-video). Le compte de l'armée, ses identifiants et ses positions ne sont jamais touchés.
 # Relançable : or video installer · changer de compte : or video compte.
+# R5 : l'équipe reste DÉSACTIVÉE après l'installation ; elle ne joue qu'après /or_video_on (ou « or video on »).
 set -Eeuo pipefail
 DOSSIER=${DOSSIER:-/home/bots/armee-or}
 COMPTE=${COMPTE:-bots}
@@ -13,6 +14,9 @@ JOURNAL="$DOSSIER/runtime/installation_video.log"
 V='\033[1;32m'; J='\033[1;33m'; R='\033[1;31m'; N='\033[0m'
 [ "$(id -u)" -eq 0 ] || { echo "Lance cette commande en root."; exit 1; }
 umask 022
+if [ "${1:-}" = "compte" ]; then              # changer de 2e compte : anciens identifiants effacés avant la saisie
+  sed -i '/^# Équipe vidéo/d;/^OR_VIDEO_/d' "$DOSSIER/.env"
+fi
 mkdir -p "$DOSSIER/runtime"; chown "$COMPTE:$COMPTE" "$DOSSIER/runtime"
 en_video() { runuser -u "$COMPTE" -- env HOME=/home/$COMPTE WINEPREFIX="$PREFIXE" WINEDEBUG=-all "$@"; }
 arreter_wine() { runuser -u "$COMPTE" -- env WINEPREFIX="$PREFIXE" wineserver -k > /dev/null 2>&1 || true; }
@@ -180,8 +184,8 @@ systemctl restart armee-or-mt5-video
 systemctl is-enabled --quiet armee-or-chef 2> /dev/null && systemctl restart armee-or-chef   # le chef lit OR_VIDEO_*
 chown "$COMPTE:$COMPTE" "$JOURNAL" 2> /dev/null || true
 if [ "${CONNECTE:-0}" -gt 0 ] && [ "${DEMO:-0}" -gt 0 ]; then
-  echo -e "${V}✔ Équipe vidéo branchée sur le 2e compte démo. Elle joue sa première loterie dans la minute.${N}"
-  telegram "✔ Équipe vidéo branchée sur ton 2e compte DÉMO. Touche /or_video pour suivre ses paniers et ses loteries."
+  echo -e "${V}✔ Équipe vidéo branchée sur le 2e compte démo, encore DÉSACTIVÉE : « or video on » (ou /or_video_on) pour la faire jouer.${N}"
+  telegram "✔ Équipe vidéo branchée sur ton 2e compte DÉMO, encore désactivée. /or_video_on pour la faire jouer, /or_video pour suivre ses paniers et ses loteries."
 elif [ "${CONNECTE:-0}" -gt 0 ]; then
   echo -e "${R}⛔ Ce compte n'est PAS un compte démo : l'équipe vidéo ne passera aucun ordre. « or video compte » pour en régler un autre.${N}"
   telegram "⛔ Le 2e compte n'est pas un compte démo : l'équipe vidéo ne passera aucun ordre. « or video compte » pour régler un compte démo."

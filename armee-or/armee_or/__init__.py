@@ -6,7 +6,7 @@ Analystes : chandeliers, rythme des bougies, saisonnalité. Pronostiqueurs : pro
 Stratèges : levier (marge, liquidation, financement, Kelly), portefeuilles PAPIER par profil de levier.
 Archivistes : historique de l'or depuis 1833, COMEX depuis 2000, bougies Binance depuis 2020.
 
-Aucun ordre réel : Binance ne sert plus les résidents de l'UE (MiCA, 1er juillet 2026) et aucune stratégie n'est
-prouvée rentable. Tout est simulé sur les vrais cours, pour mesurer avant de risquer.
+R3 : observation et gestion des positions existantes sur compte démo seulement.
+Aucune nouvelle ouverture MT5 : qualification selon le prompt maître encore incomplète.
 """
-__version__ = "1.0"
+__version__ = "2.5-R5"

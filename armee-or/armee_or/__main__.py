@@ -6,6 +6,7 @@
   etat         rapport actuel            levier      fiches de levier        bilan    bilan historique
   bibliotheque connaissances utilisées   test        contrôle complet sans réseau ni Telegram
   mt5          état du compte MetaTrader 5 démo et des équipes
+  marches      armée multi-marchés (forex, métaux, énergie, indices, crypto) · video  équipe vidéo (2e compte)
   commande X   transmettre « pause », « reprise », « mt5_fermer », « mt5_profil x20 »… au chef
 """
 from __future__ import annotations
@@ -17,7 +18,7 @@ from logging.handlers import RotatingFileHandler
 from . import config
 
 
-COMMANDES = ("pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
+COMMANDES = ("demo_on", "demo_off", "demo", "pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
              "mt5_entrainement", "mt5_ecran", "bougies", "apprentissage", "verif", "mt5_gain", "mt5_tendance", "mt5_permis", "mt5_agressif", "mt5_rentable",
              "video_on", "video_off", "video_fermer", "video_gain", "video_symbole", "marches_on", "marches_off",
              "marches_fermer")
@@ -69,6 +70,22 @@ def main(argv=None):
     elif cmd == "bibliotheque":
         from . import bibliotheque
         print(bibliotheque.texte())
+    elif cmd == "recherche":
+        from . import recherche
+        recherche.main(argv[1:])
+    elif cmd == "demo":
+        from . import demo_auto
+        print(demo_auto.texte())
+    elif cmd == "diagnostic":
+        import json
+        from .surveillance import diagnostic
+        print(json.dumps(diagnostic(),ensure_ascii=False,indent=2))
+    elif cmd == "registre":
+        from . import registre
+        print(registre.texte())
+    elif cmd == "grands":
+        from . import bibliotheque
+        print(bibliotheque.grands(int(argv[1]) if len(argv)>1 else 1))
     elif cmd == "test":
         return test()
     elif cmd == "apprentissage":
@@ -120,11 +137,9 @@ def main(argv=None):
         print(marches.texte_marches())
     elif cmd == "commande" and len(argv) > 1 and argv[1].split(" ")[0] in COMMANDES:
         texte = " ".join(argv[1:])
-        fichier = config.RACINE / "runtime" / "commandes.txt"
-        fichier.parent.mkdir(parents=True, exist_ok=True)
-        with open(fichier, "a") as f:
-            f.write(texte + "\n")
-        print(f"Commande « {texte} » transmise au chef (appliquée dans les 10 secondes).")
+        from . import commandes
+        identifiant = commandes.ajouter(texte)
+        print(f"Commande enregistrée ({identifiant}). Le chef la traitera si elle a moins de 120 secondes ; vérifier son résultat.")
     else:
         print(__doc__)
         return 1

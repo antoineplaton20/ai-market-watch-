@@ -481,7 +481,7 @@ def permis_de_trader(chemin=None):
             m = m & (dd != 0) & ~np.isnan(fut)
             return int(m.sum()), (round(float((dd[m] * fut[m] - cout).mean() * 1e4), 2) if m.sum() else None)
         moities = []
-        for part in (slice(0, n // 2), slice(n // 2, n)):
+        for part in (slice(0, max(0,n // 2-h)), slice(n // 2, max(n // 2,n-h))):
             m = np.zeros(n, bool)
             m[part] = True
             k, v = net(d, m)
@@ -489,13 +489,24 @@ def permis_de_trader(chemin=None):
             moities.append({"n": k, "net_pb": v, "naif_pb": v_naif})
         ok = all(x["n"] >= PERMIS_MIN_DECISIONS and x["net_pb"] > 0 and x["net_pb"] > (x["naif_pb"] or 0.0)
                  for x in moities)
-        out[tf] = {"ok": ok, "moities": moities, "cout_pct": round(cout * 100, 4)}
+        out[tf] = {"ok": False, "preselection_ok": ok, "raison": "pré-examen incomplet : aucun permis R3", "moities": moities, "cout_pct": round(cout * 100, 4)}
     return out
 
 
 def bot_permis(chef):
     avant = base.lire("mt5:permis") or {}
-    permis = permis_de_trader()
+    from . import registre
+    identifiants = {tf: registre.declarer("CONSENSUS_LEGACY", tf, SOURCE_DECISION,
+        "historique local disponible", "pré-examen ancien : deux moitiés purgées ; coûts partiels, pas de permis",
+        "base-f787e40-R3") for tf in ("1h", "4h", "1d")}
+    try:
+        permis = permis_de_trader()
+    except Exception as exc:
+        for identifiant in identifiants.values():
+            registre.conclure(identifiant, {"erreur": type(exc).__name__}, "erreur")
+        raise
+    for tf, identifiant in identifiants.items():
+        registre.conclure(identifiant, permis.get(tf, {}), "incomplet")
     base.ecrire("mt5:permis", permis)
     for tf, nom in (("1h", "entraînement 1 h"), ("4h", "décisions 4 h"), ("1d", "décisions 1 j")):
         etait, est = bool((avant.get(tf) or {}).get("ok")), bool(permis[tf]["ok"])
@@ -520,170 +531,208 @@ def bot_commandes(chef):
             fichier.unlink()
         except OSError:
             pass
+    from . import commandes as file_commandes
+    cmds += file_commandes.prendre()
     for c in cmds:
-        if c in ("/or_pause", "pause"):
-            chef.pause = True
-            base.ecrire("pause", True)
-            telegram.envoyer("⏸ Nouvelles positions en pause (papier ET MT5 ; les positions ouvertes gardent stop, "
-                             "prise de gain et horizon). L'analyse continue. /or_reprise pour reprendre.")
-        elif c in ("/or_reprise", "reprise"):
-            chef.pause = False
-            base.ecrire("pause", False)
-            telegram.envoyer("▶️ Nouvelles positions reprises (papier et MT5).")
-        elif c in ("/or", "/or_rapport", "rapport"):
-            telegram.envoyer(rapport(chef))
-        elif c in ("/or_levier", "levier"):
-            telegram.envoyer(rapport_levier())
-        elif c in ("/or_bilan", "bilan"):
-            telegram.envoyer(rapport_bilan())
-        elif c in ("/or_bibliotheque", "bibliotheque"):
-            telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
-        elif c in ("/or_veille", "veille"):
-            telegram.envoyer(veille.texte_veille())
-        elif c in ("/or_apprentissage", "apprentissage"):
-            telegram.envoyer(apprentissage.journal())
-        elif c in ("/or_verif", "verif"):
-            telegram.envoyer(apprentissage.texte_memoire())
-            telegram.envoyer(executant.rapport_trades())
-        elif c in ("/or_calendrier", "calendrier"):
-            telegram.envoyer(veille.texte_calendrier(10))
-        elif c in ("/or_niveaux", "niveaux"):
-            telegram.envoyer(veille.texte_niveaux())
-        elif c in ("/or_actus", "actus"):
-            telegram.envoyer(veille.texte_actualites(10))
-        elif c in ("/or_bougies", "bougies"):
-            telegram.envoyer(rapport_bougies("4h") + "\n\n" + rapport_bougies("1d", nb=6))
-        elif c in ("/or_mt5", "mt5"):
-            telegram.envoyer("🤖 " + executant.rapport_mt5())
-        elif c in ("/or_mt5_fermer", "mt5_fermer"):
-            base.ecrire("mt5:pause", True)
-            try:
-                n = len(executant.fermer_tout("fermeture demandée"))
-                telegram.envoyer(f"🛑 MT5 : {n} position(s) de l'armée fermée(s), ordres suspendus (or mt5 reprendre).",
-                                 important=True)
-            except mt5.ErreurMT5 as ex:
-                telegram.envoyer(f"🛑 MT5 : ordres suspendus, mais fermeture impossible pour l'instant ({ex}).", True)
-        elif c in ("/or_mt5_ecran", "mt5_ecran"):
-            photo = config.RACINE / "runtime" / "ecran_pont.png"
-            if not (photo.exists() and time.time() - photo.stat().st_mtime < 600
-                    and telegram.envoyer_photo(str(photo), "Écran du terminal MT5 sur le serveur "
-                                               f"(il y a {int(time.time() - photo.stat().st_mtime)} s)")):
-                telegram.envoyer("📷 Pas de photo récente du terminal MT5 : le service armee-or-mt5 ne tourne pas "
-                                 "encore (installation : « or mt5 installer »).")
-        elif c in ("/or_mt5_reprendre", "mt5_reprendre"):
-            base.ecrire("mt5:pause", False)
-            telegram.envoyer("▶️ MT5 : ordres automatiques repris.")
-        elif c in ("/or_mt5_profil", "mt5_profil"):
-            telegram.envoyer(f"⚖️ Profil actuel : {executant.profil_actif()}. Touche pour changer :\n"
-                             "/or_profil_pro (1 % du capital risqué, recommandé)\n/or_profil_x1  /or_profil_x3  "
-                             "/or_profil_x5\n/or_profil_x10  /or_profil_x20 (max. UE)  /or_profil_x50 (max. Binance)\n"
-                             "Sur l'historique : ruine fréquente à partir de x10.")
-        elif c.startswith(("mt5_profil ", "/or_mt5_profil ", "/or_profil_")):
-            nom = mt5.nom_profil(c.replace("/or_profil_", " ").split(" ", 1)[1])
-            if nom:
-                base.ecrire("mt5:profil", nom)
-            telegram.envoyer(f"⚖️ MT5 : profil des décisions = {nom}." if nom else
-                             "Profil inconnu (x1, x3, x5, x10, x20, x50 ou pro).")
-        elif c == "/or_entrainement":
-            telegram.envoyer(f"🏋️ Entraînement {'actif' if executant.entrainement_actif() else 'arrêté'}. Touche : "
-                             "/or_entrainement_on  ou  /or_entrainement_off")
-        elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
-            base.ecrire("mt5:entrainement", c.endswith("on"))
-            telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
-        elif c in ("/or_rentable", "mt5_rentable"):
-            base.ecrire("mt5:agressif", True)               # équipe 1 j : chaque penchant, lot minimum, freins 3 % / 10 %
-            base.ecrire("mt5:permis_exige", False)
-            base.ecrire("mt5:entrainement", False)
-            telegram.envoyer("💶 MODE RENTABLE : seule l'équipe qui a gagné sur l'historique trade.\n"
-                             "• décisions 1 j : actives (positions de 5 jours, prise de gain +3 €, stop large) — "
-                             "PAXG 2025-2026 : gagnante sur les deux moitiés, 98 % de trades gagnants, pire −139 € ;\n"
-                             "• entraînement : arrêté (au mieux proche de zéro, même corrigé) ;\n"
-                             "• décisions 4 h : sur la touche (perdantes) ;\n"
-                             "• freins : perte du jour 3 % (positions courtes), coupe-circuit 10 %.\n"
-                             "Attention : cette équipe a gagné parce que l'or montait (2024-2026) ; en marché sans "
-                             "direction (2020-2023) elle perdait. Aucun réglage ne garantit le positif.", True)
-        elif c == "/or_agressif":
-            telegram.envoyer(("🔥 Mode agressif ACTIF." if executant.mode_agressif() else "Mode agressif arrêté.")
-                             + " Touche : /or_agressif_on ou /or_agressif_off")
-        elif c in ("/or_agressif_on", "mt5_agressif on"):
-            base.ecrire("mt5:agressif", True)
-            base.ecrire("mt5:permis_exige", False)
-            base.ecrire("mt5:entrainement", True)
-            telegram.envoyer("🔥 MODE AGRESSIF pour toutes les équipes MT5 :\n"
-                             "• plus besoin de permis ;\n"
-                             "• décisions 1 j : un ordre à chaque penchant du consensus, 3 % du capital risqué ;\n"
-                             "• décisions 4 h : sur la touche tant qu'elles n'ont pas leur permis (perdantes) ;\n"
-                             f"• entraînement : {executant.MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum chaque heure, "
-                             "prise de gain proportionnelle à la taille ;\n"
-                             "• freins élargis : perte du jour 3 %, coupe-circuit 10 % ;\n"
-                             "• gardés : filtre de tendance et d'élan, stop, horizon, pause aux annonces, week-end, "
-                             "compte démo.\n"
-                             "/or_agressif_off pour revenir au mode normal.", True)
-        elif c in ("/or_agressif_off", "mt5_agressif off"):
-            base.ecrire("mt5:agressif", False)
-            telegram.envoyer("Mode agressif arrêté : tailles, freins (1 %/jour, 5 %) et décisions normales. Les bots "
-                             "restent actifs sans permis (/or_permis_on pour « que du prouvé »).", True)
-        elif c == "/or_permis":
-            telegram.envoyer(("🪪 Que du prouvé : aucune équipe ne trade sans permis." if executant.permis_exige() else
-                              "🟠 Bots actifs sans preuve : les équipes tradent même sans permis.")
-                             + " Touche : /or_permis_off (bots actifs) ou /or_permis_on (que du prouvé).\n"
-                             + executant.texte_permis())
-        elif c in ("/or_permis_on", "/or_permis_off", "mt5_permis on", "mt5_permis off"):
-            actif = c.endswith("on")
-            base.ecrire("mt5:permis_exige", actif)
-            telegram.envoyer("🪪 Que du prouvé RÉTABLI : aucun nouvel ordre sans permis." if actif else
-                             "🟠 Bots ACTIFS : les équipes tradent sans attendre leur permis (entraînement 0,01 lot, "
-                             "décisions selon ton profil). Garde-fous toujours en place : filtre de tendance, stop, "
-                             "prise de gain, perte du jour 1 %, coupe-circuit 5 %. /or_permis_on pour revenir.", True)
-        elif c == "/or_tendance":
-            telegram.envoyer(f"🧭 Filtre de tendance {'actif' if executant.filtre_tendance_actif() else 'arrêté'} : "
-                             "aucune position MT5 contre la tendance (1 h et 4 h). Touche : /or_tendance_on  ou  "
-                             "/or_tendance_off")
-        elif c in ("/or_tendance_on", "/or_tendance_off", "mt5_tendance on", "mt5_tendance off"):
-            base.ecrire("mt5:filtre_tendance", c.endswith("on"))
-            telegram.envoyer(f"🧭 MT5 : filtre de tendance {'actif' if c.endswith('on') else 'arrêté'}.")
-        elif c in ("/or_gain", "mt5_gain"):
-            g = executant.gain_minimum()
-            telegram.envoyer(f"💶 Prise de gain : {f'dès +{g:g} €' if g else 'arrêtée'}. Toute position de l'armée "
-                             "est fermée dès que son gain atteint ce montant (stop et horizon gardés). Touche :\n"
-                             "/or_gain_1  /or_gain_2  /or_gain_3  /or_gain_5  /or_gain_10  /or_gain_off")
-        elif c.startswith(("/or_gain_", "mt5_gain ")):
-            v = c.replace("/or_gain_", " ").split(" ", 1)[1].strip()
-            try:
-                montant = 0.0 if v == "off" else float(v.replace(",", "."))
-            except ValueError:
-                montant = -1.0
-            if 0 <= montant <= 1000:
-                base.ecrire("mt5:gain_min", montant)
-                telegram.envoyer(f"💶 MT5 : prise de gain {f'dès +{montant:g} €' if montant else 'arrêtée'}.")
-            else:
-                telegram.envoyer("Montant inconnu : /or_gain_3 (en euros) ou /or_gain_off.")
-        elif c in ("/or_risque", "risque"):
-            telegram.envoyer("🛡 " + risque.texte())
-        elif c in ("/or_risque_reprendre", "risque reprendre"):
-            telegram.envoyer(risque.reprendre(), True)
-        elif c in ("/or_sauvegarde", "sauvegarde"):
-            telegram.envoyer(sauvegarde.texte())
-        elif c in ("/or_brief", "brief"):
-            telegram.envoyer(brief.texte_brief())
-        elif c.startswith("/or_alerte"):
-            telegram.envoyer(alertes.commande(c))
-        elif c.startswith("/or_") and c[4:].split("_")[0] in terminal.ECRANS:
-            code, *reste = c[4:].split("_")
-            telegram.envoyer(terminal.rendu(code, *reste, w=TELEGRAM_COLONNES, couleur=False), mono=True)
-        elif c in ("/or_maj", "maj"):
-            telegram.envoyer(demander_maj())
-        elif c in ("/or_journal", "journal"):
-            telegram.envoyer(fin_du_journal())
-        elif c in ("/or_prompt", "prompt"):
-            envoyer_prompt()
-        elif c == "/or_video" or c.startswith(("/or_video_", "video")):
-            telegram.envoyer(video.commande(c))
-        elif c == "/or_marches" or c.startswith(("/or_marches_", "marches")):
-            telegram.envoyer(marches.commande(c))
-        elif c in ("/or_aide", "/start", "aide"):
-            telegram.envoyer("🟡 Commandes (touche-les) :\n" + "\n".join(f"/{n} — {d}" for n, d in telegram.MENU))
-        faites.append(c)
+        erreur_commande = False
+        try:
+            if c in ("/or_permis_off", "mt5_permis off", "/or_agressif_on", "mt5_agressif on",
+                     "/or_rentable", "mt5_rentable", "/or_mt5_reprendre", "mt5_reprendre"):
+                base.ecrire("mt5:permis_exige", True)
+                base.ecrire("mt5:pause", True)
+                telegram.envoyer("R3 : nouvelles ouvertures bloquées. Aucun réglage ne remplace la preuve exigée.")
+                faites.append(c)
+                continue
+            if c in ("/or_demo_on", "demo_on", "/or_demo_off", "demo_off"):
+                from . import demo_auto
+                actif = c in ("/or_demo_on", "demo_on")
+                message = demo_auto.mode(actif)
+                if actif: chef.pause = False
+                telegram.envoyer(message)
+            elif c in ("/or_demo", "demo"):
+                from . import demo_auto
+                telegram.envoyer(demo_auto.texte())
+            elif c in ("/or_pause", "pause"):
+                chef.pause = True
+                base.ecrire("pause", True)
+                telegram.envoyer("⏸ Nouvelles positions en pause (papier ET MT5 ; les positions ouvertes gardent stop, "
+                                 "prise de gain et horizon). L'analyse continue. /or_reprise pour reprendre.")
+            elif c in ("/or_reprise", "reprise"):
+                chef.pause = False
+                base.ecrire("pause", False)
+                telegram.envoyer("▶️ Pause générale levée. Les anciennes équipes restent bloquées ; le mode démo expérimental exige son activation séparée /or_demo_on.")
+            elif c in ("/or", "/or_rapport", "rapport"):
+                telegram.envoyer(rapport(chef))
+            elif c in ("/or_levier", "levier"):
+                telegram.envoyer(rapport_levier())
+            elif c in ("/or_bilan", "bilan"):
+                telegram.envoyer(rapport_bilan())
+            elif c.startswith(("/or_grands", "grands")):
+                try:
+                    page = int(c.split()[1]) if len(c.split()) > 1 else 1
+                except ValueError:
+                    page = 0
+                telegram.envoyer(bibliotheque.grands(page))
+            elif c in ("/or_registre", "registre"):
+                from . import registre
+                telegram.envoyer(registre.texte())
+            elif c in ("/or_diagnostic", "diagnostic"):
+                from .surveillance import diagnostic
+                d = diagnostic()
+                telegram.envoyer(d['version'] + " : " + d['etat'] + "\n" + ", ".join(d['motifs']))
+            elif c in ("/or_bibliotheque", "bibliotheque"):
+                telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
+            elif c in ("/or_veille", "veille"):
+                telegram.envoyer(veille.texte_veille())
+            elif c in ("/or_apprentissage", "apprentissage"):
+                telegram.envoyer(apprentissage.journal())
+            elif c in ("/or_verif", "verif"):
+                telegram.envoyer(apprentissage.texte_memoire())
+                telegram.envoyer(executant.rapport_trades())
+            elif c in ("/or_calendrier", "calendrier"):
+                telegram.envoyer(veille.texte_calendrier(10))
+            elif c in ("/or_niveaux", "niveaux"):
+                telegram.envoyer(veille.texte_niveaux())
+            elif c in ("/or_actus", "actus"):
+                telegram.envoyer(veille.texte_actualites(10))
+            elif c in ("/or_bougies", "bougies"):
+                telegram.envoyer(rapport_bougies("4h") + "\n\n" + rapport_bougies("1d", nb=6))
+            elif c in ("/or_mt5", "mt5"):
+                telegram.envoyer("🤖 " + executant.rapport_mt5())
+            elif c in ("/or_mt5_fermer", "mt5_fermer"):
+                base.ecrire("mt5:pause", True)
+                try:
+                    n = len(executant.fermer_tout("fermeture demandée"))
+                    telegram.envoyer(f"🛑 MT5 : {n} position(s) de l'armée fermée(s), ordres suspendus (or mt5 reprendre).",
+                                     important=True)
+                except mt5.ErreurMT5 as ex:
+                    telegram.envoyer(f"🛑 MT5 : ordres suspendus, mais fermeture impossible pour l'instant ({ex}).", True)
+            elif c in ("/or_mt5_ecran", "mt5_ecran"):
+                photo = config.RACINE / "runtime" / "ecran_pont.png"
+                if not (photo.exists() and time.time() - photo.stat().st_mtime < 600
+                        and telegram.envoyer_photo(str(photo), "Écran du terminal MT5 sur le serveur "
+                                                   f"(il y a {int(time.time() - photo.stat().st_mtime)} s)")):
+                    telegram.envoyer("📷 Pas de photo récente du terminal MT5 : le service armee-or-mt5 ne tourne pas "
+                                     "encore (installation : « or mt5 installer »).")
+            elif c in ("/or_mt5_reprendre", "mt5_reprendre"):
+                base.ecrire("mt5:pause", False)
+                telegram.envoyer("▶️ MT5 : ordres automatiques repris.")
+            elif c in ("/or_mt5_profil", "mt5_profil"):
+                telegram.envoyer(f"⚖️ Profil actuel : {executant.profil_actif()}. Touche pour changer :\n"
+                                 "/or_profil_pro (1 % du capital risqué, recommandé)\n/or_profil_x1  /or_profil_x3  "
+                                 "/or_profil_x5\n/or_profil_x10  /or_profil_x20 (max. UE)  /or_profil_x50 (max. Binance)\n"
+                                 "Sur l'historique : ruine fréquente à partir de x10.")
+            elif c.startswith(("mt5_profil ", "/or_mt5_profil ", "/or_profil_")):
+                nom = mt5.nom_profil(c.replace("/or_profil_", " ").split(" ", 1)[1])
+                if nom:
+                    base.ecrire("mt5:profil", nom)
+                telegram.envoyer(f"⚖️ MT5 : profil des décisions = {nom}." if nom else
+                                 "Profil inconnu (x1, x3, x5, x10, x20, x50 ou pro).")
+            elif c == "/or_entrainement":
+                telegram.envoyer(f"🏋️ Entraînement {'actif' if executant.entrainement_actif() else 'arrêté'}. Touche : "
+                                 "/or_entrainement_on  ou  /or_entrainement_off")
+            elif c in ("mt5_entrainement on", "mt5_entrainement off", "/or_entrainement_on", "/or_entrainement_off"):
+                base.ecrire("mt5:entrainement", c.endswith("on"))
+                telegram.envoyer(f"🏋️ MT5 : équipe d'entraînement {'active' if c.endswith('on') else 'arrêtée'}.")
+            elif c in ("/or_rentable", "mt5_rentable"):
+                base.ecrire("mt5:agressif", True)               # équipe 1 j : chaque penchant, lot minimum, freins 3 % / 10 %
+                base.ecrire("mt5:permis_exige", False)
+                base.ecrire("mt5:entrainement", False)
+                telegram.envoyer("💶 MODE RENTABLE : seule l'équipe qui a gagné sur l'historique trade.\n"
+                                 "• décisions 1 j : actives (positions de 5 jours, prise de gain +3 €, stop large) — "
+                                 "PAXG 2025-2026 : gagnante sur les deux moitiés, 98 % de trades gagnants, pire −139 € ;\n"
+                                 "• entraînement : arrêté (au mieux proche de zéro, même corrigé) ;\n"
+                                 "• décisions 4 h : sur la touche (perdantes) ;\n"
+                                 "• freins : perte du jour 3 % (positions courtes), coupe-circuit 10 %.\n"
+                                 "Attention : cette équipe a gagné parce que l'or montait (2024-2026) ; en marché sans "
+                                 "direction (2020-2023) elle perdait. Aucun réglage ne garantit le positif.", True)
+            elif c == "/or_agressif":
+                telegram.envoyer(("🔥 Mode agressif ACTIF." if executant.mode_agressif() else "Mode agressif arrêté.")
+                                 + " Touche : /or_agressif_on ou /or_agressif_off")
+            elif c in ("/or_agressif_on", "mt5_agressif on"):
+                base.ecrire("mt5:agressif", True)
+                base.ecrire("mt5:permis_exige", False)
+                base.ecrire("mt5:entrainement", True)
+                telegram.envoyer("🔥 MODE AGRESSIF pour toutes les équipes MT5 :\n"
+                                 "• plus besoin de permis ;\n"
+                                 "• décisions 1 j : un ordre à chaque penchant du consensus, 3 % du capital risqué ;\n"
+                                 "• décisions 4 h : sur la touche tant qu'elles n'ont pas leur permis (perdantes) ;\n"
+                                 f"• entraînement : {executant.MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum chaque heure, "
+                                 "prise de gain proportionnelle à la taille ;\n"
+                                 "• freins élargis : perte du jour 3 %, coupe-circuit 10 % ;\n"
+                                 "• gardés : filtre de tendance et d'élan, stop, horizon, pause aux annonces, week-end, "
+                                 "compte démo.\n"
+                                 "/or_agressif_off pour revenir au mode normal.", True)
+            elif c in ("/or_agressif_off", "mt5_agressif off"):
+                base.ecrire("mt5:agressif", False)
+                telegram.envoyer("Mode agressif arrêté : tailles, freins (1 %/jour, 5 %) et décisions normales. Les bots "
+                                 "restent actifs sans permis (/or_permis_on pour « que du prouvé »).", True)
+            elif c == "/or_permis":
+                telegram.envoyer(("🪪 Que du prouvé : aucune équipe ne trade sans permis." if executant.permis_exige() else
+                                  "🟠 Bots actifs sans preuve : les équipes tradent même sans permis.")
+                                 + " Touche : /or_permis_off (bots actifs) ou /or_permis_on (que du prouvé).\n"
+                                 + executant.texte_permis())
+            elif c in ("/or_permis_on", "/or_permis_off", "mt5_permis on", "mt5_permis off"):
+                actif = c.endswith("on")
+                base.ecrire("mt5:permis_exige", actif)
+                telegram.envoyer("🪪 Que du prouvé RÉTABLI : aucun nouvel ordre sans permis." if actif else
+                                 "🟠 Bots ACTIFS : les équipes tradent sans attendre leur permis (entraînement 0,01 lot, "
+                                 "décisions selon ton profil). Garde-fous toujours en place : filtre de tendance, stop, "
+                                 "prise de gain, perte du jour 1 %, coupe-circuit 5 %. /or_permis_on pour revenir.", True)
+            elif c == "/or_tendance":
+                telegram.envoyer(f"🧭 Filtre de tendance {'actif' if executant.filtre_tendance_actif() else 'arrêté'} : "
+                                 "aucune position MT5 contre la tendance (1 h et 4 h). Touche : /or_tendance_on  ou  "
+                                 "/or_tendance_off")
+            elif c in ("/or_tendance_on", "/or_tendance_off", "mt5_tendance on", "mt5_tendance off"):
+                base.ecrire("mt5:filtre_tendance", c.endswith("on"))
+                telegram.envoyer(f"🧭 MT5 : filtre de tendance {'actif' if c.endswith('on') else 'arrêté'}.")
+            elif c in ("/or_gain", "mt5_gain"):
+                g = executant.gain_minimum()
+                telegram.envoyer(f"💶 Prise de gain : {f'dès +{g:g} €' if g else 'arrêtée'}. Toute position de l'armée "
+                                 "est fermée dès que son gain atteint ce montant (stop et horizon gardés). Touche :\n"
+                                 "/or_gain_1  /or_gain_2  /or_gain_3  /or_gain_5  /or_gain_10  /or_gain_off")
+            elif c.startswith(("/or_gain_", "mt5_gain ")):
+                v = c.replace("/or_gain_", " ").split(" ", 1)[1].strip()
+                try:
+                    montant = 0.0 if v == "off" else float(v.replace(",", "."))
+                except ValueError:
+                    montant = -1.0
+                if 0 <= montant <= 1000:
+                    base.ecrire("mt5:gain_min", montant)
+                    telegram.envoyer(f"💶 MT5 : prise de gain {f'dès +{montant:g} €' if montant else 'arrêtée'}.")
+                else:
+                    telegram.envoyer("Montant inconnu : /or_gain_3 (en euros) ou /or_gain_off.")
+            elif c in ("/or_risque", "risque"):
+                telegram.envoyer("🛡 " + risque.texte())
+            elif c in ("/or_risque_reprendre", "risque reprendre"):
+                telegram.envoyer(risque.reprendre(), True)
+            elif c in ("/or_sauvegarde", "sauvegarde"):
+                telegram.envoyer(sauvegarde.texte())
+            elif c in ("/or_brief", "brief"):
+                telegram.envoyer(brief.texte_brief())
+            elif c.startswith("/or_alerte"):
+                telegram.envoyer(alertes.commande(c))
+            elif c == "/or_video" or c.startswith(("/or_video_", "video")):
+                telegram.envoyer(video.commande(c, chef))
+            elif c == "/or_marches" or c.startswith(("/or_marches_", "marches")):
+                telegram.envoyer(marches.commande(c, chef))
+            elif c.startswith("/or_") and c[4:].split("_")[0] in terminal.ECRANS:
+                code, *reste = c[4:].split("_")
+                telegram.envoyer(terminal.rendu(code, *reste, w=TELEGRAM_COLONNES, couleur=False), mono=True)
+            elif c in ("/or_maj", "maj"):
+                telegram.envoyer(demander_maj())
+            elif c in ("/or_journal", "journal"):
+                telegram.envoyer(fin_du_journal())
+            elif c in ("/or_prompt", "prompt"):
+                envoyer_prompt()
+            elif c in ("/or_aide", "/start", "aide"):
+                telegram.envoyer("🟡 Commandes (touche-les) :\n" + "\n".join(f"/{n} — {d}" for n, d in telegram.MENU))
+            faites.append(c)
+        except Exception:
+            erreur_commande = True
+            raise
+        finally:
+            file_commandes.terminer(c,erreur_commande)
     return ("commandes : " + ", ".join(faites)) if faites else "aucune commande"
 
 
@@ -692,19 +741,8 @@ UNITE_MAJ = "/etc/systemd/system/armee-or-maj.path"             # installée par
 
 
 def demander_maj():
-    """Mise à jour sans terminal : un service root surveille ce fichier et lance « or maj » (code publié sur
-    GitHub uniquement, rien n'est lu dans le fichier)."""
-    import os
-    if not os.path.exists(UNITE_MAJ):
-        return ("⚠️ Mise à jour depuis Telegram pas encore installée : une dernière fois « or maj » dans un terminal "
-                "(Termius gratuit ou console Hetzner). Ensuite, /or_maj suffira.")
-    drapeau = config.RACINE / "runtime" / "demande_maj"
-    if drapeau.exists():
-        return "⏳ Mise à jour déjà demandée : le résultat arrive ici."
-    drapeau.parent.mkdir(parents=True, exist_ok=True)
-    drapeau.touch()
-    return ("🔄 Mise à jour demandée : téléchargement de la dernière version, tests, redémarrage de l'armée (5 à 15 "
-            "min). Le résultat arrive ici. Les positions MT5 restent en place, stops compris.")
+    return ("R3 : paquet local audité. La mise à jour distante est suspendue pour éviter un retour "
+            "à une version qui contourne le permis. Installer la prochaine archive auditée depuis Termius.")
 
 
 def fin_du_journal(n=25):
@@ -912,15 +950,17 @@ def premier_demarrage():
         bilan_historique()
 
 
-def main():
+def _boucle_principale():
     from .systemd import dormir, notifier
+    from . import commandes as file_commandes
+    file_commandes.reprise_apres_panne()
     premier_demarrage()
     telegram.installer_menu()
     chef = Chef()
     notifier("READY=1")
     telegram.envoyer(f"🎼 Chef d'orchestre en poste : {len(chef.bots)} bots de l'armée de l'or au travail. "
-                     "Rapport toutes les " f"{config.RAPPORT_HEURES:g} h. "
-                     + ("Ordres automatiques sur ton compte MT5 DÉMO (aucun compte réel), comptes papier en parallèle."
+                     "R4 : mode démo expérimental disponible avec /or_demo_on. Rapport toutes les " f"{config.RAPPORT_HEURES:g} h. "
+                     + ("MT5 DÉMO : anciennes équipes verrouillées ; mode expérimental séparé /or_demo."
                         if config.MT5_ACTIF else "Tout est simulé sur papier."))
     while True:
         try:
@@ -928,3 +968,9 @@ def main():
         except Exception:
             _log.exception("Tour du chef en erreur (il continue)")
         dormir(1)
+
+
+def main():
+    from .surveillance import verrou_chef
+    with verrou_chef():
+        return _boucle_principale()

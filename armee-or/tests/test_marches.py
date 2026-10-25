@@ -2,6 +2,7 @@
 contre « toujours acheter », taille selon la volatilité et le capital, équipe à part de l'exécutant de l'or.
 Faux courtier multi-symboles en mémoire ; aucun réseau."""
 import threading
+import time
 from types import SimpleNamespace as NS
 
 import numpy as np
@@ -63,7 +64,7 @@ class FauxMulti:
 
     def account_info(self):
         return NS(login=1, server="MetaQuotes-Demo", trade_mode=0, balance=self.solde, equity=self.solde, margin=0.0,
-                  margin_free=self.solde, leverage=100, currency="USD", trade_allowed=True)
+                  margin_free=self.solde, leverage=100, currency="USD", trade_allowed=True, margin_mode=2)
 
     def symbol_select(self, s, v):
         return s in self.series
@@ -84,7 +85,7 @@ class FauxMulti:
 
     def symbol_info_tick(self, s):
         p = self.prix(s if s in self.series else "XAUUSD")
-        return NS(bid=p * 0.9999, ask=p * 1.0001, last=0.0, time=0, time_msc=0)
+        return NS(bid=p * 0.9999, ask=p * 1.0001, last=0.0, time=int(time.time()), time_msc=0)
 
     def _barres(self, s, indices):
         c = self.series[s][2]
@@ -129,8 +130,17 @@ class FauxMulti:
         return NS(retcode=10009, comment="Request executed", order=self.suivant, deal=self.suivant, price=d["price"],
                   volume=d["volume"])
 
+    def orders_get(self):
+        return ()
+
     def history_deals_get(self, debut, fin):
         return ()
+
+
+def activer():
+    """Ce que fait /or_marches_on quand le compte est confirmé : équipe active, pause MT5 levée."""
+    base.ecrire("marches:actif", True)
+    base.ecrire("mt5:pause", False)
 
 
 @pytest.fixture
@@ -151,7 +161,8 @@ def courtier(monkeypatch):
     monkeypatch.setattr(telegram, "envoyer", lambda t, important=False, **k: messages.append(t) or True)
     f.messages = messages
     base.ecrire("mt5:etat", {"connecte": True, "compte": {"equity": 2700.0, "currency": "USD", "demo": True,
-                                                         "margin_free": 2700.0}, "ts": 9e12})
+                                                         "margin_free": 2700.0, "login": 1,
+                                                         "server": "MetaQuotes-Demo"}, "ts": 9e12})
     yield f
     serveur.shutdown()
     serveur.server_close()
@@ -219,14 +230,18 @@ def test_taille_selon_volatilite_et_lot_minimum_trop_gros():
     assert set(garde) == {"EURUSD", "US500"} and "XAUUSD" in exclus and b == marches.budget_risque(2)
 
 
-def test_equipe_multi_marches_sous_permis(courtier):
-    assert marches.MAGIQUE in executant.AUTRES_EQUIPES                                   # l'exécutant de l'or n'y touche pas
+def test_equipe_multi_marches_sous_permis_et_activation(courtier):
+    assert executant.PAR_MAGIC.get(marches.MAGIQUE) is None                               # l'exécutant de l'or n'y touche pas
     assert marches.bot_marches().endswith("pas de permis")
     assert courtier.envois == [] and marches.lire()["univers"]["EURUSD"]["famille"] == "forex"
     base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
     e = marches.lire()
     e["vu"] = {}                                                                         # nouvelle journée : bougie neuve
     marches.ecrire(e)
+    assert "désactivée" in marches.bot_marches() and courtier.envois == []               # R5 : désactivée par défaut
+    assert set(marches.lire()["intentions"]) == {"EURUSD", "US500"}                      # … mais montre ce qu'elle ferait
+    assert "Achats qu'elle ferait" in marches.texte_marches()
+    activer()
     marches.bot_marches()
     achats = {p.symbol: p for p in courtier.positions}
     assert set(achats) == {"EURUSD", "US500"}                                            # USDJPY sous sa 200 j, or trop gros
@@ -245,6 +260,7 @@ def test_equipe_multi_marches_sous_permis(courtier):
 
 def test_marche_ferme_nouvel_essai_plus_tard(courtier, monkeypatch):
     base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
     envoi = courtier.order_send
     courtier.order_send = lambda d: (NS(retcode=10018, comment="Market closed", order=0, deal=0, price=0.0, volume=0.0)
                                      if d["symbol"] == "US500" else envoi(d))
@@ -255,11 +271,12 @@ def test_marche_ferme_nouvel_essai_plus_tard(courtier, monkeypatch):
     assert len(courtier.envois) == n                                                     # pas de nouvel essai avant 30 min
     courtier.order_send = envoi
     marches.bot_marches(maintenant=1_002_000)
-    assert {p.symbol for p in courtier.positions} == {"EURUSD", "US500"}
+    assert {p.symbol for p in courtier.positions} == {"EURUSD", "US500"} and not base.lire(marches.INCERTAIN)
 
 
 def test_coupe_circuit_aucun_achat(courtier):
     base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
     base.ecrire("risque:etat", {"coupe": True, "raison": "baisse de 5 %"})                # frein central de l'armée
     assert "COUPE-CIRCUIT" in marches.bot_marches() and courtier.positions == []
 
@@ -275,10 +292,19 @@ def test_archive_journaliere_puis_banc(courtier):
 
 def test_pilotage_multi_marches_depuis_telegram(courtier, monkeypatch):
     from armee_or import chef
+    base.ecrire("pause", True)
+    base.ecrire("mt5:pause", True)
+    monkeypatch.setattr(telegram, "commandes", lambda: ["/or_marches_on"])
+    le_chef = type("Chef", (), {"pause": True})()
+    chef.bot_commandes(le_chef)
+    assert marches.actif() and not le_chef.pause and base.lire("mt5:pause") is False      # comme /or_demo_on
+    assert any("ACTIVÉ" in t and "2 %" in t for t in courtier.messages)
     monkeypatch.setattr(telegram, "commandes", lambda: ["/or_marches_off", "/or_marches"])
-    chef.bot_commandes(type("Chef", (), {"pause": False})())
+    chef.bot_commandes(le_chef)
     assert not marches.actif() and any(t.startswith("🌍 Armée multi-marchés") for t in courtier.messages)
     assert any(n == "or_marches" for n, _ in telegram.MENU)
+    base.ecrire("r2:compte_change", True)                                                # incident R2 : refus
+    assert "NON activé" in marches.commande("/or_marches_on") and not marches.actif()
 
 
 def test_equipe_video_sur_un_autre_marche(monkeypatch):
@@ -293,3 +319,117 @@ def test_equipe_video_sur_un_autre_marche(monkeypatch):
     assert not video.a_fermer([{"volume": 0.08, "profit": 2.0}], specs, gain=1.0, valeur_lot=108_000)
     assert video.commande("/or_video_symbole_eurusdm").startswith("✅") and base.lire("video:symbole") == "eurusdm"
     assert "retour à l'or" in video.commande("/or_video_symbole_or") and base.lire("video:symbole") is None
+
+
+def test_chemin_d_ordres_multi_marches_garde_les_plafonds_r3(courtier):
+    pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+
+    def ouvrir(**k):
+        return pont.traiter({"op": "marches_ouvrir", **k})["r"]
+    prix = courtier.prix("EURUSD")
+    r = ouvrir(symbole="EURUSD", volume=0.01, sl=prix * 0.95, sens=-1)
+    assert not r["ok"] and r["avant_envoi"] and "achat seulement" in r["commentaire"]
+    r = ouvrir(symbole="EURUSD", volume=0.01, sl=prix * 1.01)
+    assert not r["ok"] and "stop" in r["commentaire"]                                    # stop du mauvais côté
+    assert courtier.envois == []
+    r = ouvrir(symbole="EURUSD", volume=100.0, sl=prix * 0.95)                           # 0,5 % du compte au plus
+    assert r["ok"] and r["risque"] <= 0.005 * courtier.solde + 1e-6 and courtier.positions[0].volume < 100
+    deja = r["risque"]
+    r = ouvrir(symbole="EURUSD", volume=0.01, sl=prix * 0.95)
+    assert not r["ok"] and "déjà ouverte" in r["commentaire"]                            # une position par marché
+    us = courtier.prix("US500")                         # plafond cumulé R3 (2 %) : la démo R4 (770090) compte aussi
+    courtier.positions.append(NS(ticket=9, type=0, volume=1.0, price_open=us, price_current=us, sl=us - 1040.0, tp=0.0,
+                                 profit=0.0, swap=0.0, magic=770090, comment="demo R4", time=0, symbol="US500"))
+    r = ouvrir(symbole="XAUUSD", volume=100.0, sl=courtier.prix("XAUUSD") * 0.95)
+    reste = 0.02 * courtier.solde - deja - 1040.0 * pont_mt5.RESERVE_COUTS
+    assert r["ok"] and r["volume"] < 100 and r["risque"] <= reste + 1.0
+    r = ouvrir(symbole="USDJPY", volume=0.01, sl=courtier.prix("USDJPY") * 0.99)
+    assert not r["ok"] and "budget" in r["commentaire"]
+    assert {p.magic for p in courtier.positions} == {marches.MAGIQUE, 770090}
+    video_pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1"}, instance="video")
+    assert not video_pont.traiter({"op": "marches_ouvrir", "symbole": "EURUSD", "volume": 0.01, "sl": 1.0})["ok"]
+    courtier.symbol_info_tick = lambda s: NS(bid=1.0, ask=1.0001, last=0.0, time=0, time_msc=0)
+    courtier.positions = []
+    r = ouvrir(symbole="EURUSD", volume=0.01, sl=0.9)
+    assert not r["ok"] and "périmé" in r["commentaire"]                                  # marché fermé : rien envoyé
+
+
+def test_ordre_incertain_verrouille_puis_reconciliation(courtier, monkeypatch):
+    from armee_or import mt5
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
+    vrai = mt5.appel
+
+    def perdu(op, *a, **k):
+        if op == "marches_ouvrir":
+            vrai(op, *a, **k)                                                            # l'ordre part…
+            raise mt5.ErreurMT5("pont MT5 injoignable (timeout)")                        # … la réponse se perd
+        return vrai(op, *a, **k)
+    monkeypatch.setattr(mt5, "appel", perdu)
+    marches.bot_marches(maintenant=2_000_000)
+    i = base.lire(marches.INCERTAIN)
+    assert i["equipe"] == "marches" and base.lire("mt5:pause") is True
+    assert len(courtier.positions) == 1                                                  # aucune autre entrée
+    assert any("INCERTAIN" in t for t in courtier.messages)
+    monkeypatch.setattr(mt5, "appel", vrai)
+    marches.bot_marches(maintenant=2_000_300)
+    assert base.lire(marches.INCERTAIN) is None and i["symbole"] in marches.lire()["positions"]
+    assert len(courtier.positions) == 1 and base.lire("mt5:pause") is True               # reprise : /or_marches_on
+    base.ecrire(marches.INCERTAIN, {"ts": 2_000_000, "equipe": "marches", "symbole": "US500"})
+    marches.bot_marches(maintenant=2_000_100)
+    assert base.lire(marches.INCERTAIN)                                                  # trop tôt pour conclure
+    marches.bot_marches(maintenant=2_000_700)
+    assert base.lire(marches.INCERTAIN) is None                                          # jamais exécuté : levé
+    base.ecrire(marches.INCERTAIN, {"ts": 1, "equipe": "1d"})                            # incident d'une autre équipe
+    assert "incident" in marches.bot_marches(maintenant=2_001_000) and base.lire(marches.INCERTAIN)
+
+
+def test_deployer_r5_pause_les_equipes_et_refuse_le_retour_avec_positions(tmp_path, monkeypatch):
+    import json
+    import sqlite3
+    import deployer
+    (tmp_path / "runtime").mkdir(exist_ok=True)
+    with sqlite3.connect(tmp_path / "runtime/or.db") as c:
+        c.execute("CREATE TABLE kv(cle TEXT PRIMARY KEY, valeur TEXT, maj REAL)")
+        c.execute("INSERT INTO kv VALUES ('marches:actif','true',0),('video:actif','true',0)")
+    deployer.pause(tmp_path)
+    with sqlite3.connect(tmp_path / "runtime/or.db") as c:
+        kv = dict(c.execute("SELECT cle, valeur FROM kv").fetchall())
+    assert json.loads(kv["marches:actif"]) is False and json.loads(kv["video:actif"]) is False
+    assert json.loads(kv["pause"]) is True and json.loads(kv["mt5:pause"]) is True
+    (tmp_path / ".env").write_text("OR_MT5_PORT=18777\nOR_VIDEO_LOGIN=7\nOR_VIDEO_PORT=18778\n")
+    reponses = {18777: [{"magic": 770050}], 18778: []}
+
+    class Sock:
+        def __init__(self, port):
+            self.port = port
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+        def sendall(self, b):
+            pass
+
+        def recv(self, n):
+            return json.dumps({"ok": True, "r": reponses[self.port]}).encode() + b"\n"
+    monkeypatch.setattr(deployer.socket, "create_connection", lambda adresse, **k: Sock(adresse[1]))
+    with pytest.raises(RuntimeError, match="multi-marchés"):
+        deployer.verifier_retour(tmp_path)
+    reponses.update({18777: [], 18778: [{"magic": 770077}]})
+    with pytest.raises(RuntimeError, match="panier vidéo"):
+        deployer.verifier_retour(tmp_path)
+    reponses[18778] = []
+    deployer.verifier_retour(tmp_path)
+    assert "armee-or-mt5-video.service" not in deployer.SERVICES                          # jamais exigé pour valider
+    with pytest.raises(RuntimeError):
+        deployer.service("stop", "equipe-bots.service")
+    monkeypatch.setattr(deployer, "appeler", lambda args, **k: args)
+    assert deployer.service("stop", "armee-or-mt5-video.service") == ["systemctl", "stop", "armee-or-mt5-video.service"]
+    import os
+    assert deployer.pont_multi_instance(__import__("pathlib").Path(os.path.dirname(os.path.dirname(__file__))))
+    (tmp_path / "armee_or").mkdir()
+    (tmp_path / "armee_or/pont_mt5.py").write_text("def main(): pass\n")                 # code R4 : pas d'instance
+    assert not deployer.pont_multi_instance(tmp_path)

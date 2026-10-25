@@ -64,7 +64,7 @@ MT5_SYMBOLE = txt("OR_MT5_SYMBOLE", "XAUUSD")
 MT5_PORT = int(nombre("OR_MT5_PORT", 18777))
 MT5_PROFIL = txt("OR_MT5_PROFIL", "pro 1 % risqué")         # profil de levier des équipes de décision
 MT5_GAIN_MIN = nombre("OR_MT5_GAIN_MIN", 3.0)              # prise de bénéfice dès +X (devise du compte) ; 0 = arrêt
-MT5_ENTRAINEMENT = booleen("OR_MT5_ENTRAINEMENT", True)     # équipe d'entraînement : lot minimum, toutes les heures
+MT5_ENTRAINEMENT = booleen("OR_MT5_ENTRAINEMENT", False)     # équipe d'entraînement : lot minimum, toutes les heures
 
 # Équipe vidéo : 2e compte DÉMO à fort levier (service armee-or-mt5-video), jamais celui de l'armée
 VIDEO_ACTIF = booleen("OR_VIDEO_ACTIF", False) and bool(txt("OR_VIDEO_LOGIN"))

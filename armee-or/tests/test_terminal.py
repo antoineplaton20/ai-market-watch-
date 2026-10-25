@@ -114,6 +114,7 @@ def test_envoi_mono_echappe_le_html(monkeypatch):
     class S:
         def post(self, url, json=None, timeout=None):
             envoye.update(json)
+            return type("R", (), {"raise_for_status": lambda s: None, "json": lambda s: {"ok": True}})()
     monkeypatch.setattr(config, "TELEGRAM_JETON", "x")
     monkeypatch.setattr(config, "TELEGRAM_CHAT", "1")
     assert telegram.envoyer("a < b & c", session=S(), mono=True)

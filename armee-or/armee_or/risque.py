@@ -11,6 +11,7 @@ Un changement de compte MT5 remet les compteurs à zéro. Tes ordres manuels ne 
 from __future__ import annotations
 
 import time
+import math
 
 from . import base, config
 
@@ -36,6 +37,8 @@ def controler(compte, maintenant=None):
     """Met à jour l'état du risque. -> (état, nouvel_evenement) ; nouvel_evenement : None, « jour » ou « coupe »."""
     m = maintenant or time.time()
     equite, login, jour = float(compte["equity"]), compte.get("login"), _jour(m)
+    if not math.isfinite(equite) or equite < 0:
+        raise ValueError("équité invalide : risque non mesurable")
     e = base.lire(CLE) or {}
     if e.get("login") != login:                                    # nouveau compte : nouveaux compteurs
         e = {"login": login, "pic": equite, "coupe": False}

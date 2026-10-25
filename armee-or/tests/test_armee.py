@@ -256,6 +256,7 @@ def test_tour_complet_sur_l_historique(historique, monkeypatch):
     ch.attendre()
     assert all(b.echecs == 0 for b in ch.bots), [b.etat() for b in ch.bots if b.echecs]
     for tf in ("1h", "4h", "1d"):
+        assert base.lire(f"prono:{tf}") is not None, "\n".join(str(b.etat()) for b in ch.bots)
         assert base.lire(f"prono:{tf}")["p"] > 0 and base.lire(f"papier:{tf}")["comptes"]
     assert "Rapport de l'armée de l'or" in chef.rapport(ch) and "aucun ordre" in chef.rapport(ch)
 
@@ -293,7 +294,7 @@ def test_bilan_historique(historique):
 def test_permis_de_trader_sur_l_historique(historique):
     permis = chef.permis_de_trader()
     for tf in ("1h", "4h", "1d"):
-        assert len(permis[tf]["moities"]) == 2 and permis[tf]["ok"] == all(
+        assert len(permis[tf]["moities"]) == 2 and permis[tf]["preselection_ok"] == all(
             m["n"] >= chef.PERMIS_MIN_DECISIONS and m["net_pb"] > 0 and m["net_pb"] > (m["naif_pb"] or 0)
             for m in permis[tf]["moities"])
         assert all("naif_pb" in m for m in permis[tf]["moities"])
@@ -311,10 +312,10 @@ def test_independance_des_autres_bots():
         if fichier.endswith(".py"):
             texte = open(os.path.join(RACINE, "armee_or", fichier), encoding="utf-8").read()
             assert "equipe-bots" not in texte and "v17_ops" not in texte and not re.search(r"(?m)^import config", texte), fichier
-    inst = open(os.path.join(RACINE, "installer_or.sh"), encoding="utf-8").read()
+    inst = open(os.path.join(RACINE, "deployer.py"), encoding="utf-8").read()
     assert "/home/bots/armee-or" in inst and "armee-or-flux" in inst and "armee-or-chef" in inst
     assert "rm -rf /home/bots/equipe-bots" not in inst and "systemctl stop equipe" not in inst
-    for script in ("installer_or.sh", "installer_mt5.sh", "or"):
+    for script in ("installer_or.sh", "installer_mt5.sh", "installer_video.sh", "or"):
         assert subprocess.run(["bash", "-n", os.path.join(RACINE, script)]).returncode == 0
 
 
@@ -353,11 +354,11 @@ def test_mise_a_jour_et_journal_depuis_telegram(monkeypatch, tmp_path):
     from armee_or import chef, config
     monkeypatch.setattr(config, "RACINE", tmp_path)
     monkeypatch.setattr(chef, "UNITE_MAJ", str(tmp_path / "absente.path"))
-    assert "terminal" in chef.demander_maj() and not (tmp_path / "runtime" / "demande_maj").exists()
+    assert "Termius" in chef.demander_maj() and not (tmp_path / "runtime" / "demande_maj").exists()
     (tmp_path / "armee-or-maj.path").write_text("")
     monkeypatch.setattr(chef, "UNITE_MAJ", str(tmp_path / "armee-or-maj.path"))
-    assert "demandée" in chef.demander_maj() and (tmp_path / "runtime" / "demande_maj").exists()
-    assert "déjà" in chef.demander_maj()
+    assert "suspendue" in chef.demander_maj() and not (tmp_path / "runtime" / "demande_maj").exists()
+    assert "suspendue" in chef.demander_maj()
     journal = tmp_path / "or.log"
     journal.write_text("".join(f"2026-10-06 10:00:{i:02d} | chef | ligne {i}\n" for i in range(40)))
     monkeypatch.setattr(config, "JOURNAL", journal)

@@ -13,6 +13,10 @@ loteries (un départ toutes les 10 min, 2,02 $ ou 9,88 $, gain pris à 1, 2 ou 3
 atteint 4 fois (1 sur 42 000), 99,98 % des loteries sont ruinées en moins de 24 h. L'équipe sert à le VOIR sur un vrai
 compte démo : chaque loterie (un départ jusqu'à sa ruine) est comptée. Argent fictif seulement : le pont refuse tout
 ordre en réel.
+
+R5 : l'équipe démarre DÉSACTIVÉE. Elle ne joue qu'après /or_video_on (ou « or video on »), qui vérifie d'abord que le
+2e compte est connecté et en démo. Ses ordres passent par le chemin dédié du pont vidéo (video_ouvrir), refusé par le
+pont de l'armée : les verrous R3 du compte principal ne sont pas touchés.
 """
 from __future__ import annotations
 
@@ -57,8 +61,7 @@ def ecrire(e):
 
 
 def actif():
-    v = base.lire("video:actif")
-    return True if v is None else bool(v)
+    return bool(base.lire("video:actif", False))
 
 
 def gain_par_once():
@@ -190,6 +193,8 @@ def bot_video(chef=None, maintenant=None):
     if not config.VIDEO_ACTIF:
         return "équipe vidéo non configurée (or video installer)"
     m = maintenant or time.time()
+    if not actif() and not lire().get("panier") and m - (base.lire("video:compte") or {}).get("ts", 0) < 60:
+        return "équipe vidéo désactivée (/or_video_on)"            # éteinte : le 2e compte lu une fois par minute
     try:
         etat = appel("etat", delai=60)
     except mt5.ErreurMT5 as ex:
@@ -251,14 +256,14 @@ def bot_video(chef=None, maintenant=None):
         ruine(e, lot, equite, devise, m)
         ecrire(e)
         return "loterie ruinée"
+    if not actif() or getattr(chef, "pause", False):
+        ecrire(e)
+        return "nouveaux paniers en pause" if actif() else "équipe vidéo désactivée (/or_video_on)"
     if not lot:                                                     # 3) nouvelle loterie dès que le solde est remis
         if equite < max(1.0, (e.get("attente") or 0.0) + 1.0):
             ecrire(e)
             return "en attente : remets le solde du compte démo pour rejouer"
         lot = nouvelle_loterie(e, equite, devise, m)
-    if not actif() or getattr(chef, "pause", False):
-        ecrire(e)
-        return "nouveaux paniers en pause"
 
     if m < e.get("reessai", 0):
         ecrire(e)
@@ -274,8 +279,10 @@ def bot_video(chef=None, maintenant=None):
         return "marge insuffisante : loterie ruinée"
     ouverts, raison = 0, ""
     for _ in range(n):
-        r = appel("ouvrir", sens=sens, volume=lots, sl=0.0, magic=MAGIQUE, commentaire="armee-or video",
-                  symbole=symbole)
+        try:                                                        # chemin dédié du 2e compte, sans stop
+            r = appel("video_ouvrir", sens=sens, volume=lots, symbole=symbole)
+        except mt5.ErreurMT5 as ex:                                 # réponse perdue : les positions le diront
+            r = {"ok": False, "retcode": None, "commentaire": str(ex)}
         if not r.get("ok"):
             _log.warning("ordre vidéo refusé : %s %s", r.get("retcode"), r.get("commentaire"))
             raison = refus(e, r, m)
@@ -301,17 +308,42 @@ def fermer_tout():
             "(/or_video_on pour reprendre).")
 
 
-def commande(c):
+def activer(chef=None):
+    """Activation explicite du propriétaire : 2e compte connecté ET démo, sinon rien ne change."""
+    if not config.VIDEO_ACTIF:
+        return "🎰 Équipe vidéo non branchée : dans Termius, « or video installer » d'abord."
+    try:
+        etat = appel("etat", delai=60)
+    except mt5.ErreurMT5 as ex:
+        return f"🎰 Équipe vidéo NON activée : {ex}"
+    compte = etat.get("compte") or {}
+    if not etat.get("connecte") or not compte:
+        return "🎰 Équipe vidéo NON activée : 2e compte non connecté (« or video journal »)."
+    if not compte.get("demo"):
+        return "⛔ Équipe vidéo NON activée : le 2e compte n'est pas un compte DÉMO."
+    base.ecrire("video:compte", {**etat, "ts": time.time()})
+    base.ecrire("video:actif", True)
+    base.ecrire("pause", False)                                    # comme /or_demo_on : la pause générale est levée
+    if chef is not None:
+        chef.pause = False
+    return (f"▶️ Équipe vidéo ACTIVÉE sur le 2e compte DÉMO …{str(compte.get('login'))[-3:]} (argent fictif ; pause "
+            f"générale levée). Rappel : {REJEU} Arrêt : /or_video_off · tout fermer : /or_video_fermer.")
+
+
+def commande(c, chef=None):
     """Commandes Telegram (/or_video…) et Termius (video_on, video_gain 2…). -> texte de réponse."""
     c = c.replace("/or_", "").strip()
     if c in ("video_on",):
-        base.ecrire("video:actif", True)
-        return "▶️ Équipe vidéo : nouveaux paniers autorisés."
+        return activer(chef)
     if c in ("video_off",):
         base.ecrire("video:actif", False)
         return "⏸ Équipe vidéo : plus de nouveau panier ; celui en cours se ferme à son gain (/or_video_fermer : tout de suite)."
     if c in ("video_fermer",):
-        return fermer_tout()
+        try:
+            return fermer_tout()
+        except mt5.ErreurMT5 as ex:
+            base.ecrire("video:actif", False)
+            return f"🛑 Équipe vidéo arrêtée, mais fermeture impossible pour l'instant ({ex}). Réessaie /or_video_fermer."
     if c.startswith(("video_symbole_", "video_symbole ")):
         v = c[len("video_symbole_"):].strip()
         if not v or est_or(v) or v == "or":
@@ -341,7 +373,7 @@ def texte_video(maintenant=None):
     c = (base.lire("video:compte") or {}).get("compte") or {}
     e = lire()
     lignes = ["🎰 Équipe vidéo — 2e compte DÉMO, méthode des deux vidéos"
-              + ("" if actif() else " (nouveaux paniers en pause)")]
+              + ("" if actif() else " · DÉSACTIVÉE (/or_video_on pour l'activer)")]
     if c:
         lignes.append(f"Compte …{str(c.get('login'))[-3:]} · {c.get('server')} · levier 1:{c.get('leverage')} · "
                       f"solde {c.get('balance', 0):.2f} · équité {c.get('equity', 0):.2f} {c.get('currency', '')}")

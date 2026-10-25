@@ -20,6 +20,7 @@ import time
 
 import numpy as np
 
+from . import qualification
 from . import base, config, indicateurs as I, mt5, pronostiqueurs as P, risque, strategie as S, telegram, veille
 
 EQUIPES = {
@@ -29,7 +30,6 @@ EQUIPES = {
                      "duree_h": S.UNITES["1h"][0] * S.UNITES["1h"][1]},
 }
 PAR_MAGIC = {e["magic"]: k for k, e in EQUIPES.items()}
-AUTRES_EQUIPES = {770050}                   # équipe multi-marchés (marches.py) : ses positions ne sont jamais gérées ici
 MS = {"1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000}
 STOP_ATR = 3.0
 
@@ -123,10 +123,21 @@ def contre_tendance(tf, sens):
 def _atr(tf):
     """ATR 14 sur les bougies FERMÉES du symbole MT5 lui-même."""
     rates = np.array(mt5.appel("bougies", tf=tf, n=120), dtype=float)
-    if len(rates) < 30:
+    if rates.ndim != 2 or rates.shape[1] != 6 or len(rates) < 30:
         raise mt5.ErreurMT5("pas assez de bougies MT5")
+    if not np.isfinite(rates).all() or (np.diff(rates[:,0]) <= 0).any():
+        raise mt5.ErreurMT5("bougies MT5 invalides ou non triées")
+    o,h,l,c = (rates[:,i] for i in (1,2,3,4))
+    if ((np.minimum(o,c) < l).any() or (np.maximum(o,c) > h).any()
+            or (rates[:,1:5] <= 0).any() or (rates[:,5] < 0).any()):
+        raise mt5.ErreurMT5("OHLCV MT5 incohérent")
+    periode = MS[tf] / 1000
+    maintenant = time.time()
+    if (rates[-1,0] > maintenant + 5 or not 0 <= maintenant-(rates[-2,0]+periode) <= periode):
+        raise mt5.ErreurMT5("bougies MT5 périmées ou non clôturées")
     r = rates[:-1]
     return float(I.atr(r[:, 2], r[:, 3], r[:, 4], 14)[-1])
+
 
 
 MARCHE_FERME = 10018                                      # TRADE_RETCODE_MARKET_CLOSED
@@ -169,7 +180,8 @@ def marche_ferme():
 
 def _frais(p, equipe_tf, maintenant_ms):
     """Décision encore fraîche (prise à la clôture de la dernière bougie de l'unité) ?"""
-    return p and maintenant_ms - (p["ts"] + MS[equipe_tf]) < min(MS[equipe_tf], 4 * 3_600_000)
+    return p and 0 <= maintenant_ms - (p["ts"] + MS[equipe_tf]) < min(MS[equipe_tf], 4 * 3_600_000)
+
 
 
 def _taux_usd(devise):
@@ -187,12 +199,45 @@ def _taux_usd(devise):
     raise mt5.ErreurMT5(f"cours {devise}/USD introuvable pour convertir le capital")
 
 
+def _verifier_compte(compte):
+    if not compte or not compte.get("demo"):
+        raise mt5.ErreurMT5("compte démo non confirmé")
+    identite = {"login": compte.get("login"), "server": compte.get("server")}
+    if not identite["login"] or not identite["server"]:
+        raise mt5.ErreurMT5("identité du compte indisponible")
+    lie = base.lire("r2:compte_lie")
+    if lie is not None and lie != identite:
+        base.ecrire("mt5:pause", True)
+        base.ecrire("r2:compte_change", True)
+        raise mt5.ErreurMT5("compte différent de celui suivi : aucune ouverture ou fermeture automatique")
+    if lie is None:
+        base.ecrire("r2:compte_lie", identite)
+
+
 def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
+    _verifier_compte(compte)
+    if not qualification.OUVERTURES_VALIDEES or not a_le_permis(EQUIPES[cle]["tf"]):
+        raise mt5.ErreurMT5("R3 : aucun permis qualifié pour cette ouverture")
+    if base.lire("r2:ordre_incertain"):
+        base.ecrire("mt5:pause", True)
+        raise mt5.ErreurMT5("ordre précédent non réconcilié : nouvelles entrées verrouillées")
+    try:
+        return _ouvrir_impl(cle, sens, compte, pos_avant, entrainement)
+    finally:
+        # L'intention est écrite AVANT l'appel réseau, et conservée si la réponse
+        # ou la lecture de confirmation se perd. Ne jamais renvoyer l'ordre ici.
+        if base.lire("r2:ordre_incertain"):
+            base.ecrire("mt5:pause", True)
+
+
+def _ouvrir_impl(cle, sens, compte, pos_avant, entrainement=False):
     eq = EQUIPES[cle]
     specs = mt5.appel("specs")
     tick = mt5.appel("tick")
     prix = tick["ask"] if sens > 0 else tick["bid"]
     atr = _atr(eq["tf"])
+    if not math.isfinite(atr) or atr <= 0:
+        raise mt5.ErreurMT5("ATR invalide")
     stop = prix - sens * STOP_ATR * atr
     if entrainement:
         mult = MULT_ENTRAINEMENT_AGRESSIF if mode_agressif() else 1
@@ -206,18 +251,21 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
         taux = _taux_usd(compte.get("currency"))                          # capital converti en dollars (XAUUSD)
         lots, explication = mt5.volume(profil_actif(), compte["equity"] * taux, prix, stop, specs, marge_lot * taux,
                                        compte["margin_free"] * taux)
-        if lots <= 0 and mode_agressif() and marge_lot * specs["volume_min"] <= 0.9 * compte["margin_free"]:
-            lots = specs["volume_min"]                        # agressif : au moins le lot minimum, même au-delà de 3 %
-            perte = abs(prix - stop) * lots * specs["trade_contract_size"] / taux
-            explication = (f"lot minimum {lots:g} (mode agressif : perte au stop ≈ {perte:.0f} "
-                           f"{compte.get('currency', '')}, {perte / compte['equity'] * 100:.1f} % du capital)")
     if lots <= 0:
         _noter(cle, "refus", sens=sens, prix=prix, sl=stop, ok=False, message=explication)
         return f"{eq['nom']} : pas d'ordre ({explication})"
+    controle = mt5.appel("dimensionner", sens=sens, sl=stop, volume=lots)
+    lots = controle["volume"]
+    if lots <= 0:
+        return f"{eq['nom']} : pas d'ordre ({controle['motif']})"
+    base.ecrire("r2:ordre_incertain", {"ts": time.time(), "equipe": cle, "sens": sens,
+                "volume": lots, "sl": stop, "compte": compte.get("login"), "serveur": compte.get("server")})
     r = mt5.appel("ouvrir", sens=sens, volume=lots, sl=stop, magic=eq["magic"],
                   commentaire=f"armee-or {cle}")
     _noter(cle, "ouverture", r.get("ordre"), sens, lots, r.get("prix") or prix, stop, r["ok"],
            f"{r['retcode']} {r['commentaire']} · {explication}")
+    if not r["ok"] and r.get("retcode") in (10004,10006,10013,10014,10015,10016,10017,10018,10019,10021,10030):
+        base.ecrire("r2:ordre_incertain", None)
     if not r["ok"] and r["retcode"] == MARCHE_FERME:
         return f"{eq['nom']} : marché fermé, pas d'ordre"
     if not r["ok"]:
@@ -227,11 +275,17 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
     from . import apprentissage                             # mesure du glissement réel (prix demandé / obtenu)
     apprentissage.enregistrer_execution(cle, sens, prix, r.get("prix"), lots)
     suivi = base.lire("mt5:suivi", {}) or {}
+    confirme = False
     for p in mt5.appel("positions"):
         if p["magic"] == eq["magic"] and str(p["ticket"]) not in suivi and p["ticket"] not in pos_avant:
             suivi[str(p["ticket"])] = {"equipe": cle, "ouverture": time.time(), "fin": time.time() + eq["duree_h"] * 3600,
                                        "sens": sens, "volume": p["volume"], "prix": p["price_open"], "sl": p["sl"]}
+            confirme = True
     base.ecrire("mt5:suivi", suivi)
+    if confirme and r.get("retcode") in (10009,10010):
+        base.ecrire("r2:ordre_incertain", None)
+    else:
+        raise mt5.ErreurMT5("ordre accepté mais position non confirmée")
     texte = (f"🤖 MT5 démo · {eq['nom']} : {'ACHAT' if sens > 0 else 'VENTE'} {lots:g} lot "
              f"{specs.get('name') or config.MT5_SYMBOLE} ({lots * specs['trade_contract_size']:g} oz) à "
              f"{r.get('prix') or prix:.2f} · stop {stop:.2f} ({STOP_ATR:g} ATR) · fermeture prévue dans "
@@ -242,18 +296,30 @@ def _ouvrir(cle, sens, compte, pos_avant, entrainement=False):
 
 
 def fermer_tout(motif="demande", equipes=None):
-    """Ferme les positions de l'armée (toutes, ou seulement celles des équipes données)."""
+    _verifier_compte(mt5.appel("etat").get("compte"))
     faits = []
+    echecs = []
+    suivi = base.lire("mt5:suivi", {}) or {}
     for p in mt5.appel("positions"):
         if equipes is not None and PAR_MAGIC.get(p["magic"]) not in equipes:
             continue
-        r = mt5.appel("fermer", ticket=p["ticket"], commentaire=f"armee-or {motif}"[:25])
+        try:
+            r = mt5.appel("fermer", ticket=p["ticket"], commentaire=f"armee-or {motif}"[:25])
+        except mt5.ErreurMT5:
+            echecs.append(p["ticket"])
+            continue
         _noter(PAR_MAGIC.get(p["magic"], "?"), "fermeture", p["ticket"], 0, p["volume"], r.get("prix") or 0, 0,
                r["ok"], f"{motif} · {r['retcode']} {r['commentaire']}")
-        faits.append(p["ticket"])
-    suivi = base.lire("mt5:suivi", {}) or {}
-    base.ecrire("mt5:suivi", {} if equipes is None else {t: v for t, v in suivi.items() if int(t) not in faits})
+        if r["ok"]:
+            faits.append(p["ticket"])
+            suivi.pop(str(p["ticket"]), None)
+        else:
+            echecs.append(p["ticket"])
+    base.ecrire("mt5:suivi", suivi)
+    if echecs:
+        raise mt5.ErreurMT5(f"{len(faits)} fermeture(s) confirmée(s), {len(echecs)} non confirmée(s) ; suivi conservé")
     return faits
+
 
 
 # Frein du jour : il ferme les positions COURTES et bloque les nouveaux ordres, mais laisse la position de 5 jours
@@ -332,28 +398,35 @@ def bot_mt5(chef):
                              "ordre. Règle un compte démo avec « or mt5 compte ».", 6 * 3600, important=True)
         return "compte réel détecté : aucun ordre"
 
+    _verifier_compte(compte)
+
     # 0) gestionnaire de risque central : perte du jour, baisse depuis le sommet
     etat_risque, evenement = risque.controler(compte)
-    if evenement == "coupe":
+    if etat_risque.get("coupe") and (evenement == "coupe" or mt5.appel("positions")):
         fermees = fermer_tout("risque coupe")
         telegram.envoyer(f"⛔ COUPE-CIRCUIT : {etat_risque['raison']}. {len(fermees)} position(s) de l'armée fermée(s). "
                          "Plus aucun ordre jusqu'à ton feu vert : /or_risque_reprendre", important=True)
-    elif evenement == "jour":
+    elif etat_risque.get("arret_jour") == etat_risque.get("jour") and (evenement == "jour" or any(PAR_MAGIC.get(p["magic"]) in EQUIPES_COURTES for p in mt5.appel("positions"))):
         fermees = fermer_tout("risque jour", equipes=EQUIPES_COURTES)
         telegram.envoyer(f"🛑 Limite de perte du jour atteinte : {etat_risque['raison']}. {len(fermees)} position(s) "
                          "courte(s) fermée(s) ; une position 1 j reste ouverte avec son propre stop. Plus aucun "
                          "nouvel ordre jusqu'à demain.", important=True)
 
     # 1) suivi des positions : fermeture à l'horizon, positions disparues (stop touché ou fermeture manuelle)
-    positions = {p["ticket"]: p for p in mt5.appel("positions") if p["magic"] not in AUTRES_EQUIPES}
+    positions = {p["ticket"]: p for p in mt5.appel("positions")}
     suivi = base.lire("mt5:suivi", {}) or {}
     msgs = []
     seuil = gain_minimum()
     for t, p in positions.items():
         if str(t) not in suivi:
-            cle = PAR_MAGIC.get(p["magic"], "entrainement")
-            suivi[str(t)] = {"equipe": cle, "ouverture": time.time(),
-                             "fin": time.time() + EQUIPES[cle]["duree_h"] * 3600, "sens": 1 if p["type"] == 0 else -1,
+            cle = PAR_MAGIC.get(p["magic"])
+            if cle is None:
+                continue
+            ouverture = float(p.get("time", 0))
+            if not math.isfinite(ouverture) or not 0 < ouverture <= time.time()+5:
+                raise mt5.ErreurMT5("date d'ouverture courtier invalide")
+            suivi[str(t)] = {"equipe": cle, "ouverture": ouverture,
+                             "fin": ouverture + EQUIPES[cle]["duree_h"] * 3600, "sens": 1 if p["type"] == 0 else -1,
                              "volume": p["volume"], "prix": p["price_open"], "sl": p["sl"]}
     for t, s in list(suivi.items()):
         if int(t) not in positions:
@@ -385,8 +458,20 @@ def bot_mt5(chef):
                                      f"{gain:+.2f} {compte['currency']}.")
     base.ecrire("mt5:suivi", suivi)
 
+    # Mode expérimental explicitement activé : son pont vérifie le compte, les
+    # règles, la taille et les protections. Les anciennes équipes restent verrouillées.
+    from . import demo_auto
+    message_demo = demo_auto.cycle(chef)
+    if message_demo is not None:
+        return "; ".join(msgs + [message_demo])
+
     # 2) nouvelles positions
-    if chef.pause or base.lire("mt5:pause"):
+    if not qualification.OUVERTURES_VALIDEES:
+        return "; ".join(msgs + [qualification.MOTIF])
+    if base.lire("r2:ordre_incertain") or base.lire("r2:compte_change"):
+        base.ecrire("mt5:pause", True)
+        return "; ".join(msgs + ["incident non réconcilié : entrées bloquées"])
+    if chef.pause or base.lire("mt5:pause", True):
         return "; ".join(msgs + ["ordres en pause"])
     permis_risque, raison_risque = risque.autorise(etat_risque)
     if not permis_risque:
@@ -573,20 +658,18 @@ def rapport_trades():
 
 
 def permis_exige():
-    """« Que du prouvé » (True, par défaut) ou bots actifs sans preuve (False, choix du propriétaire)."""
-    v = base.lire("mt5:permis_exige")
-    return True if v is None else bool(v)
+    """Obligatoire, aucun ancien réglage ne le contourne."""
+    return True
 
 
 TOUJOURS_SOUS_PERMIS = ("4h",)      # perdante sur tout l'historique et en direct (-187 € sur 4 trades, 3/10/2026)
 
 
 def a_le_permis(tf):
-    """« Que du prouvé » : aucun ordre sans permis (voir chef.permis_de_trader), sauf si le propriétaire l'a levé.
-    L'équipe 4 h reste sur la touche sans permis, même bots actifs ou en mode agressif."""
-    if not permis_exige() and tf not in TOUJOURS_SOUS_PERMIS:
-        return True
-    return bool(((base.lire("mt5:permis") or {}).get(tf) or {}).get("ok"))
+    if not qualification.OUVERTURES_VALIDEES:
+        return False
+    p = base.lire("mt5:permis") or {}
+    return bool((p.get(tf) or {}).get("ok"))
 
 
 def texte_permis(permis=None):
@@ -624,6 +707,11 @@ def rapport_mt5():
     lignes = [f"MT5 {'DÉMO' if c['demo'] else 'RÉEL (aucun ordre)'} · compte …{str(c['login'])[-3:]} · solde "
               f"{c['balance']:.2f} · équité {c['equity']:.2f} {c['currency']} · levier du compte 1:{c['leverage']}"
               + (" · ⏸ ordres en pause" if base.lire("mt5:pause") else "")]
+    from . import marches
+    lignes.append(marches.ligne_courte())
+    if base.lire("r4:configure"):
+        from . import demo_auto
+        return "\n".join(lignes + [demo_auto.texte()])
     g = gain_minimum()
     regle = f"gain pris dès +{g:g} {c['currency']}" if g else "prise de gain arrêtée"
     lignes.append(f"Profil des décisions : {profil_actif()} · entraînement {'actif' if entrainement_actif() else 'arrêté'}"
@@ -633,6 +721,7 @@ def rapport_mt5():
                       "permis), 3 % risqué par décision, "
                       f"entraînement {MULT_ENTRAINEMENT_AGRESSIF} × le lot minimum, freins 3 %/jour et 10 % "
                       "(/or_agressif_off pour revenir)")
+    lignes.append(qualification.MOTIF)
     lignes.append(texte_permis())
     lignes.append(risque.texte())
     for t, s in (base.lire("mt5:suivi", {}) or {}).items():

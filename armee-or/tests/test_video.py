@@ -118,6 +118,7 @@ def courtier(monkeypatch):
     messages = []
     monkeypatch.setattr(telegram, "envoyer", lambda t, important=False, **k: messages.append(t) or True)
     f.messages = messages
+    base.ecrire("video:actif", True)                           # comme après /or_video_on (R5 : éteinte par défaut)
     yield f
     serveur.shutdown()
     serveur.server_close()
@@ -227,8 +228,47 @@ def test_pilotage_de_l_equipe_video_depuis_telegram(courtier, monkeypatch):
     assert any("Gain inconnu" in t for t in courtier.messages)
     assert any(t.startswith("🎰 Équipe vidéo — 2e compte DÉMO") for t in courtier.messages)
     assert courtier.positions == [] and "2/2 positions fermées" in courtier.messages[-1]
-    assert video.bot_video() == "nouveaux paniers en pause" and courtier.positions == []
+    assert video.bot_video() == "équipe vidéo désactivée (/or_video_on)" and courtier.positions == []
     assert any(n == "or_video" for n, _ in telegram.MENU)
+
+
+def test_r5_eteinte_par_defaut_puis_activation_explicite(courtier, monkeypatch):
+    base.ecrire("video:actif", None)
+    assert not video.actif() and video.bot_video() == "équipe vidéo désactivée (/or_video_on)"
+    assert courtier.envois == [] and "DÉSACTIVÉE" in video.texte_video()
+    base.ecrire("pause", True)
+    courtier.trade_mode = 2                                                      # compte réel : activation refusée
+    assert "NON activée" in video.commande("/or_video_on") and not video.actif()
+    courtier.trade_mode = 0
+    monkeypatch.setattr(telegram, "commandes", lambda: ["/or_video_on"])
+    le_chef = type("Chef", (), {"pause": True})()
+    chef.bot_commandes(le_chef)
+    assert video.actif() and not le_chef.pause and base.lire("pause") is False
+    assert any("ACTIVÉE" in t and "99,98 %" in t for t in courtier.messages)
+    assert video.bot_video(chef=le_chef).startswith("panier : ")
+
+
+def test_le_pont_de_l_armee_refuse_le_chemin_video_et_inversement():
+    f = FauxCourtier()
+    armee = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN_VIDEO), "OR_MT5_SYMBOLE": "XAUUSDm"})
+    r = armee.traiter({"op": "video_ouvrir", "sens": 1, "volume": 0.01})
+    assert not r["ok"] and "instance video" in r["erreur"] and f.envois == []
+    vid = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN_VIDEO), "OR_MT5_SYMBOLE": "XAUUSDm"}, instance="video")
+    for op in ("ouvrir", "dimensionner", "demo_mode", "demo_cycle", "marches_ouvrir"):
+        r = vid.traiter({"op": op, "sens": 1, "volume": 0.01, "sl": 1.0, "symbole": "XAUUSDm", "actif": True})
+        assert not r["ok"] and "réservée au compte de l'armée" in r["erreur"], op
+    assert f.envois == []
+    for _ in range(10):
+        assert vid.traiter({"op": "video_ouvrir", "sens": 1, "volume": 0.01})["r"]["ok"]
+    r = vid.traiter({"op": "video_ouvrir", "sens": 1, "volume": 0.01})["r"]                  # 10 positions au plus
+    assert not r["ok"] and r["avant_envoi"] and "10 positions" in r["commentaire"]
+    f.positions = []
+    f.order_calc_margin = lambda t, s, v, p: 9.5                                           # 96 % de 9,88 $ : refusé
+    r = vid.traiter({"op": "video_ouvrir", "sens": -1, "volume": 0.01})["r"]
+    assert not r["ok"] and "95 %" in r["commentaire"]
+    f.trade_mode = 2
+    r = vid.traiter({"op": "video_ouvrir", "sens": 1, "volume": 0.01})["r"]
+    assert not r["ok"] and "démo" in r["commentaire"] and len(f.envois) == 10              # rien envoyé en réel
 
 
 def test_equipe_video_absente_sans_reglage(monkeypatch):

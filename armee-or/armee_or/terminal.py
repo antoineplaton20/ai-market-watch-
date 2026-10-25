@@ -133,14 +133,14 @@ def marche_ouvert(maintenant=None):
 
 # ============================================================================ données
 DUREE_TF = {"1m": 60, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400}
-NOMS_SOURCES = {"MT5": "courtier MT5", "XAUUSDT": "Binance XAUUSDT", "PAXGUSDT": "Binance PAXG"}
+NOMS_SOURCES = {"MT5_UTC_R3": "courtier MT5 UTC", "MT5": "courtier MT5", "XAUUSDT": "Binance XAUUSDT", "PAXGUSDT": "Binance PAXG"}
 
 
 def serie(tf, n, maintenant=None):
     """Bougies les plus fiables disponibles : celles du courtier MT5 si elles sont à jour, sinon Binance."""
     m = maintenant or time.time()
-    for s in ("MT5", config.SOURCE_PRINCIPALE, "PAXGUSDT"):
-        if s == "MT5" and tf == "1m":
+    for s in ("MT5_UTC_R3", config.SOURCE_PRINCIPALE, "PAXGUSDT"):
+        if s == "MT5_UTC_R3" and tf == "1m":
             continue
         b = donnees.charger(s, tf, limite=n)
         if len(b["c"]) >= min(n, 30) and m - b["ts"][-1] / 1000 < 3 * DUREE_TF[tf] + 3 * 86400:

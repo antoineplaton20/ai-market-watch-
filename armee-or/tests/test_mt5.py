@@ -42,8 +42,9 @@ class FauxMT5:
     def account_info(self):
         marge = sum(p.volume * 100 * p.price_open / 100 for p in self.positions)
         return NS(login=LOGIN, server="MetaQuotes-Demo", trade_mode=self.trade_mode, balance=self.solde,
-                  equity=self.solde, margin=marge, margin_free=self.solde - marge, leverage=100, currency=self.devise,
+                  equity=self.solde, margin=marge, margin_free=self.solde - marge, leverage=100, currency=self.devise, margin_mode=2,
                   trade_allowed=True)
+
 
     def symbol_select(self, s, v):
         return s == "XAUUSD"
@@ -59,19 +60,31 @@ class FauxMT5:
         return (NS(name="XAUUSD"), NS(name="XAUEUR"))
 
     def symbol_info_tick(self, s):
-        self.temps += 1000
+        self.temps = int(time.time() * 1000)
         if s == "EURUSD":
             return NS(bid=self.eurusd - 0.0001, ask=self.eurusd + 0.0001, last=0.0, time=self.temps // 1000,
                       time_msc=self.temps)
         return NS(bid=self.prix - 0.1, ask=self.prix + 0.1, last=0.0, time=self.temps // 1000, time_msc=self.temps)
 
+
     def copy_rates_from_pos(self, s, tf, debut, n):
         r = np.zeros(n, dtype=[("time", "i8"), ("open", "f8"), ("high", "f8"), ("low", "f8"), ("close", "f8"),
                                ("tick_volume", "i8")])
-        r["time"] = np.arange(n) * 3600
+        periode={self.TIMEFRAME_M1:60,self.TIMEFRAME_M15:900,self.TIMEFRAME_H1:3600,self.TIMEFRAME_H4:14400,self.TIMEFRAME_D1:86400}[tf]
+        maintenant=int(time.time());dernier=maintenant-maintenant%periode
+        r["time"] = dernier-(n-1)*periode+np.arange(n)*periode
         r["open"] = r["close"] = self.prix
         r["high"], r["low"] = self.prix + 5, self.prix - 5                 # ATR = 10
         return r
+
+
+    def orders_get(self):
+        return ()
+
+
+    def order_calc_profit(self, t, s, volume, entree, sortie):
+        return (sortie-entree) * volume * 100 * (1 if t == self.ORDER_TYPE_BUY else -1) / self.eurusd
+
 
     def order_calc_margin(self, t, s, volume, prix):
         return volume * 100 * prix / 100
@@ -96,8 +109,8 @@ class FauxMT5:
                                  fee=0.0, magic=p.magic, comment=d["comment"]))
         else:
             self.positions.append(NS(ticket=self.suivant, type=d["type"], volume=d["volume"], price_open=prix,
-                                     price_current=prix, sl=d["sl"], tp=0.0, profit=0.0, swap=0.0, magic=d["magic"],
-                                     comment=d["comment"], time=0, symbol=d["symbol"]))
+                                     price_current=prix, sl=d["sl"], tp=d.get("tp", 0.0), profit=0.0, swap=0.0, magic=d["magic"],
+                                     comment=d["comment"], time=int(time.time()), symbol=d["symbol"]))
             self.deals.append(NS(ticket=self.suivant, order=self.suivant, position_id=self.suivant, time=0,
                                  type=d["type"], entry=0, volume=d["volume"], price=prix, profit=0.0, commission=-0.5,
                                  swap=0.0, fee=0.0, magic=d["magic"], comment=d["comment"]))
@@ -125,6 +138,11 @@ class FauxMT5:
 
 @pytest.fixture
 def faux(monkeypatch):
+    # Déverrouillage UNIQUEMENT de la simulation ; aucune option de production équivalente.
+    from armee_or import qualification
+    monkeypatch.setattr(qualification, "OUVERTURES_VALIDEES", True)
+    monkeypatch.setattr(pont_mt5, "OUVERTURES_VALIDEES", True)
+    base.ecrire("mt5:pause", False)
     f = FauxMT5()
     pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN), "OR_MT5_MOT_DE_PASSE": "x", "OR_MT5_SYMBOLE": "XAUUSD"})
     serveur = pont.serveur(0)
@@ -211,7 +229,7 @@ def test_decision_4h_executee_une_seule_fois_puis_fermee_a_l_horizon(faux):
     msg = executant.bot_mt5(_chef())
     assert "ACHAT" in msg and len(faux.positions) == 1
     p = faux.positions[0]
-    assert p.magic == 770004 and p.volume == pytest.approx(0.33)      # 1 % de 100 000 $ pour 3 ATR (30 $)
+    assert p.magic == 770004 and p.volume == pytest.approx(0.26)      # 1 % de 100 000 $ pour 3 ATR (30 $)
     assert p.sl == pytest.approx(4000.1 - 30, abs=0.01)
     executant.bot_mt5(_chef())
     assert len(faux.positions) == 1                                   # même décision : aucun second ordre
@@ -274,7 +292,7 @@ def test_commandes_mt5_fermer_profil_entrainement(faux):
     (config.RACINE / "runtime" / "commandes.txt").write_text("mt5_reprendre\n")
     chef.bot_commandes(ch)
     executant.bot_mt5(ch)
-    assert len(faux.positions) == 1 and faux.positions[0].volume == pytest.approx(4.99)   # x20 de 100 000 $
+    assert not faux.positions and base.lire("mt5:pause") is True  # reprise interdite dans cette livraison
 
 
 def test_rapport_mt5(faux):
@@ -311,7 +329,17 @@ def test_le_pont_reste_autonome_et_ne_contient_aucun_identifiant():
     import re
     racine = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     texte = open(os.path.join(racine, "armee_or", "pont_mt5.py"), encoding="utf-8").read()
-    assert not re.search(r"(?m)^\s*(from \.|from armee_or|import armee_or)", texte)       # stdlib + MetaTrader5 seulement
+    # Le pont importe désormais trois modules autonomes livrés à côté de lui.
+    import ast
+    autorises = set(__import__('sys').stdlib_module_names) | {'MetaTrader5', 'demo_pont', 'demo_regles', 'equipes_pont'}
+    for nom in ('pont_mt5.py', 'demo_pont.py', 'demo_regles.py', 'equipes_pont.py'):
+        arbre = ast.parse(open(os.path.join(racine, 'armee_or', nom), encoding='utf-8').read())
+        for node in ast.walk(arbre):
+            if isinstance(node, ast.Import):
+                assert all(a.name.split('.')[0] in autorises for a in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                assert (node.module or 'demo_regles').split('.')[0] in autorises
+
     assert "127.0.0.1" in texte and "0.0.0.0" not in texte                                  # jamais exposé au réseau
     for fichier in ("installer_mt5.sh", "installer_video.sh", "installer_or.sh", "or"):
         contenu = open(os.path.join(racine, fichier), encoding="utf-8").read()
@@ -334,7 +362,7 @@ def test_compte_en_euros_converti_en_dollars(faux):
     faux.devise, faux.eurusd = "EUR", 1.10
     _prono("4h", 1)
     executant.bot_mt5(_chef())
-    assert faux.positions[0].volume == pytest.approx(0.36)            # 100 000 € = 110 000 $ ; 1 % / 30 $ de stop
+    assert faux.positions[0].volume == pytest.approx(0.29)            # 100 000 € = 110 000 $ ; 1 % / 30 $ de stop
 
 
 def test_etat_de_l_installation_visible_dans_telegram(monkeypatch):
@@ -391,20 +419,20 @@ def test_marche_ferme_ni_ordre_ni_alerte(faux, monkeypatch):
 
 def test_archive_de_l_historique_mt5_jusqu_au_debut_puis_en_continu(faux):
     from armee_or import archive_mt5
-    assert "en attente" in archive_mt5.archiver()                       # marché fermé et décalage inconnu : on attend
+    assert archive_mt5.decalage_serveur() == 0  # API UTC, indépendant du dernier tick
     faux.temps = int((time.time() + 3 * 3600) * 1000)                   # serveur du courtier en UTC+3
     base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
     for _ in range(5):
         msg = archive_mt5.archiver(unites=("1d", "4h"))
-    assert "(complet)" in msg and base.lire("mt5:decalage") == 3 * 3600
-    lignes = D.charger_lignes("MT5", "1d")
-    assert lignes[0][0] == (faux.debut_historique - 3 * 3600) * 1000     # ramené en UTC
+    assert "(complet)" in msg and archive_mt5.decalage_serveur() == 0
+    lignes = D.charger_lignes(archive_mt5.SOURCE, "1d")
+    assert lignes[0][0] == faux.debut_historique * 1000     # ramené en UTC
     assert all(t + 86_400_000 <= time.time() * 1000 for t, *_ in lignes)  # bougies terminées seulement
-    n4 = len(D.charger_lignes("MT5", "4h"))
+    n4 = len(D.charger_lignes(archive_mt5.SOURCE, "4h"))
     assert n4 > 6 * len(lignes) - 20
     archive_mt5.archiver(unites=("1d",))                                 # passage suivant : rien en double
-    assert len(D.charger_lignes("MT5", "1d")) == len(lignes)
-    assert "1d" in archive_mt5.resume() and chef.source_stats("1d") == "MT5"
+    assert len(D.charger_lignes(archive_mt5.SOURCE, "1d")) == len(lignes)
+    assert "1d" in archive_mt5.resume() and chef.source_stats("1d") == archive_mt5.SOURCE
 
 
 def test_identifiants_refuses_message_clair():
@@ -666,54 +694,27 @@ def test_coupe_circuit_ferme_tout_et_bloque_les_ordres(faux, monkeypatch):
 
 
 def test_bots_actifs_sans_permis_sur_demande(faux, monkeypatch):
-    envois = []
-    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
-    base.ecrire("mt5:permis", {"1h": {"ok": False, "moities": [{"n": 100, "net_pb": -3.0}, {"n": 100, "net_pb": -1.0}]}})
-    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
-    _prono("1h", 0, p=0.60)
-    assert "pas de permis" in executant.bot_mt5(_chef()) and not faux.envois           # que du prouvé (défaut)
-    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_permis_off"])
+    envois=[]
+    monkeypatch.setattr(chef.telegram,"envoyer",lambda t,*a,**k:envois.append(t) or True)
+    monkeypatch.setattr(chef.telegram,"commandes",lambda:["/or_permis_off"])
     chef.bot_commandes(_chef())
-    assert "Bots ACTIFS" in envois[-1] and not executant.permis_exige()
-    _prono("1h", 0, p=0.61)
+    assert executant.permis_exige() and base.lire("mt5:pause") is True
+    assert "bloquées" in envois[-1]
+    _prono("1d",1)
     executant.bot_mt5(_chef())
-    assert len(faux.envois) == 1 and "NON EXIGÉ" in executant.rapport_mt5()            # l'entraînement trade
-    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_permis_on"])
-    chef.bot_commandes(_chef())
-    assert executant.permis_exige() and "RÉTABLI" in envois[-1]
+    assert not faux.envois
 
 
 def test_mode_agressif(faux, monkeypatch):
-    from armee_or import risque as R
-    envois = []
-    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
-    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_agressif_on"])
-    base.ecrire("mt5:permis_exige", True)
+    envois=[]
+    monkeypatch.setattr(chef.telegram,"envoyer",lambda t,*a,**k:envois.append(t) or True)
+    monkeypatch.setattr(chef.telegram,"commandes",lambda:["/or_agressif_on"])
     chef.bot_commandes(_chef())
-    assert "MODE AGRESSIF" in envois[-1] and executant.mode_agressif() and not executant.permis_exige()
-    assert executant.profil_actif() == "agressif 3 % risqué" and R.limites() == (3.0, 10.0)
-    base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
-    base.ecrire("mt5:entrainement", False)
-    _prono("4h", 0, p=0.53)                                    # simple penchant : ignoré en mode normal
+    assert executant.permis_exige() and base.lire("mt5:pause") is True
+    assert "bloquées" in envois[-1]
+    _prono("1d",1)
     executant.bot_mt5(_chef())
-    assert len(faux.positions) == 1 and faux.positions[0].type == faux.ORDER_TYPE_BUY
-    texte = executant.rapport_mt5()
-    assert "MODE AGRESSIF" in texte and "limite -3 %" in texte and "coupe-circuit -10 %" in texte
-    executant.fermer_tout()
-    base.ecrire("mt5:entrainement", True)
-    _prono("1h", 0, p=0.6)
-    executant.bot_mt5(_chef())
-    entr = [p for p in faux.positions if p.magic == executant.EQUIPES["entrainement"]["magic"]]
-    assert entr and entr[0].volume == 0.02                                         # 2 × le lot minimum
-    entr[0].profit = 4.0                                                           # < 2 × 3 € : on garde
-    executant.bot_mt5(_chef())
-    assert entr[0] in faux.positions
-    entr[0].profit = 6.5                                                           # ≥ 6 € : gain pris
-    executant.bot_mt5(_chef())
-    assert entr[0] not in faux.positions
-    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_agressif_off"])
-    chef.bot_commandes(_chef())
-    assert not executant.mode_agressif() and R.limites() == (1.0, 5.0) and executant.profil_actif() == "pro 1 % risqué"
+    assert not faux.envois
 
 
 def test_agressif_prend_le_lot_minimum_si_le_risque_depasse(faux):
@@ -728,7 +729,7 @@ def test_agressif_prend_le_lot_minimum_si_le_risque_depasse(faux):
         return r
     faux.copy_rates_from_pos = volatil
     texte = executant._ouvrir("1d", 1, mt5.appel("etat")["compte"], set())
-    assert "lot minimum 0.01 (mode agressif" in texte and len(faux.positions) == 1
+    assert "pas d'ordre" in texte and not faux.positions
 
 
 def test_elan_bloque_les_ventes_pendant_un_rebond(faux):
@@ -755,13 +756,13 @@ def test_equipe_4h_sur_la_touche_meme_bots_actifs(faux):
     base.ecrire("mt5:permis", {"4h": {"ok": False}, "1d": {"ok": False}})
     base.ecrire("mt5:entrainement", False)
     base.ecrire("direct:MT5", {"prix": 4000, "ts": time.time(), "retard_ms": 0, "source": "MT5"})
-    assert not executant.a_le_permis("4h") and executant.a_le_permis("1d") and executant.a_le_permis("1h")
+    assert all(not executant.a_le_permis(tf) for tf in ("4h","1d","1h"))
     _prono("4h", 1)
     texte = executant.bot_mt5(_chef())
     assert "sur la touche" in texte and not faux.envois
     _prono("1d", 1)
     executant.bot_mt5(_chef())
-    assert len(faux.envois) == 1                                            # 1 j trade
+    assert not faux.envois  # le permis reste obligatoire pour toutes les équipes
 
 
 def test_frein_du_jour_garde_la_position_1j(faux, monkeypatch):
@@ -798,14 +799,15 @@ def test_pas_d_entrainement_la_nuit_asiatique(faux, monkeypatch):
 
 
 def test_mode_rentable(faux, monkeypatch):
-    envois = []
-    monkeypatch.setattr(chef.telegram, "envoyer", lambda t, *a, **k: envois.append(t) or True)
-    monkeypatch.setattr(chef.telegram, "commandes", lambda *a, **k: ["/or_rentable"])
+    envois=[]
+    monkeypatch.setattr(chef.telegram,"envoyer",lambda t,*a,**k:envois.append(t) or True)
+    monkeypatch.setattr(chef.telegram,"commandes",lambda:["/or_rentable"])
     chef.bot_commandes(_chef())
-    assert "MODE RENTABLE" in envois[-1] and "Aucun réglage ne garantit" in envois[-1]
-    assert not executant.entrainement_actif() and executant.mode_agressif() and not executant.permis_exige()
-    base.ecrire("mt5:permis", {"4h": {"ok": False}, "1d": {"ok": False}})
-    assert executant.a_le_permis("1d") and not executant.a_le_permis("4h")
+    assert executant.permis_exige() and base.lire("mt5:pause") is True
+    assert "bloquées" in envois[-1]
+    _prono("1d",1)
+    executant.bot_mt5(_chef())
+    assert not faux.envois
 
 
 

@@ -1,143 +1,85 @@
 #!/usr/bin/env bash
-# TÉLÉCOMMANDE DE L'ARMÉE DE L'OR (indépendante de « bots »). Tape « or » pour l'aide.
+# Télécommande R5 : arguments transmis comme données, jamais évalués par le shell.
+set -euo pipefail
 DOSSIER=/home/bots/armee-or
-PY="$DOSSIER/.venv/bin/python"
-en_bots() { runuser -u bots -- bash -c "cd '$DOSSIER' && $*"; }
-SERVICES="armee-or-flux armee-or-chef"
-[ -f /etc/systemd/system/armee-or-mt5.service ] && SERVICES="armee-or-mt5 $SERVICES"
-[ -f /etc/systemd/system/armee-or-mt5-video.service ] && SERVICES="armee-or-mt5-video $SERVICES"
-[ "$(id -u)" -eq 0 ] || { echo "Lance les commandes « or » en root (c'est le cas par défaut)."; exit 1; }
-CMD="${1:-aide}"; CMD="${CMD,,}"                       # GO, Gp, go : même code
-case "$CMD" in
-  go|gp|gip|eco|top|wei|corr|rv|niv|cot|des|risk|codes)
-    runuser -u bots -- bash -c 'cd "$1" && shift && exec .venv/bin/python -m armee_or terminal "$@"' _ "$DOSSIER" "$CMD" "${@:2}" ;;
-  etat|rapport) en_bots "$PY -m armee_or etat"; echo; for n in $(echo $SERVICES | sed 's/armee-or-//g'); do systemctl is-active --quiet armee-or-$n && echo "● armee-or-$n en marche" || echo "● armee-or-$n ARRÊTÉ"; done ;;
-  levier) en_bots "$PY -m armee_or levier" ;;
-  bilan) echo "Calcul sur tout l'historique (quelques secondes)..."; en_bots "$PY -m armee_or bilan" ;;
-  bibliotheque) en_bots "$PY -m armee_or bibliotheque" ;;
-  bougies) en_bots "$PY -m armee_or bougies" ;;
-  veille) en_bots "$PY -m armee_or veille" ;;
-  apprentissage) en_bots "$PY -m armee_or apprentissage" ;;
-  verif) en_bots "$PY -m armee_or verif" ;;
-  brief) en_bots "$PY -m armee_or brief" ;;
-  sauvegarde) en_bots "$PY -m armee_or sauvegarde" ;;
-  restaurer)
-    echo "Restauration : l'armée s'arrête le temps de l'opération (tes autres bots continuent)."
-    systemctl stop armee-or-chef armee-or-flux
-    runuser -u bots -- bash -c 'cd "$1" && shift && exec .venv/bin/python -m armee_or restaurer "$@"' _ "$DOSSIER" "${@:2}"
-    RC=$?; systemctl start armee-or-flux armee-or-chef; [ $RC -eq 0 ] && echo "Armée relancée." || echo "Échec : rien n'a été modifié si le fichier était illisible. Armée relancée."; exit $RC ;;
-  risque) [[ "${2:-}" =~ ^(reprendre)?$ ]] || { echo "Usage : or risque [reprendre]"; exit 1; }; en_bots "$PY -m armee_or risque ${2:-}" ;;
-  alerte|alertes) runuser -u bots -- bash -c 'cd "$1" && shift && exec .venv/bin/python -m armee_or "$@"' _ "$DOSSIER" "$CMD" "${@:2}" ;;
-  pause|reprise) en_bots "$PY -m armee_or commande $1" ;;
-  test) en_bots "$PY -m armee_or test" ;;
-  journal) echo "Journal en direct (Ctrl+C pour quitter)"; tail -n 60 -f "$DOSSIER/runtime/or.log" ;;
-  demarrer) systemctl enable --now $SERVICES && echo "Armée de l'or démarrée." ;;
-  arreter) systemctl disable --now $SERVICES && echo "Armée de l'or arrêtée (tes autres bots continuent ; positions MT5 laissées telles quelles, stops en place)." ;;
-  redemarrer) systemctl restart $SERVICES && echo "Armée de l'or redémarrée." ;;
-  mt5)
-    case "${2:-etat}" in
-      etat) en_bots "$PY -m armee_or mt5"; systemctl is-active --quiet armee-or-mt5 && echo "● armee-or-mt5 en marche" || echo "● armee-or-mt5 ARRÊTÉ (or mt5 journal)" ;;
-      fermer) en_bots "$PY -m armee_or commande mt5_fermer" ;;
-      reprendre) en_bots "$PY -m armee_or commande mt5_reprendre" ;;
-      profil) [ -n "${3:-}" ] || { echo "Usage : or mt5 profil x1|x3|x5|x10|x20|x50|pro"; exit 1; }; en_bots "$PY -m armee_or commande mt5_profil $3" ;;
-      rentable) en_bots "$PY -m armee_or commande mt5_rentable" ;;
-      agressif) [[ "${3:-}" =~ ^(on|off)$ ]] || { echo "Usage : or mt5 agressif on|off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_agressif $3" ;;
-      permis) [[ "${3:-}" =~ ^(on|off)$ ]] || { echo "Usage : or mt5 permis on (que du prouvé) | off (bots actifs)"; exit 1; }; en_bots "$PY -m armee_or commande mt5_permis $3" ;;
-      tendance) [[ "${3:-}" =~ ^(on|off)$ ]] || { echo "Usage : or mt5 tendance on|off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_tendance $3" ;;
-      gain) [[ "${3:-}" =~ ^([0-9]+([.,][0-9]+)?|off)$ ]] || { echo "Usage : or mt5 gain 3 (euros) | off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_gain $3" ;;
-      entrainement) [[ "${3:-}" =~ ^(on|off)$ ]] || { echo "Usage : or mt5 entrainement on|off"; exit 1; }; en_bots "$PY -m armee_or commande mt5_entrainement $3" ;;
-      journal) journalctl -u armee-or-mt5 -n 80 -f ;;
-      compte) sed -i '/^# MetaTrader 5/d;/^OR_MT5_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_mt5.sh" ;;   # il relance lui-même flux et chef
-      installer) bash "$DOSSIER/installer_mt5.sh" ;;   # il relance lui-même flux et chef
-      *) echo "or mt5 [etat|fermer|reprendre|profil X|entrainement on|off|gain X|off|tendance on|off|permis on|off|agressif on|off|rentable|journal|compte|installer]" ;;
-    esac ;;
-  video)
-    case "${2:-etat}" in
-      etat) en_bots "$PY -m armee_or video"; systemctl is-active --quiet armee-or-mt5-video && echo "● armee-or-mt5-video en marche" || echo "● armee-or-mt5-video ARRÊTÉ (or video journal)" ;;
-      on|off|fermer) en_bots "$PY -m armee_or commande video_$2" ;;
-      symbole) [[ "${3:-}" =~ ^[A-Za-z0-9._#-]+$ ]] || { echo "Usage : or video symbole EURUSD (ou or)"; exit 1; }; en_bots "$PY -m armee_or commande video_symbole $3" ;;
-      gain) [[ "${3:-}" =~ ^[0-9]+([.,][0-9]+)?$ ]] || { echo "Usage : or video gain 2 (\$ par once)"; exit 1; }; en_bots "$PY -m armee_or commande video_gain $3" ;;
-      rejouer) en_bots "$PY -m armee_or video rejouer" ;;
-      journal) journalctl -u armee-or-mt5-video -n 80 -f ;;
-      compte) sed -i '/^# Équipe vidéo/d;/^OR_VIDEO_/d' "$DOSSIER/.env"; bash "$DOSSIER/installer_video.sh" ;;
-      installer) bash "$DOSSIER/installer_video.sh" ;;
-      *) echo "or video [etat|on|off|fermer|gain X|rejouer|journal|compte|installer]" ;;
+[ "$(id -u)" -eq 0 ] || { echo 'Utilise Termius en root.'; exit 1; }
+python_or() {
+  runuser -u bots -- bash -c 'cd "$1"; shift; exec .venv/bin/python -m armee_or "$@"' _ "$DOSSIER" "$@"
+}
+CMD="${1:-aide}"
+shift || true
+case "${CMD,,}" in
+  etat|rapport) python_or etat ;;
+  recherche|diagnostic|registre|grands|levier|bilan|bibliotheque|bougies|veille|apprentissage|verif|brief|test|alerte|alertes)
+    python_or "${CMD,,}" "$@" ;;
+  go|gp|gip|eco|top|wei|corr|rv|niv|cot|des|risk|codes) python_or terminal "${CMD,,}" "$@" ;;
+  demo)
+    case "${1:-etat}" in
+      on|off) python_or commande "demo_$1" ;;
+      etat) python_or demo ;;
+      *) echo 'or demo [etat|on|off]'; exit 2 ;;
     esac ;;
   marches)
-    case "${2:-etat}" in
-      etat) en_bots "$PY -m armee_or marches" ;;
-      on|off|fermer) en_bots "$PY -m armee_or commande marches_$2" ;;
-      *) echo "or marches [etat|on|off|fermer]" ;;
+    case "${1:-etat}" in
+      etat) python_or marches ;;
+      on|off|fermer) python_or commande "marches_$1" ;;
+      *) echo 'or marches [etat|on|off|fermer]'; exit 2 ;;
     esac ;;
-  config) rm -f "$DOSSIER/.env.ancien"; mv "$DOSSIER/.env" "$DOSSIER/.env.ancien" 2> /dev/null; bash "$DOSSIER/installer_or.sh" ;;
-  maj)
-    # mise à jour depuis le téléphone : télécharge la dernière version publiée sur GitHub et relance l'installation
-    URL="https://github.com/antoineplaton20/ai-market-watch-/archive/refs/heads/claude/termius-binance-bot-optimization-g98ihl.tar.gz"
-    TMP=$(mktemp -d)
-    echo "Téléchargement de la dernière version de l'armée…"
-    curl -fsSL --retry 3 "$URL" | tar -xz -C "$TMP" || { echo "Téléchargement impossible (réseau ?). Réessaie : or maj"; rm -rf "$TMP"; exit 1; }
-    NOUVEAU=$(dirname "$(find "$TMP" -path '*/armee-or/installer_or.sh' | head -n 1)")
-    [ -f "$NOUVEAU/installer_or.sh" ] || { echo "Version téléchargée incomplète."; rm -rf "$TMP"; exit 1; }
-    RC=0; bash "$NOUVEAU/installer_or.sh" || RC=$?; rm -rf "$TMP"; exit $RC ;;
-  maj-auto)
-    # lancée par le service armee-or-maj (demande /or_maj sur Telegram) : même mise à jour, résultat sur Telegram
-    LOG=/var/log/armee-or-maj.log                    # journal root, hors du dossier modifiable par « bots »
-    if "$0" maj < /dev/null > "$LOG" 2>&1; then RES="✅ Mise à jour installée."; else RES="❌ Mise à jour échouée : envoie-moi ce message."; fi
-    FIN=$(tail -n 12 "$LOG" | sed 's/\x1b\[[0-9;]*m//g')
-    runuser -u bots -- bash -c 'cd "$1" && .venv/bin/python -c "import sys; from armee_or import telegram; telegram.envoyer(sys.argv[1], True)" "$2"' \
-      _ "$DOSSIER" "$RES"$'\n'"$FIN" || true ;;
-  mettre-a-jour)
-    [ -f "${2:-}" ] || { echo "Usage : or mettre-a-jour /root/armee-or-vX.zip"; exit 1; }
-    TMP=$(mktemp -d); unzip -q "$2" -d "$TMP" || { echo "Zip illisible."; exit 1; }
-    NOUVEAU=$(dirname "$(find "$TMP" -name installer_or.sh | head -n 1)")
-    [ -f "$NOUVEAU/installer_or.sh" ] || { echo "Ce zip ne contient pas l'armée de l'or."; exit 1; }
-    bash "$NOUVEAU/installer_or.sh"; rm -rf "$TMP" ;;
-  *) cat <<AIDE
-TERMINAL DE L'OR (codes courts, comme un terminal financier) :
-  or go            écran de lancement EN DIRECT (Ctrl+C pour quitter)
-  or gp 4h         graphique (15m, 1h, 4h, 1d) · or gip : intraday minute
-  or eco · or top  agenda des annonces · actualités
-  or wei · or corr marchés liés · corrélations avec l'or
-  or rv · or niv   or / argent sur 10 ans · niveaux clés
-  or cot · or des · or risk   spéculateurs · fiche instrument · compte et permis
-  or codes         tous les codes
-  or risque        perte du jour et coupe-circuit · or risque reprendre : feu vert après une coupure
-  or sauvegarde    sauvegarder maintenant (sinon chaque nuit vers 3 h) · or restaurer [code] : restauration
-  or brief         brief du matin (envoyé seul chaque jour de semaine à 8 h sur Telegram)
-  or alerte 4200   alerte Telegram quand l'or touche 4 200 $ (ou +1%, -0.5%) · or alertes · or alerte suppr 2
-
-Armée de l'or (indépendante de tes autres bots) :
-  or etat          rapport : cours en direct, rythme, marchés liés, pronostics, comptes papier, santé des bots
-  or levier        fiches de levier x1 à x50 : marge, liquidation, perte au stop, risque historique
-  or bilan         bilan sur tout l'historique (sans regarder le futur, frais compris)
-  or bibliotheque  connaissances et études utilisées par l'armée
-  or bougies       les 40 chandeliers mesurés sur l'or (fiables ou non)
-  or veille        tendances, niveaux clés, flux Binance, COT, annonces, actualités
-  or apprentissage ce que l'armée a appris : poids, signaux admis, frais réels, score en direct
-  or verif         croissance de la mémoire (24 h, 7 j) et diagnostic des trades MT5 (hasard ou frais ?)
-  or pause | reprise   suspendre / reprendre les nouvelles positions (papier et MT5 ; l'analyse continue)
-  or mt5           compte MT5 démo : solde, positions des équipes, résultats
-  or mt5 fermer    ferme toutes les positions de l'armée et suspend ses ordres (or mt5 reprendre)
-  or mt5 profil x20        levier des décisions : x1 x3 x5 x10 x20 x50 ou pro (1 % risqué, par défaut)
-  or mt5 entrainement on|off   équipe d'entraînement au lot minimum
-  or mt5 gain 3 | off      fermer chaque position dès +3 € de gain (stop et horizon gardés)
-  or mt5 tendance on|off   jamais de position contre la tendance (1 h et 4 h)
-  or mt5 permis on|off     on : que du prouvé · off : bots actifs même sans permis
-  or mt5 rentable          seulement ce qui a gagné sur l'historique (équipe 1 j ; entraînement arrêté)
-  or mt5 agressif on|off   mode agressif : plus d'ordres, plus gros, freins élargis (3 %/jour, 10 %)
-  or mt5 journal | compte  journal du pont MT5 / changer de compte démo
-  or video installer       équipe vidéo : 2e compte DÉMO à fort levier, méthode des deux vidéos
-  or video                 ses paniers, ses loteries (départ, record, ruine) · or video on|off|fermer
-  or video gain 2          panier fermé dès +2 \$ par once · or video rejouer : la méthode sur l'historique 1 min
-  or video symbole EURUSD  l'équipe vidéo sur un autre marché (or video symbole or : retour à l'or)
-  or marches               armée multi-marchés : forex, métaux, énergie, agricoles, indices, crypto (sous permis)
-  or marches on|off|fermer achats autorisés / en pause / tout fermer
-  or journal       journal en direct
-  or demarrer | arreter | redemarrer
-  or test          contrôle complet
-  or maj          mettre à jour l'armée (dernière version, sans zip ni SFTP)
-  or mettre-a-jour /root/armee-or-vX.zip
-  or config        refaire le réglage Telegram
+  video)
+    case "${1:-etat}" in
+      etat) python_or video
+            if systemctl is-active --quiet armee-or-mt5-video; then echo '● armee-or-mt5-video en marche'
+            else echo '● armee-or-mt5-video arrêté (or video installer, puis or video journal)'; fi ;;
+      on|off|fermer) python_or commande "video_$1" ;;
+      gain) [[ "${2:-}" =~ ^[0-9]{1,2}([.,][0-9]{1,2})?$ ]] || { echo 'Usage : or video gain 2 ($ par once)'; exit 2; }
+            python_or commande "video_gain $2" ;;
+      symbole) [[ "${2:-}" =~ ^[A-Za-z0-9._#-]{1,32}$ ]] || { echo 'Usage : or video symbole EURUSD (ou : or)'; exit 2; }
+               python_or commande "video_symbole $2" ;;
+      rejouer) python_or video rejouer ;;
+      journal) journalctl -u armee-or-mt5-video -n 80 --no-pager ;;
+      installer) bash "$DOSSIER/installer_video.sh" ;;
+      compte) bash "$DOSSIER/installer_video.sh" compte ;;
+      *) echo 'or video [etat|on|off|fermer|gain X|symbole X|rejouer|journal|installer|compte]'; exit 2 ;;
+    esac ;;
+  pause|reprise) python_or commande "${CMD,,}" ;;
+  risque) python_or risque "$@" ;;
+  sauvegarde) python_or sauvegarde ;;
+  mt5)
+    SOUS="${1:-etat}"; shift || true
+    case "$SOUS" in
+      etat) python_or mt5 ;;
+      fermer|reprendre|profil|entrainement|gain|tendance|permis|agressif|rentable) python_or commande "mt5_$SOUS" "$@" ;;
+      journal) journalctl -u armee-or-mt5 -n 80 --no-pager ;;
+      *) echo 'or mt5 [etat|fermer|reprendre|profil|gain|journal]. Installation/compte : utiliser la procédure auditée.'; exit 2 ;;
+    esac ;;
+  journal) journalctl -u armee-or-chef -n 80 --no-pager ;;
+  maj|maj-auto|mettre-a-jour)
+    echo 'R3 : aucune mise à jour distante autorisée par ce paquet. Utiliser une nouvelle archive auditée et son installer_or.sh.'
+    exit 2 ;;
+  restaurer) echo 'R3 : restauration de base suspendue ; une ancienne sauvegarde peut rejouer des commandes ou effacer des transactions. Utiliser le retour du code documenté.'; exit 2 ;;
+  redemarrer) systemctl restart armee-or-flux armee-or-chef ;;   # le pont vidéo garde son compte et ses paniers
+  arreter) systemctl stop armee-or-chef armee-or-flux; echo 'Chef et flux arrêtés. Le pont et les stops existants restent en place.' ;;
+  demarrer) systemctl start armee-or-flux armee-or-chef ;;
+  *) cat <<'AIDE'
+Armée de l'or R5 — chaque équipe qui passe des ordres exige ton activation explicite.
+  or marches         multi-marchés : forex, métaux, énergie, agricoles, indices, crypto (banc, permis, positions)
+  or marches on|off  activer (achats sous permis, plafond R3 de 2 %) / arrêter les achats · or marches fermer
+  or video installer équipe vidéo : 2e compte DÉMO à fort levier (login, mot de passe, serveur tapés ici)
+  or video           ses paniers et ses loteries · or video on|off|fermer · or video gain 2 · or video rejouer
+  or video symbole EURUSD   autre marché pour l'équipe vidéo (or video symbole or : retour à l'or)
+  or demo on         activer les ordres de test démo (sans preuve de rentabilité)
+  or demo off        arrêter les nouvelles entrées expérimentales
+  or demo            état et dernier motif d’attente
+  or diagnostic      contrôles observés et blocages
+  or mt5             compte démo et suivi des positions
+  or registre        hypothèses et essais, sans permis automatique
+  or grands 1        bibliothèque paginée
+  or etat            rapport général
+  or pause           suspendre les nouvelles positions papier et MT5
+  or mt5 fermer      demander la fermeture des positions de l'armée
+  or sauvegarde      copie cohérente locale et envoi Telegram configuré
+  or journal         dernières lignes, sans rester bloqué dans le journal
+  or go              terminal en direct, Ctrl+C pour sortir
 AIDE
-  ;;
+    ;;
 esac

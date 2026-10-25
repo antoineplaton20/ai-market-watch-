@@ -1,0 +1,178 @@
+[
+  {
+    "id": "H01",
+    "nom": "Turtles",
+    "description": "(Dennis, Eckhardt, Donchian).\n  - Système 1 : cassure de 20 jours, avec le filtre « sauter le signal après un gain », et sortie sur 10 jours.\n  - Système 2 : cassure de 55 jours, et sortie sur 20 jours.\n  - Taille : N = ATR sur 20 jours, et 1 unité = 1 % du capital par N.\n  - Stop à 2 N.\n  - Variante en 4 h, avec le même nombre de bougies.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H02",
+    "nom": "Pivot de Livermore.",
+    "description": "- Un nouveau plus haut après une consolidation de k bougies dont l'amplitude reste inférieure à x ATR, confirmé par la clôture suivante.\n  - On ne renforce que si la position est en gain.\n\n**Règles macro** (données datées « connu à »)",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H03",
+    "nom": "Boîte de Darvas.",
+    "description": "- Un plus haut non dépassé pendant 3 jours forme le haut de la boîte ; le plancher se définit de même.\n  - Achat à la sortie par le haut, stop sous la boîte.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H04",
+    "nom": "Moyenne de 200 jours",
+    "description": "(P. T. Jones), ou de 30 semaines (Weinstein).\n  - Règle : acheteur au-dessus de la moyenne, neutre en dessous.\n  - À comparer à « garder l'or », en rendement **et** en baisse maximale.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H05",
+    "nom": "Momentum de 1 à 12 mois",
+    "description": "(Moskowitz, Ooi et Pedersen) : voir la fiche du §10.2.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H06",
+    "nom": "Règle des 10 mois",
+    "description": "(Faber, 2007).\n  - Règle : acheteur si la clôture mensuelle dépasse sa moyenne de 10 mois.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H07",
+    "nom": "Spring et upthrust de Wyckoff.",
+    "description": "- Une fausse cassure du bas du range, réintégrée en 1 ou 2 bougies, déclenche l'achat.\n  - Stop sous la mèche.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H08",
+    "nom": "Extrêmes du COT",
+    "description": "(Templeton, Williams, Kostolany).\n  - Déclencheur : la position nette des fonds spéculatifs (« managed money ») passe au-delà de son 90e centile, ou en deçà de son 10e, calculé sur 3 ans.\n  - Question : le rendement des 4 semaines suivantes est-il plus faible après un excès d'achats, et plus fort après un excès de ventes ?\n  - Les données du mardi ne sont connues que le vendredi à 15 h 30 (heure de New York).",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H09",
+    "nom": "Réflexivité",
+    "description": "(Soros).\n  - Règle : on reste avec la tendance quand trois signaux montent ensemble : le prix, les avoirs des ETF et le COT. On sort quand les flux se retournent.\n  - Les données des ETF restent à collecter.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H10",
+    "nom": "Régimes de Dalio et Druckenmiller.",
+    "description": "- On croise la variation sur 20 jours du taux réel à 10 ans avec celle du dollar, ce qui donne 4 quadrants.\n  - Question : l'or suit-il son quadrant la semaine suivante, mieux que le naïf ?",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H11",
+    "nom": "Ensemble à la Simons, avec méta-étiquetage",
+    "description": "(López de Prado).\n  - Un modèle primaire donne le sens.\n  - Un second estime la probabilité d'atteindre la prise de gain avant le stop, à partir de la volatilité, de la séance, de la distance aux niveaux et de la proximité d'une annonce. C'est lui qui décide d'agir ou non.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H12",
+    "nom": "Saisonnalités",
+    "description": "(Williams, Baur 2013).\n  - Effets testés : jour de la semaine, tournant du mois, veille de jour férié américain, mois d'automne, fêtes indiennes et chinoises.\n  - Seuil corrigé, car les tests sont nombreux.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H13",
+    "nom": "Surprises d'annonces",
+    "description": "(Marks, et le concours de beauté de Keynes).\n  - Mesure : la surprise est l'écart entre le chiffre réel et le consensus, pour l'inflation, l'emploi ou la Fed.\n  - Question : cette surprise annonce-t-elle la direction de l'or sur 1 à 4 h ?\n  - Les données restent à collecter. En attendant, avec le prix seul : la direction des 15 premières minutes après l'annonce se prolonge-t-elle ?",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H14",
+    "nom": "Retour à la moyenne en range",
+    "description": "(Bollinger, Raschke).\n  - Quand l'ADX est inférieur à 20, on vend la bande haute et on achète la bande basse, avec une sortie à la moyenne.\n  - Frais compris.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H15",
+    "nom": "Chandelier en contexte",
+    "description": "(Nison, Homma).\n  - Le motif doit apparaître sur un niveau mesuré (plus haut ou plus bas récent, nombre rond, pivot), après une tendance préalable.\n  - On le compare au **même contexte sans le motif**.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H16",
+    "nom": "Ratio or/argent.",
+    "description": "- Déclencheur : le ratio atteint un extrême (z-score sur un an).\n  - Question : l'or seul en tire-t-il un avantage, et pas seulement le ratio ?",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H17",
+    "nom": "Chocs de taux réels.",
+    "description": "- Déclencheur : le taux réel à 10 ans varie en un jour de plus de 2 écarts-types.\n  - Question : le lendemain, l'or prolonge-t-il le mouvement ou revient-il ?\n  - Le Trésor publie après la clôture : on applique le délai « connu » de 30 h déjà en service.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H18",
+    "nom": "Séances et fixings",
+    "description": "(Caminschi et Heaney, 2014).\n  - Questions : l'or dérive-t-il vers le fixing de 15 h à Londres ? Que se passe-t-il à l'ouverture de New York, et pendant la nuit asiatique ?\n  - Profil horaire testé en walk-forward.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H19",
+    "nom": "Cassure de la fourchette d'ouverture",
+    "description": "(Crabel, 1990).\n  - La fourchette est celle de la première heure de Londres (7 h – 8 h UTC).\n  - On achète ou on vend à la sortie de la fourchette, avec un stop au bord opposé.\n  - Filtre : jours de faible amplitude (NR4, NR7).",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H20",
+    "nom": "Taille réglée par la volatilité",
+    "description": "(Moreira et Muir, 2017 ; le N des Turtles).\n  - Ce n'est pas un signal mais un réglage, à appliquer à toute règle admise.\n  - On mesure le gain en Sharpe et en baisse maximale.",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H21",
+    "nom": "Trous du lundi.",
+    "description": "- Question : le trou d'ouverture du dimanche soir se comble-t-il, ou se prolonge-t-il ?\n\n**Combinaisons** (en dernier, quand des briques ont fait leurs preuves)",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  },
+  {
+    "id": "H22",
+    "nom": "Achats officiels et flux des ETF",
+    "description": "(de Gaulle, les banques centrales).\n  - Question : les achats mensuels des banques centrales et les flux des ETF annoncent-ils le mois suivant ?\n  - On tient compte du retard de publication, d'environ deux mois.\n\n**Règles intrajournalières** (le terrain le plus difficile : les frais y pèsent lourd)",
+    "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
+    "etat": "non_testee_R3",
+    "parametres_a_formaliser": true
+  }
+]

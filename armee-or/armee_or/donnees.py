@@ -69,7 +69,11 @@ def regrouper(lignes, minutes, pas_source_ms):
     pas = minutes * 60_000
     attendu = pas // pas_source_ms
     out, courant, n = [], None, 0
+    precedent = None
     for ts, o, h, l, c, v in lignes:
+        if ts % pas_source_ms != 0 or (precedent is not None and ts <= precedent):
+            raise DonneesInvalides("horodatages non alignés, dupliqués ou non triés")
+        precedent = ts
         debut = ts - ts % pas
         if courant is None or debut != courant[0]:
             if courant is not None and n == attendu:

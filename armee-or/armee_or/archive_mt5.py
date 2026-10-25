@@ -1,12 +1,7 @@
-"""ARCHIVISTE MT5 — rapatrie l'historique XAUUSD du courtier (l'instrument sur lequel l'armée trade vraiment).
-
-- Remonte le temps par fenêtres (10 ans en 1 jour, 2 ans en 4 h, 1 an en 1 h, 3 mois en 15 min) jusqu'au début de
-  l'historique que le serveur MT5 fournit (deux fenêtres vides d'affilée), puis complète chaque heure les bougies
-  nouvelles. Travail découpé : quelques fenêtres par passage, sans jamais bloquer le chef.
-- Les heures MT5 sont celles du SERVEUR du courtier (souvent UTC+2/+3) : elles sont ramenées en UTC avec le décalage
-  mesuré sur le dernier cours (seulement marché ouvert). Décalage d'été/hiver non corrigé pour le passé : au pire
-  une heure d'écart sur les séances, sans effet sur la lecture des bougies.
-- Bougies stockées sous la source « MT5 » ; seules les bougies terminées sont gardées.
+"""Archive du courtier en UTC, conformément à l'API MetaQuotes copy_rates_range.
+R3 utilise MT5_UTC_R3 pour ne pas mélanger les anciens horodatages corrigés empiriquement.
+Source : https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesrange_py
+Les erreurs de lecture ne sont jamais assimilées à une fin d'historique.
 """
 from __future__ import annotations
 
@@ -14,23 +9,15 @@ import time
 
 from . import base, donnees, mt5
 
-SOURCE = "MT5"
+SOURCE = "MT5_UTC_R3"
 PAS_S = {"1d": 86400, "4h": 14400, "1h": 3600, "15m": 900}
 FENETRE_S = {"1d": 10 * 365 * 86400, "4h": 2 * 365 * 86400, "1h": 365 * 86400, "15m": 90 * 86400}
 UNITES = ("1d", "4h", "1h", "15m")
 
 
 def decalage_serveur():
-    """Heure du serveur MT5 moins heure UTC (secondes, arrondi à la demi-heure), mesuré marché ouvert."""
-    d = base.lire("direct:MT5")
-    if d and time.time() - d.get("ts", 0) < 900:
-        tick = mt5.appel("tick")
-        ecart = tick["time"] - time.time()
-        if abs(ecart) <= 14 * 3600:
-            dec = int(round(ecart / 1800.0) * 1800)
-            base.ecrire("mt5:decalage", dec)
-            return dec
-    return base.lire("mt5:decalage")
+    """L'API transmet des secondes Unix UTC : aucun décalage à estimer."""
+    return 0
 
 
 def _etendue(tf):
@@ -52,7 +39,7 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
     serveur = time.time() + dec
     msgs = []
     for tf in unites:
-        etat = base.lire(f"mt5:archive:{tf}") or {"vides": 0, "fini": False}
+        etat = base.lire(f"mt5:archive:utc-r3:{tf}") or {"vides": 0, "fini": False}
         premier, dernier, n = _etendue(tf)
         # 1) en avant : bougies nouvelles depuis la dernière gardée
         debut = (dernier / 1000 + dec + PAS_S[tf]) if dernier else serveur - FENETRE_S[tf]
@@ -71,7 +58,7 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
             else:
                 etat["vides"] += 1
                 etat["fini"] = etat["vides"] >= 2
-        base.ecrire(f"mt5:archive:{tf}", etat)
+        base.ecrire(f"mt5:archive:utc-r3:{tf}", etat)
         premier, _, n = _etendue(tf)
         msgs.append(f"{tf}: {n} bougies" + (f" depuis {time.strftime('%Y', time.gmtime(premier / 1000))}" if premier else "")
                     + (" (complet)" if etat["fini"] else "") + (f", +{ajout}" if ajout else ""))

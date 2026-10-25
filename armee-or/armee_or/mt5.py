@@ -25,15 +25,22 @@ def appel(op, delai=30, port=None, **parametres):
                 if not bloc:
                     break
                 morceaux += bloc
+                if len(morceaux) > 8 * 1024 * 1024:
+                    raise ErreurMT5("réponse du pont trop volumineuse")
     except OSError as ex:
         raise ErreurMT5(f"pont MT5 injoignable ({ex.__class__.__name__}) : service {service} arrêté ou en démarrage")
     try:
         rep = json.loads(morceaux)
     except ValueError:
         raise ErreurMT5("réponse illisible du pont MT5")
+    if not isinstance(rep, dict) or not isinstance(rep.get("ok"), bool):
+        raise ErreurMT5("format de réponse du pont invalide")
     if not rep.get("ok"):
         raise ErreurMT5(rep.get("erreur") or "erreur inconnue")
+    if "r" not in rep:
+        raise ErreurMT5("résultat absent de la réponse du pont")
     return rep["r"]
+
 
 
 PROFILS_COURTS = {"x1": "x1", "x3": "x3", "x5": "x5", "x10": "x10", "x20": "x20 (max. UE)",

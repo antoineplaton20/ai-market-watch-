@@ -15,6 +15,13 @@ Ce module refait tout sur l'historique DU COURTIER (ses prix, ses écarts, ses s
 5. équipe : une décision par marché et par jour (bougie journalière close), taille réglée par la volatilité, seulement
    les marchés dont le lot minimum tient dans le budget de risque du compte, stop de catastrophe chez le courtier
    (5 ATR journaliers), numéro magique 770050 (jamais géré par l'exécutant de l'or).
+
+R5 : l'équipe démarre DÉSACTIVÉE (elle calcule et montre ce qu'elle ferait). Ses achats exigent le permis de son banc
+ET l'activation du propriétaire (/or_marches_on, qui vérifie le compte et l'absence d'incident R2). Ils passent par le
+chemin dédié du pont (marches_ouvrir) : achat seulement, stop obligatoire, 0,5 % du compte risqué au plus par ordre,
+et le plafond R3 de 2 % de pertes cumulées jusqu'aux stops, toutes positions du compte comprises (environ 6 marchés
+tenus à la fois). Intention écrite avant l'envoi (r2:ordre_incertain) : une réponse perdue verrouille les entrées
+jusqu'à réconciliation, comme pour les autres équipes.
 """
 from __future__ import annotations
 
@@ -42,6 +49,8 @@ CORRELATION = 0.15                  # corrélation moyenne supposée entre les p
 MIN_MARCHES, MIN_ENTREES, MIN_BOUGIES = 6, 30, 750
 MARGE_MAX = 0.5                     # pas de nouvel achat au-delà de 50 % de la marge utilisée
 MARCHE_FERME = 10018
+REFUS_CERTAINS = {10004, 10006, 10013, 10014, 10015, 10016, 10017, 10018, 10019, 10021, 10030}   # comme R4
+INCERTAIN = "r2:ordre_incertain"
 FRAIS_DEFAUT = {"forex": 0.0002, "métaux": 0.0003, "énergie": 0.0005, "agricoles": 0.001, "indices": 0.0002,
                 "crypto": 0.001}
 FINANCEMENT_DEFAUT = -0.03          # par an, quand le swap du courtier est illisible
@@ -75,8 +84,7 @@ def ecrire(e):
 
 
 def actif():
-    v = base.lire("marches:actif")
-    return True if v is None else bool(v)
+    return bool(base.lire("marches:actif", False))
 
 
 def _n(x, decimales=0):
@@ -334,6 +342,12 @@ def bot_banc(chef=None):
                                  else "tous"})
     base.ecrire("marches:permis", nouveau)
     for s, v in nouveau.items():
+        if not ancien or bool((ancien.get(s) or {}).get("ok")) != v["ok"]:
+            from . import registre                          # trace dans le registre R3 (il ne délivre aucun permis)
+            essai = registre.declarer("MULTI_MARCHES_R5", s, "MT5 journalier, panier du courtier",
+                                      "historique du courtier, deux moitiés", STRATEGIES[s], "R5")
+            registre.conclure(essai, {**v, "sharpe": list(v.get("sharpe") or ()), "naif": list(v.get("naif") or ())},
+                              "exploratoire")
         if bool((ancien.get(s) or {}).get("ok")) != v["ok"]:
             telegram.envoyer(f"🪪 Multi-marchés · {STRATEGIES[s]} : permis {'ACCORDÉ' if v['ok'] else 'RETIRÉ'} "
                              f"({v['raison']} ; Sharpe {v['sharpe'][0]:+.2f} / {v['sharpe'][1]:+.2f}, naïf "
@@ -382,6 +396,28 @@ def selection(candidats, equite):
 
 
 # ============================================================================ 5) l'équipe (toutes les 5 minutes)
+def reconcilier(e, positions, maintenant):
+    """Ordre multi-marchés dont la réponse s'est perdue : adopté s'il est chez le courtier ; oublié s'il n'a jamais été
+    exécuté (aucune transaction 770050 depuis l'intention, 10 min plus tard). Sinon le verrou R2 reste : diagnostic."""
+    i = base.lire(INCERTAIN)
+    if not i or i.get("equipe") != "marches":
+        return None
+    s = i.get("symbole")
+    if s in positions:
+        p = positions[s][0]
+        e.setdefault("positions", {})[s] = {"strategie": i.get("strategie") or "sma200", "ts": i["ts"],
+                                            "lots": p["volume"], "prix": p["price_open"], "stop": p["sl"]}
+        base.ecrire(INCERTAIN, None)
+        return f"{s} : ordre incertain retrouvé chez le courtier, position suivie"
+    if maintenant - i["ts"] < 600:
+        return None
+    deals = mt5.appel("historique", depuis=i["ts"] - 60)
+    if any(d.get("magic") == MAGIQUE and d.get("entry") == 0 and d.get("time", 0) >= i["ts"] - 5 for d in deals):
+        return None
+    base.ecrire(INCERTAIN, None)
+    return f"{s} : ordre incertain jamais exécuté (aucune transaction depuis), verrou levé"
+
+
 def bot_marches(chef=None, maintenant=None):
     if not config.MT5_ACTIF:
         return "MT5 non configuré"
@@ -400,12 +436,17 @@ def bot_marches(chef=None, maintenant=None):
     if not compte.get("demo"):
         ecrire(e)
         return "compte réel : aucun ordre"
+    from .executant import _verifier_compte
+    _verifier_compte(compte)                                # compte changé : verrou R2, rien d'automatique
     equite = float(compte["equity"])
     positions = {}
     for p in mt5.appel("positions"):
         if p["magic"] == MAGIQUE:
             positions.setdefault(p["symbol"], []).append(p)
     suivi, annonces = e.setdefault("positions", {}), []
+    reconcilie = reconcilier(e, positions, m)
+    if reconcilie:
+        annonces.append(reconcilie + " (entrées : /or_marches_on pour reprendre)")
     coupe = bool((base.lire("risque:etat") or {}).get("coupe"))
     for s in list(suivi):                                   # disparue sans nous : stop de catastrophe (ou à la main)
         if s not in positions:
@@ -419,8 +460,9 @@ def bot_marches(chef=None, maintenant=None):
     strat = strategie_permise()
     risque_ok, raison_risque = risque.autorise()
     marge_ok = float(compte.get("margin_free") or equite) >= (1 - MARGE_MAX) * equite
-    entrees_ok = (strat is not None and actif() and risque_ok and marge_ok and not getattr(chef, "pause", False)
-                  and not base.lire("mt5:pause"))
+    incident = bool(base.lire(INCERTAIN) or base.lire("r2:compte_change"))
+    entrees_ok = (strat is not None and actif() and risque_ok and marge_ok and not incident
+                  and not getattr(chef, "pause", False) and not base.lire("mt5:pause", True))
     reessai = e.setdefault("reessai", {})
     univers, specs_tous = e.get("univers") or {}, e.get("specs") or {}
     vus, msgs = e.setdefault("vu", {}), []
@@ -444,7 +486,8 @@ def bot_marches(chef=None, maintenant=None):
             continue
         candidats[s] = (valeur, vol, specs_tous.get(s) or {})
     retenus, budget, exclus = selection(candidats, equite)
-    e.update(tradables=sorted(retenus), budget=budget, exclus=exclus)
+    e.update(tradables=sorted(retenus), budget=budget, exclus=exclus,
+             intentions=sorted(s for s, v in signaux.items() if v[0] == 1 and s in retenus and s not in positions))
     for s, (sig, t_barre, c, h, l) in signaux.items():
         ouverte = positions.get(s)
         if sig == 0:
@@ -469,22 +512,51 @@ def bot_marches(chef=None, maintenant=None):
             atr = I.atr(h, l, c, 20)[-1]
             tick = mt5.appel("tick", symbole=s)
             stop = round(tick["ask"] - STOP_ATR * atr, int(specs.get("digits") or 5))
-            r = mt5.appel("ouvrir", sens=1, volume=lots, sl=stop, magic=MAGIQUE, commentaire="armee-or marches",
-                          symbole=s)
-            if not r.get("ok"):
-                reessai[s] = m + (1800 if r.get("retcode") == MARCHE_FERME else 300)
-                msgs.append(f"{s} : achat refusé ({r.get('retcode')} {r.get('commentaire')}), nouvel essai")
+            base.ecrire(INCERTAIN, {"ts": m, "equipe": "marches", "symbole": s, "sens": 1, "volume": lots, "sl": stop,
+                                    "strategie": strat, "compte": compte.get("login"), "serveur": compte.get("server")})
+            try:                                            # intention écrite AVANT l'envoi, jamais renvoyée ici
+                r = mt5.appel("marches_ouvrir", symbole=s, volume=lots, sl=stop)
+            except mt5.ErreurMT5 as ex:
+                base.ecrire("mt5:pause", True)
+                annonces.append(f"{s} : réponse du pont perdue ({ex}) — ordre INCERTAIN, entrées verrouillées "
+                                "jusqu'à réconciliation")
+                break
+            if not r.get("ok") and (r.get("avant_envoi") or r.get("retcode") in REFUS_CERTAINS):
+                base.ecrire(INCERTAIN, None)                # rien n'est parti, ou refus certain du courtier
+                motif = str(r.get("commentaire") or "")
+                if r.get("retcode") == MARCHE_FERME or "périmé" in motif:
+                    reessai[s] = m + 1800                   # marché fermé : à sa réouverture
+                    continue
+                e.setdefault("refus", {})[s] = motif
+                msgs.append(f"{s} : achat refusé ({r.get('retcode')} {motif})")
+                vus[s] = t_barre                            # même bougie : pas de nouvel essai
                 continue
-            suivi[s] = {"strategie": strat, "ts": m, "lots": lots, "prix": r.get("prix"), "stop": stop}
-            annonces.append(f"ACHAT {lots:g} lot {s} ({univers[s]['nom']}, {univers[s]['famille']}) à {r.get('prix')} : "
-                            f"{STRATEGIES[strat]} · stop {stop} ({STOP_ATR:g} ATR) · {note}")
+            confirme = [p for p in mt5.appel("positions") if p["magic"] == MAGIQUE and p["symbol"] == s]
+            if not r.get("ok") or not confirme:
+                base.ecrire("mt5:pause", True)
+                telegram.alerte_rare(f"marches-incertain-{s}", f"⚠️ Multi-marchés : ordre {s} non confirmé "
+                                     f"({r.get('retcode')} {r.get('commentaire')}). Entrées verrouillées jusqu'à "
+                                     "réconciliation.", 3600, important=True)
+                msgs.append(f"{s} : ordre non confirmé, entrées verrouillées")
+                break
+            base.ecrire(INCERTAIN, None)
+            p = confirme[0]
+            lots = p["volume"]
+            suivi[s] = {"strategie": strat, "ts": m, "lots": lots, "prix": p["price_open"], "stop": p["sl"]}
+            positions[s] = confirme
+            e.get("refus", {}).pop(s, None)
+            annonces.append(f"ACHAT {lots:g} lot {s} ({univers[s]['nom']}, {univers[s]['famille']}) à "
+                            f"{p['price_open']} : {STRATEGIES[strat]} · stop {p['sl']} ({STOP_ATR:g} ATR) · {note}"
+                            + (f" · risque {r['risque']:.2f} {r.get('devise', '')}" if r.get("risque") else ""))
             msgs.append(f"{s} achat {lots:g}")
-        vus[s] = t_barre
+        if entrees_ok or ouverte:                           # désactivée ou en pause : décision au prochain passage
+            vus[s] = t_barre
     ecrire(e)
     if annonces:                                            # un seul message par passage, même pour 15 marchés
         telegram.envoyer("🌍 Multi-marchés (MT5 démo)\n" + "\n".join("• " + a for a in annonces))
     etat_entrees = ("entrées autorisées" if entrees_ok else "pas de permis" if strat is None else
-                    raison_risque if not risque_ok else "marge utilisée au-delà de 50 %" if not marge_ok
+                    "désactivée (/or_marches_on)" if not actif() else raison_risque if not risque_ok
+                    else "incident R2 non réconcilié" if incident else "marge utilisée au-delà de 50 %" if not marge_ok
                     else "entrées en pause")
     return (f"{len(positions)} marchés en position, {len(retenus)} tradables sur {len(univers)} · {etat_entrees}"
             + (" · " + " · ".join(msgs) if msgs else ""))
@@ -498,6 +570,8 @@ def bot_archive(chef=None):
 
 # ============================================================================ pilotage
 def fermer_tout():
+    from .executant import _verifier_compte
+    _verifier_compte(mt5.appel("etat").get("compte"))
     faits = 0
     for p in mt5.appel("positions"):
         if p["magic"] == MAGIQUE:
@@ -509,17 +583,56 @@ def fermer_tout():
     return f"🛑 Multi-marchés : {faits} position(s) fermée(s), plus de nouvel achat (/or_marches_on pour reprendre)."
 
 
-def commande(c):
+def activer(chef=None):
+    """Activation explicite du propriétaire, comme /or_demo_on : compte démo confirmé et aucun incident R2."""
+    if not config.MT5_ACTIF:
+        return "🌍 Multi-marchés : MT5 non branché."
+    try:
+        etat = mt5.appel("etat", delai=150)
+        if not etat.get("connecte"):
+            raise mt5.ErreurMT5("connexion démo non confirmée")
+        from .executant import _verifier_compte
+        _verifier_compte(etat.get("compte"))
+    except mt5.ErreurMT5 as ex:
+        return f"🌍 Multi-marchés NON activé : {ex}"
+    if base.lire(INCERTAIN) or base.lire("r2:compte_change"):
+        return ("🌍 Multi-marchés NON activé : incident R2 non résolu (ordre incertain ou compte changé). "
+                "/or_diagnostic pour le détail.")
+    base.ecrire("marches:actif", True)
+    base.ecrire("mt5:pause", False)
+    base.ecrire("pause", False)
+    if chef is not None:
+        chef.pause = False
+    strat = strategie_permise()
+    return ("▶️ Multi-marchés ACTIVÉ sur le compte DÉMO (pause levée). "
+            + (f"Permis : {STRATEGIES[strat]}. " if strat else "Pas encore de permis : aucun achat tant que le banc "
+               "ne l'accorde pas (/or_marches). ")
+            + "Plafond R3 : 2 % de pertes cumulées jusqu'aux stops, tout le compte. Attention : une position "
+            "multi-marchés bloque les entrées de la démo R4 (elle exige un compte vide). /or_marches_off pour arrêter.")
+
+
+def commande(c, chef=None):
     c = c.replace("/or_", "").strip()
     if c == "marches_on":
-        base.ecrire("marches:actif", True)
-        return "▶️ Multi-marchés : achats autorisés (toujours sous permis)."
+        return activer(chef)
     if c == "marches_off":
         base.ecrire("marches:actif", False)
         return "⏸ Multi-marchés : plus de nouvel achat ; les positions gardent leurs sorties et leurs stops."
     if c == "marches_fermer":
-        return fermer_tout()
+        try:
+            return fermer_tout()
+        except mt5.ErreurMT5 as ex:
+            base.ecrire("marches:actif", False)
+            return f"🛑 Multi-marchés arrêté, mais fermeture impossible pour l'instant ({ex}). Réessaie /or_marches_fermer."
     return texte_marches()
+
+
+def ligne_courte():
+    """Une ligne pour le rapport MT5."""
+    pos = lire().get("positions") or {}
+    strat = strategie_permise()
+    return (f"🌍 Multi-marchés : {'activé' if actif() else 'désactivé'} · permis "
+            f"{STRATEGIES[strat] if strat else 'aucun'} · {len(pos)} marché(s) tenu(s) · /or_marches")
 
 
 def texte_marches():
@@ -528,7 +641,7 @@ def texte_marches():
     e = lire()
     univers = e.get("univers") or {}
     lignes = ["🌍 Armée multi-marchés (forex, métaux, énergie, agricoles, indices, crypto)"
-              + ("" if actif() else " · achats en pause")]
+              + ("" if actif() else " · DÉSACTIVÉE : elle montre ce qu'elle ferait (/or_marches_on pour l'activer)")]
     if not univers:
         return lignes[0] + "\nInventaire MT5 pas encore fait (dans les 5 minutes après le démarrage)."
     trouves = {f: [v["nom"] for v in univers.values() if v["famille"] == f] for f in FAMILLES}
@@ -559,6 +672,14 @@ def texte_marches():
                       f"chacun) · trop gros pour ce capital : {', '.join(sorted(exclus)) or 'aucun'}")
     pos = e.get("positions") or {}
     lignes.append("Positions : " + (", ".join(f"{s} {v['lots']:g} lot" for s, v in sorted(pos.items())) or "aucune"))
+    intentions = e.get("intentions") or []
+    if intentions:
+        lignes.append(("Achats qu'elle ferait (pas de permis ou désactivée) : " if not actif() or not strategie_permise()
+                       else "Achats en attente (bougie, marché ouvert, budget R3) : ") + ", ".join(intentions))
+    if e.get("refus"):
+        lignes.append("Refusés par le pont : " + " · ".join(f"{s} ({r})" for s, r in sorted(e["refus"].items())))
+    if base.lire(INCERTAIN):
+        lignes.append("⚠️ Ordre incertain non réconcilié : entrées verrouillées (/or_diagnostic).")
     lignes.append("Rappel : 34 marchés, Yahoo 2000-2026 → règle 200 jours Sharpe +0,47 à +0,81 selon le financement, "
                   "positive sur les deux moitiés. /or_marches_off · /or_marches_on · /or_marches_fermer")
     return "\n".join(lignes)
