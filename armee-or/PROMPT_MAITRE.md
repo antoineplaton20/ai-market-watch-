@@ -18,6 +18,12 @@
 > R6 (25/10/2026) : recherche sur internet demandée par le propriétaire (« être positifs quoi qu'il arrive »).
 > Seul le momentum 12 mois passe tous les contrôles : ajouté aux candidats du permis multi-marchés (§5).
 >
+> R7 (25/10/2026) : les vidéos de trading les plus vues (inventaire YouTube, 3 831 vidéos) et les 22 fiches de
+> départ, toutes testées (251 essais comptés, Sharpe dégonflé). Aucune règle de trading ne change. Candidate pour
+> R7.1, à la décision du propriétaire : Turtles système 1 acheteur avec filtre, exécuté DANS LA JOURNÉE (§5, H01).
+>
+> Décision du propriétaire, 25/10/2026 : pas de limite de perte « à la Millennium » (H42) : « On laisse tel quel ».
+>
 > R6.2 (25/10/2026) : historiques contrôlés (qualite.py : un marché écarté ne sert ni de preuve ni d'achat) ;
 > verrou de gain (+2 ATR → stop à +0,5 ATR, marches_stop ne fait que monter), au banc comme en direct.
 >
@@ -495,6 +501,51 @@ Question du propriétaire : « t'es-tu inspiré des plus grands groupes, de Pari
 - **Attention** : la force de la 2e moitié doit beaucoup aux cryptos. Sans elles, le momentum par famille donne +0,53 / +0,32. Si le courtier ne propose pas BTCUSD et ETHUSD, le permis le dira.
 - **Renaissance** (Simons) : selon un propos rapporté de Robert Mercer (formulation exacte non vérifiée), le fonds le plus rentable de l'histoire n'aurait raison qu'environ 50,75 % du temps. Même chez eux, le gain vient du nombre de paris et de la taille, pas d'un trade toujours gagnant.
 - **Les dirigeants des grandes entreprises** (Apple, Microsoft, LVMH…) ne sont pas des traders. Les grands gérants déjà au §8 (Buffett, Dalio, Simons, Soros, Druckenmiller, Tudor Jones, Bouchaud) disent la même chose : survivre d'abord, diversifier, couper les pertes.
+
+### R7 (25/10/2026) : les vidéos les plus vues et chaque fiche, toutes testées
+
+- **Inventaire** (`etudes/inventaire_r7.py`, `etudes/inventaire_r7.csv`) :
+  - 133 recherches YouTube triées par vues, en anglais et en français ;
+  - 3 831 vidéos distinctes, 1,49 milliard de vues ;
+  - 26 familles de méthodes, et les vidéos « non classées » les plus vues relues à la main.
+  - YouTube refuse les sous-titres aux serveurs : chaque méthode est testée dans sa version écrite la plus répandue, réglages fixés avant le test (`etudes/catalogue_r7.py`, 55 règles).
+- **Moteur** (`etudes/moteur_r7.py`, `tests/test_etudes_r7.py`) :
+  - achat ou vente, décision à la clôture, exécution à l'ouverture suivante ;
+  - ordres stop d'entrée et ordres doubles, stops et objectifs (le stop d'abord), sorties suiveuses, trous de cotation ;
+  - frais réels et financement des jours calendaires ;
+  - contrôle par entrées au hasard (mêmes sorties) ;
+  - un test vérifie qu'aucune règle du catalogue n'utilise le futur.
+- **Données** :
+  - Binance 2019-2026 : or (PAXGUSDT, jours ouvrés), euro-dollar (EURUSDT), bitcoin, ether, en 1, 5 et 15 minutes et en 1 heure ;
+  - Yahoo 2000-2026 : les 25 marchés propres, plus GLD, SLV et SPY ;
+  - FRED et CFTC, décalés de leur délai de publication.
+- **Résultats** (`etudes/recherche_r7.py`, `etudes/autres_r7.py`, `etudes/analyse_r7.py`) :
+  - 169 essais règle × unité de temps : aucun permis ; 15 gagnent sur les deux moitiés, sans battre le naïf ;
+  - en 5 et 15 minutes, tout perd après frais (smart money / ICT, scalping, chandeliers, figures…) ;
+  - aucune méthode à 60 % de trades gagnants ou plus ne gagne sur les deux moitiés ;
+  - portage, paires, COT, taux réels, régimes, saisonnalité, apprentissage automatique, écarts d'ouverture : aucun permis ;
+  - martingale ruinée 200 fois sur 200, grille 40 fois sur 200 (un an).
+- **Les 22 fiches telles qu'écrites** (`etudes/fiches_r7.py`, fiches H01 à H22 mises à jour) :
+  - 14 sont rejetées ;
+  - 3 ne sont pas testables faute de données (H09, H13, H22) ;
+  - 3 étaient déjà en service (H04, H05, H20) ;
+  - H06 (10 mois de Faber) obtient le permis, mais elle est redondante avec la règle des 200 jours ;
+  - **H01 est candidate**.
+
+  | Turtles système 1 (25 marchés propres, journalier) | Sharpe moitiés | Verdict |
+  |---|---|---|
+  | Achat seul, avec filtre, entrée et sortie dans la journée | +0,46 / +1,23 (naïf +0,23 / +0,74 ; équipe +0,30 / +0,92) | permis, mieux que l'équipe |
+  | … frais triplés / sans cryptos | +0,40 / +1,19 ; +0,48 / +0,33 | tient |
+  | … 200 sous-paniers | bat le naïf 172 fois, l'équipe 139 fois | tient |
+  | … Sharpe dégonflé, 251 essais | 100 % (t = 5,35) | tient |
+  | Achat et vente, avec filtre | +0,34 / +1,08 | permis |
+  | Sans le filtre | +0,21 / +0,92 | rejeté |
+  | Achat seul, décision à la CLÔTURE (comme l'équipe aujourd'hui) | +0,19 / +1,01 | rejeté |
+
+  L'avantage vient de l'entrée au moment de la cassure. Il tient sur les 23 marchés aux ouvertures fiables (+0,48 / +1,22). Le déployer demande une surveillance des cassures toutes les 5 minutes, ou un ordre stop chez le courtier.
+- **Momentum relatif** (H55) : +0,58 / +0,92, permis, Sharpe dégonflé 96 %. Il bat le naïf dans les 12 réglages voisins, mais ne bat l'équipe que sur 87 sous-paniers sur 200 (corrélation 0,78) : non déployé.
+- **Correction du nombre d'essais** (H56) : pour le momentum de l'équipe, t = 3,71. Probabilité d'un vrai avantage : 100 % parmi les 3 règles du permis, 81 % sur les 251 essais.
+- **Piège** : l'ouverture des indices Yahoo n'est pas négociable. Le S&P 500 « prolonge son trou du lundi » (t = 7,08), mais le fonds SPY ne montre rien (t = 1,53).
 
 ### R6.2 (25/10/2026) : les données testées, et un verrou de gain
 
@@ -1570,7 +1621,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 237 tests au 25/10/2026 (R6.2) ; 246 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 242 tests au 25/10/2026 (R7) ; 251 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

@@ -3,177 +3,199 @@
   "id": "H01",
   "nom": "Turtles",
   "description": "(Dennis, Eckhardt, Donchian).\n  - Système 1 : cassure de 20 jours, avec le filtre « sauter le signal après un gain », et sortie sur 10 jours.\n  - Système 2 : cassure de 55 jours, et sortie sur 20 jours.\n  - Taille : N = ATR sur 20 jours, et 1 unité = 1 % du capital par N.\n  - Stop à 2 N.\n  - Variante en 4 h, avec le même nombre de bougies.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "etat": "candidate_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Testée telle qu'écrite (etudes/fiches_r7.py, 25 marchés propres 2000-2026, naïf +0,23 / +0,74, équipe +0,30 / +0,92). Système 1 ACHETEUR avec le filtre, entrée et sortie DANS LA JOURNÉE (ordre à la cassure) : +0,46 / +1,23, permis et mieux que l'équipe ; frais triplés +0,40 / +1,19 ; sans cryptos +0,48 / +0,33 ; bat le naïf sur 172 sous-paniers sur 200 et l'équipe sur 139 ; 4 périodes de 5 ans sur 5 au-dessus de l'équipe sauf 2001-2005 ; Sharpe dégonflé 100 % même sur 251 essais. Achat et vente : +0,34 / +1,08. Mais à la CLÔTURE (comme l'équipe trade aujourd'hui) : +0,19 / +1,01, pas de permis ; sans le filtre +0,21 / +0,92 ; système 2 +0,14 / +0,63 ; en 4 h, perd sur la 2e moitié. À déployer seulement avec une exécution dans la journée (décision du propriétaire)."
  },
  {
   "id": "H02",
   "nom": "Pivot de Livermore.",
   "description": "- Un nouveau plus haut après une consolidation de k bougies dont l'amplitude reste inférieure à x ATR, confirmé par la clôture suivante.\n  - On ne renforce que si la position est en gain.\n\n**Règles macro** (données datées « connu à »)",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (consolidation de 20 bougies < 4 ATR, nouveau plus haut de 52 semaines confirmé par la clôture suivante) : 25 marchés −0,27 / +0,38 ; or (GLD) 10 trades seulement. etudes/fiches_r7.py"
  },
  {
   "id": "H03",
   "nom": "Boîte de Darvas.",
   "description": "- Un plus haut non dépassé pendant 3 jours forme le haut de la boîte ; le plancher se définit de même.\n  - Achat à la sortie par le haut, stop sous la boîte.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Journalier, 25 marchés : +0,23 / +0,53 contre +0,23 / +0,74 (375 trades) : ne bat pas le naïf ; or (GLD) +0,04 / +0,30. etudes/fiches_r7.py"
  },
  {
   "id": "H04",
   "nom": "Moyenne de 200 jours",
   "description": "(P. T. Jones), ou de 30 semaines (Weinstein).\n  - Règle : acheteur au-dessus de la moyenne, neutre en dessous.\n  - À comparer à « garder l'or », en rendement **et** en baisse maximale.",
   "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "etat": "en_service",
+  "parametres_a_formaliser": false,
+  "resultat": "Règle des 200 jours, acheteur : candidate du permis de l'équipe multi-marchés (+0,47 / +0,83 par famille, R6.1). Version longue / courte (vente sous la moyenne) : −0,07 / +0,63 (R7), rejetée."
  },
  {
   "id": "H05",
   "nom": "Momentum de 1 à 12 mois",
   "description": "(Moskowitz, Ooi et Pedersen) : voir la fiche du §10.2.",
   "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "etat": "en_service",
+  "parametres_a_formaliser": false,
+  "resultat": "Momentum 12 mois acheteur : candidat du permis (H27, +0,51 / +0,92 par famille). Version 1-12 mois longue / courte : −0,05 / +0,55 (R7), rejetée : la vente à découvert coûte."
  },
  {
   "id": "H06",
   "nom": "Règle des 10 mois",
   "description": "(Faber, 2007).\n  - Règle : acheteur si la clôture mensuelle dépasse sa moyenne de 10 mois.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py",
+  "etat": "redondante_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (clôture mensuelle au-dessus de la moyenne de 10 mois, sinon neutre), 25 marchés : +0,26 / +0,97 contre +0,23 / +0,74 : permis, mais ne fait pas mieux que la règle des 200 jours déjà candidate (H04) ni que l'équipe (+0,30 / +0,92) ; or (GLD) +0,60 / +0,49 contre +0,43 / +0,66. etudes/fiches_r7.py"
  },
  {
   "id": "H07",
   "nom": "Spring et upthrust de Wyckoff.",
   "description": "- Une fausse cassure du bas du range, réintégrée en 1 ou 2 bougies, déclenche l'achat.\n  - Stop sous la mèche.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (fausse cassure du bas d'un range de 40 bougies ≤ 6 ATR, réintégrée en 1 ou 2 bougies, stop sous la mèche) : 25 marchés −0,39 / −0,19 ; or (GLD) +0,40 / −0,10. En 15 min et 1 h (avec filtre de volume) : perd aussi. etudes/fiches_r7.py"
  },
  {
   "id": "H08",
   "nom": "Extrêmes du COT",
   "description": "(Templeton, Williams, Kostolany).\n  - Déclencheur : la position nette des fonds spéculatifs (« managed money ») passe au-delà de son 90e centile, ou en deçà de son 10e, calculé sur 3 ans.\n  - Question : le rendement des 4 semaines suivantes est-il plus faible après un excès d'achats, et plus fort après un excès de ventes ?\n  - Les données du mardi ne sont connues que le vendredi à 15 h 30 (heure de New York).",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/autres_r7.py ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (rendement des 4 semaines après un franchissement du 90e ou du 10e centile sur 3 ans, connu le lundi) : après un excès de ventes +1,26 % (t = 1,53, 115 cas), après un excès d'achats −0,73 % (t = −0,83, 97 cas) : pas significatif (seuil 2,24). etudes/fiches_r7.py"
  },
  {
   "id": "H09",
   "nom": "Réflexivité",
   "description": "(Soros).\n  - Règle : on reste avec la tendance quand trois signaux montent ensemble : le prix, les avoirs des ETF et le COT. On sort quand les flux se retournent.\n  - Les données des ETF restent à collecter.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py",
+  "etat": "non_testable",
+  "parametres_a_formaliser": false,
+  "resultat": "Les avoirs des ETF restent introuvables gratuitement (H22). Version réduite au prix (12 semaines) et au COT (4 semaines) sur l'or (GLD) : +0,23 / +0,89 contre +0,43 / +0,66 : ne bat pas le naïf. etudes/fiches_r7.py"
  },
  {
   "id": "H10",
   "nom": "Régimes de Dalio et Druckenmiller.",
   "description": "- On croise la variation sur 20 jours du taux réel à 10 ans avec celle du dollar, ce qui donne 4 quadrants.\n  - Question : l'or suit-il son quadrant la semaine suivante, mieux que le naïf ?",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/autres_r7.py ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (quadrants : variation sur 20 jours du taux réel 10 ans et du dollar large ; or acheté si les deux baissent, vendu si les deux montent, revu chaque lundi) : −0,27 / +0,14 contre +0,43 / +0,66. etudes/fiches_r7.py"
  },
  {
   "id": "H11",
   "nom": "Ensemble à la Simons, avec méta-étiquetage",
   "description": "(López de Prado).\n  - Un modèle primaire donne le sens.\n  - Un second estime la probabilité d'atteindre la prise de gain avant le stop, à partir de la volatilité, de la séance, de la distance aux niveaux et de la proximité d'une annonce. C'est lui qui décide d'agir ou non.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/autres_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Régression logistique (9 indicateurs, réentraînée chaque année) : −0,31 / +0,21. Méta-étiquetage du momentum (appris sur la 1re moitié) : 2e moitié +0,78 contre +1,00 sans filtre (493 trades gardés sur 1 032). etudes/autres_r7.py"
  },
  {
   "id": "H12",
   "nom": "Saisonnalités",
   "description": "(Williams, Baur 2013).\n  - Effets testés : jour de la semaine, tournant du mois, veille de jour férié américain, mois d'automne, fêtes indiennes et chinoises.\n  - Seuil corrigé, car les tests sont nombreux.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/autres_r7.py ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Or (GLD 2004-2026), 4 effets, Bonferroni (seuil 2,50) : jour de la semaine (appris sur la 1re moitié) t = 1,27 ; tournant du mois t = 1,98 ; automne t = −0,78 ; veille de jour férié américain +0,18 % par veille (t = 2,85 ; t ≈ 2 sur chaque moitié ; +0,15 % net de frais) : seul effet au-dessus du seuil de la fiche, mais 9 cas par an et pas significatif une fois compté parmi les 251 essais. Fêtes indiennes et chinoises : pas de calendrier fiable, non testées. etudes/fiches_r7.py"
  },
  {
   "id": "H13",
   "nom": "Surprises d'annonces",
   "description": "(Marks, et le concours de beauté de Keynes).\n  - Mesure : la surprise est l'écart entre le chiffre réel et le consensus, pour l'inflation, l'emploi ou la Fed.\n  - Question : cette surprise annonce-t-elle la direction de l'or sur 1 à 4 h ?\n  - Les données restent à collecter. En attendant, avec le prix seul : la direction des 15 premières minutes après l'annonce se prolonge-t-elle ?",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py",
+  "etat": "non_testable",
+  "parametres_a_formaliser": false,
+  "resultat": "Les consensus restent introuvables gratuitement. Version prix seul de la fiche (la direction des 15 premières minutes de l'emploi américain se prolonge-t-elle 4 h ?) : or +0,06 % (t = 0,73, 73 cas) ; euro-dollar −0,01 % (t = −0,30) : non. etudes/fiches_r7.py"
  },
  {
   "id": "H14",
   "nom": "Retour à la moyenne en range",
   "description": "(Bollinger, Raschke).\n  - Quand l'ADX est inférieur à 20, on vend la bande haute et on achète la bande basse, avec une sortie à la moyenne.\n  - Frais compris.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (ADX < 20 : vendre la bande haute, acheter la bande basse, sortie à la moyenne, sans stop) : 25 marchés −0,51 / −0,64 ; or (GLD) −0,34 / −0,67. etudes/fiches_r7.py"
  },
  {
   "id": "H15",
   "nom": "Chandelier en contexte",
   "description": "(Nison, Homma).\n  - Le motif doit apparaître sur un niveau mesuré (plus haut ou plus bas récent, nombre rond, pivot), après une tendance préalable.\n  - On le compare au **même contexte sans le motif**.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (motif sur un plus bas récent APRÈS une baisse, comparé au MÊME contexte sans motif, 5 bougies suivantes) : sur l'or en 1 h et en journalier, aucun des 5 motifs ne fait mieux que le contexte seul ; le doji confirmé fait même PIRE (−0,37 ATR, t = −2,88). etudes/fiches_r7.py"
  },
  {
   "id": "H16",
   "nom": "Ratio or/argent.",
   "description": "- Déclencheur : le ratio atteint un extrême (z-score sur un an).\n  - Question : l'or seul en tire-t-il un avantage, et pas seulement le ratio ?",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/autres_r7.py ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (ratio GLD / SLV en score z sur un an ; or vendu si z > 2, acheté si z < −2, sortie à 0) : −0,08 / −0,95 contre +0,43 / +0,66. Paires (score z 60 jours) : or / argent, EUR/USD / GBP/USD, S&P / Nasdaq, DAX / CAC : toutes perdantes (etudes/autres_r7.py). etudes/fiches_r7.py"
  },
  {
   "id": "H17",
   "nom": "Chocs de taux réels.",
   "description": "- Déclencheur : le taux réel à 10 ans varie en un jour de plus de 2 écarts-types.\n  - Question : le lendemain, l'or prolonge-t-il le mouvement ou revient-il ?\n  - Le Trésor publie après la clôture : on applique le délai « connu » de 30 h déjà en service.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/autres_r7.py ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (variation d'un jour du taux réel 10 ans > 2 écarts-types, connue 30 h après) : l'or ni ne prolonge ni ne revient (305 chocs, −0,01 %, t = −0,21). etudes/fiches_r7.py"
  },
  {
   "id": "H18",
   "nom": "Séances et fixings",
   "description": "(Caminschi et Heaney, 2014).\n  - Questions : l'or dérive-t-il vers le fixing de 15 h à Londres ? Que se passe-t-il à l'ouverture de New York, et pendant la nuit asiatique ?\n  - Profil horaire testé en walk-forward.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite : profil horaire de l'or appris sur 2 ans et joué l'année suivante −2,60 / −2,10 ; dérive de 10 h à 15 h (Londres) vers le fixing : 0,00 % (t = −0,03, 1 587 jours) ; cassure de Londres (V47) et Judas swing (V46) perdants. etudes/fiches_r7.py"
  },
  {
   "id": "H19",
   "nom": "Cassure de la fourchette d'ouverture",
   "description": "(Crabel, 1990).\n  - La fourchette est celle de la première heure de Londres (7 h – 8 h UTC).\n  - On achète ou on vend à la sortie de la fourchette, avec un stop au bord opposé.\n  - Filtre : jours de faible amplitude (NR4, NR7).",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite (1re heure de Londres 7 h-8 h UTC, jours NR4, stop au bord opposé), or et euro-dollar en 15 min : −1,98 / −0,43 (894 trades). Ouverture de New York (V48) : −1,45 / −2,36. etudes/fiches_r7.py"
  },
  {
   "id": "H20",
   "nom": "Taille réglée par la volatilité",
   "description": "(Moreira et Muir, 2017 ; le N des Turtles).\n  - Ce n'est pas un signal mais un réglage, à appliquer à toute règle admise.\n  - On mesure le gain en Sharpe et en baisse maximale.",
   "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "etat": "en_service",
+  "parametres_a_formaliser": false,
+  "resultat": "Taille réglée sur la volatilité : appliquée par l'équipe multi-marchés (H38)."
  },
  {
   "id": "H21",
   "nom": "Trous du lundi.",
   "description": "- Question : le trou d'ouverture du dimanche soir se comble-t-il, ou se prolonge-t-il ?\n\n**Combinaisons** (en dernier, quand des briques ont fait leurs preuves)",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py",
+  "etat": "rejetee_R7",
+  "parametres_a_formaliser": false,
+  "resultat": "Telle qu'écrite : le trou du week-end ne se prolonge pas le lundi sur l'or (GLD, t = 1,25), le S&P 500 négociable (SPY, t = 1,53) ni l'euro-dollar (t = −1,81) ; comblé dans la journée 35 à 55 % des fois. Le t = 7,08 de l'indice S&P 500 de Yahoo est un artefact : son ouverture n'est pas un prix négociable. etudes/fiches_r7.py"
  },
  {
   "id": "H22",
   "nom": "Achats officiels et flux des ETF",
   "description": "(de Gaulle, les banques centrales).\n  - Question : les achats mensuels des banques centrales et les flux des ETF annoncent-ils le mois suivant ?\n  - On tient compte du retard de publication, d'environ deux mois.\n\n**Règles intrajournalières** (le terrain le plus difficile : les frais y pèsent lourd)",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire",
-  "etat": "non_testee_R3",
-  "parametres_a_formaliser": true
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; recherche de données R7 (GLD, World Gold Council, FMI)",
+  "etat": "non_testable",
+  "parametres_a_formaliser": false,
+  "resultat": "Pas de série gratuite et fiable : l'archive du fonds GLD renvoie un PDF, les achats des banques centrales (World Gold Council, FMI) demandent un compte ou sont trimestriels."
  },
  {
   "id": "H23",
@@ -305,9 +327,9 @@
   "id": "H37",
   "nom": "Portage (carry) des devises",
   "description": "Acheter les devises à taux élevé contre les devises à taux bas.",
-  "source": "Koijen, Moskowitz, Pedersen et Vrugt, « Carry », Journal of Financial Economics, 2018",
-  "etat": "non_testable",
-  "resultat": "Sharpe brut ~0,7 par classe d'actifs selon la littérature ; krachs groupés en récession. Non testable sans l'historique des swaps du courtier.",
+  "source": "Koijen, Moskowitz, Pedersen et Vrugt, « Carry », Journal of Financial Economics, 2018 ; etudes/autres_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Taux 3 mois de l'OCDE (FRED, connus 2 mois plus tard), 11 paires propres : −0,16 / +0,15 (naïf −0,32 / −0,82), pire baisse −51 % : perd sur la 1re moitié. etudes/autres_r7.py",
   "parametres_a_formaliser": false
  },
  {
@@ -323,9 +345,9 @@
   "id": "H39",
   "nom": "Robots « 100 % gagnants », grilles et martingales",
   "description": "Grilles d'ordres, doublement de mise, aucun stop.",
-  "source": "Blog MQL5 (krach de l'or du 30/01/2026) ; ESMA (74 à 89 % des comptes CFD de particuliers perdent)",
-  "etat": "rejetee_sources",
-  "resultat": "Gain linéaire, perte quadratique : une seule série défavorable vide le compte. Interdit par la loi 7.",
+  "source": "Blog MQL5 (krach de l'or du 30/01/2026) ; ESMA (74 à 89 % des comptes CFD de particuliers perdent) ; etudes/autres_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Or 1 h, compte de 3 000, 200 départs d'un an tirés au hasard : martingale ruinée 200 fois sur 200 ; grille sans stop ruinée 40 fois sur 200 (appel de marge), même si le compte médian double grâce à la hausse de l'or. etudes/autres_r7.py",
   "parametres_a_formaliser": false
  },
  {
@@ -398,6 +420,96 @@
   "source": "armee_or/qualite.py ; etudes/donnees_r62.py",
   "etat": "adoptee_R6.2",
   "resultat": "Yahoo : 9 historiques sur 44 écartés (contrats à terme agricoles, platine, cuivre, or COMEX, NZD/USD : 6 à 18 % de lignes invalides). Sur les 25 marchés propres, le momentum bat toujours le naïf (+0,31 / +0,92 contre +0,23 / +0,74). L'or recoupé COMEX / PAXG / XAUUSDT : corrélation 0,88-0,90. En service : l'historique du courtier est contrôlé chaque heure, un marché écarté ne sert ni de preuve ni d'achat.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H48",
+  "nom": "Vidéos : indicateurs (23 méthodes)",
+  "description": "MACD + EMA 200 (TradingLab, « 86 % »), EMA 9/15, 5 EMA, croisements 9/21 et 50/200, rebond sur l'EMA 50, RSI 30/70 et divergences, Bollinger + RSI, compression, stochastique, SuperTrend, Ichimoku, Heikin Ashi, SAR, ADX, VWAP, Keltner, CCI, Williams %R, MFI, OBV, points pivots ; 15 min, 1 h et journalier.",
+  "source": "Inventaire YouTube R7 (etudes/inventaire_r7.csv) ; etudes/catalogue_r7.py V01-V23 ; etudes/recherche_r7.py, etudes/analyse_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Aucun permis. Meilleurs : croix d'or 50/200 en 1 h +0,69 / +0,59 et SAR + EMA 200 en journalier +0,28 / +0,65, sans battre le naïf (+0,57 / +0,96 et +0,23 / +0,74). En 15 min, tous perdent après frais.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H49",
+  "nom": "Vidéos : Fibonacci, Elliott, harmoniques",
+  "description": "Poche dorée 61,8-65 %, entrée en vague 3, Gartley, sur pivots confirmés.",
+  "source": "etudes/catalogue_r7.py V24-V26 ; etudes/recherche_r7.py, etudes/analyse_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Fibonacci 1 h −1,05 / −1,35 ; Elliott 1 h +0,33 / −0,25 ; Gartley : 22 à 198 trades seulement, perdant sur une moitié.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H50",
+  "nom": "Vidéos : figures chartistes, supports, lignes, chandeliers",
+  "description": "Double creux / sommet, tête et épaules, triangle, drapeau, cassure + retest, fausse cassure (turtle soup), ligne de tendance, 7 chandeliers en contexte, barre intérieure.",
+  "source": "etudes/catalogue_r7.py V27-V40 ; etudes/recherche_r7.py, etudes/analyse_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Aucun permis ; seule l'étoile du matin / du soir en 1 h gagne sur les deux moitiés (+0,40 / +0,56) sans battre le naïf. Les figures à 57-59 % de gagnants (double creux) perdent quand même.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H51",
+  "nom": "Vidéos : smart money / ICT",
+  "description": "Bloc d'ordres, écart de juste valeur, balayage de la veille, changement de caractère, Silver Bullet (10 h-11 h New York), Judas swing / power of 3.",
+  "source": "etudes/catalogue_r7.py V41-V46 ; etudes/recherche_r7.py, etudes/analyse_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Toutes perdent sur les deux moitiés en 15 min (de −1,0 à −7,9) et en 1 h ; en journalier aussi.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H52",
+  "nom": "Vidéos : scalping 1 et 5 minutes",
+  "description": "MACD + EMA 200, EMA 9/15, 5 EMA et stochastique en 5 minutes ; EMA 9/20 + VWAP en 1 minute (or 2024-2026).",
+  "source": "etudes/catalogue_r7.py ; etudes/recherche_r7.py, etudes/analyse_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Toutes perdent largement après frais : 5 min de −7,7 à −39,5 ; 1 min −7,88 / −3,60 (18 519 trades).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H53",
+  "nom": "Vidéos : flux d'ordres, profil de volume, Renko, multi-unités",
+  "description": "Delta des acheteurs (Binance), règle des 80 % de Dalton, briques Renko d'1 ATR, biais journalier + entrée 1 h.",
+  "source": "etudes/catalogue_r7.py V51-V55 ; etudes/recherche_r7.py, etudes/analyse_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "Seul le multi-unités en 1 h gagne sur les deux moitiés (+0,12 / +0,05) ; perd avec frais doublés. Les autres perdent.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H54",
+  "nom": "Écarts d'ouverture (gap fill, gap and go)",
+  "description": "Écart > 0,5 % contre la veille : refermé ou suivi, sortie à la clôture, stop à 1 écart ; entrée au premier cours (optimiste).",
+  "source": "etudes/autres_r7.py",
+  "etat": "rejetee_R7",
+  "resultat": "25 marchés : refermé −4,46 / −5,48 (−0,98 / −2,30 avec l'ordre probable des bougies) ; suivi −1,69 / −0,98 (−0,19 / +0,88).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H55",
+  "nom": "Momentum relatif (le tiers le plus fort sur 12 mois)",
+  "description": "Chaque mois, acheter le tiers des marchés au meilleur rendement 12 mois hors dernier mois, à risque égal ; Jegadeesh et Titman (1993), Asness, Moskowitz et Pedersen (2013).",
+  "source": "etudes/autres_r7.py, etudes/robustesse_r7.py, etudes/analyse_r7.py",
+  "etat": "mesuree_non_deployee",
+  "resultat": "Seule méthode nouvelle qui passe le permis : +0,58 / +0,92 contre +0,23 / +0,74 ; bat le naïf dans les 12 réglages voisins, avec frais triplés, sur 175 sous-paniers sur 200 ; Sharpe dégonflé sur 251 essais : 96 %. Mais ne bat pas le momentum de l'équipe de façon solide (+0,30 / +0,92 ; mieux sur 87 sous-paniers sur 200 seulement ; corrélation 0,78).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H56",
+  "nom": "Correction du nombre d'essais (Sharpe dégonflé, t ≥ 3)",
+  "description": "Bailey et López de Prado (2014) ; Harvey, Liu et Zhu (2016) : le seuil de preuve monte avec le nombre d'essais.",
+  "source": "etudes/analyse_r7.py",
+  "etat": "mesuree",
+  "resultat": "Momentum 12 mois de l'équipe (verrou, par famille, 25 marchés propres) : t = 3,71 (≥ 3) ; probabilité d'un vrai avantage 100 % parmi les 3 règles du permis, 81 % en comptant les 251 essais faits depuis R3 (le compte le plus sévère).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H57",
+  "nom": "Options, options binaires, copie de signaux, haute fréquence",
+  "description": "Familles vues dans l'inventaire YouTube : options (35 M de vues), binaires et signaux (42 M).",
+  "source": "etudes/inventaire_r7.csv",
+  "etat": "non_applicable",
+  "resultat": "Pas d'options sur le compte MT5 ; options binaires interdites à la vente aux particuliers dans l'Union européenne (ESMA, 2018) ; signaux et copie : pas de règle vérifiable à tester ; haute fréquence : hors de portée d'un serveur à 3 000 €.",
   "parametres_a_formaliser": false
  }
 ]

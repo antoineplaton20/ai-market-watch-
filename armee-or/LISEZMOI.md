@@ -1,4 +1,81 @@
-# Armée de l’or 2.5-R6.2 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R7 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 25 octobre 2026 (R7) — les vidéos de trading les plus vues et chaque fiche, toutes testées
+
+**Ce qui a été passé en revue.**
+
+- **YouTube** : 133 recherches en anglais et en français, triées par nombre de vues, soit 3 831 vidéos distinctes et 1,49 milliard de vues (`etudes/inventaire_r7.csv`). Chaque vidéo est rangée dans une ou plusieurs des 26 familles de méthodes.
+- **Les 22 fiches de départ** (H01 à H22), restées sans test depuis R3 : chacune est testée **telle qu’elle avait été écrite** (`etudes/fiches_r7.py`).
+- **Les sous-titres** : YouTube les refuse aux serveurs (« confirmez que vous n’êtes pas un robot »). Chaque méthode est donc testée dans sa version écrite la plus répandue. Les réglages sont fixés avant le test, une seule version par méthode (`etudes/catalogue_r7.py`).
+
+**Comment.**
+
+- **Données** :
+  - or, euro-dollar, bitcoin et ether en 1 minute, 5 minutes, 15 minutes et 1 heure (Binance 2019-2026) ;
+  - les 25 marchés aux historiques propres en journalier (Yahoo 2000-2026) ;
+  - les taux, le dollar et le bilan de la Fed (FRED) ; les positions des fonds (COT, CFTC).
+- **Conditions du banc** : frais réels, exécution à l’ouverture suivante, stop supposé touché avant l’objectif.
+- **Juge** : le permis de l’armée.
+- **Contrôles** : entrées au hasard, frais doublés, et correction du nombre d’essais (« Sharpe dégonflé »).
+- **Total** : 251 essais comptés depuis R3.
+
+| Famille (vues sur YouTube) | Résultat |
+|---|---|
+| Indicateurs (65 M de vues pour les moyennes mobiles, 72 M pour le RSI et les oscillateurs…) : MACD « 86 % », EMA 9/15, 5 EMA, RSI, Bollinger, SuperTrend, Ichimoku, Heikin Ashi… | aucun permis ; en 5 et 15 minutes, tous perdent après frais |
+| Scalping 1 et 5 minutes (94 M) | tous perdent largement : les frais mangent tout |
+| Smart money / ICT (189 M) : blocs d’ordres, FVG, Silver Bullet, Judas swing | tous perdent, en 15 minutes comme en 1 heure |
+| Chandeliers (201 M), figures chartistes, supports, Fibonacci, Elliott, harmoniques | aucun permis ; les méthodes à 57-73 % de trades gagnants (double creux, Gartley, points pivots, Williams %R) perdent quand même |
+| Séances de Londres et New York, emploi américain, trous d’ouverture | perdent |
+| Flux d’ordres, profil de volume, Renko, multi-unités | perdent |
+| Portage, paires, COT, taux réels, régimes de Dalio, saisonnalité, apprentissage automatique | aucun permis |
+| Martingale et grille | martingale ruinée 200 fois sur 200 ; grille ruinée 40 fois sur 200, sur un an |
+| Options, options binaires, copie de signaux | non applicable sur le compte MT5 ; options binaires interdites aux particuliers dans l’Union européenne |
+
+**Deux méthodes sortent du lot.**
+
+1. **Les Turtles, système 1, en achat seul, avec le filtre de la fiche H01** (« sauter la cassure qui suit un gain ») :
+   - **Résultat** : +0,46 / +1,23, contre +0,23 / +0,74 pour le naïf et +0,30 / +0,92 pour notre équipe.
+   - **Robustesse** :
+     - avec des frais triplés : +0,40 / +1,19 ;
+     - sans les cryptos : +0,48 / +0,33 ;
+     - elle bat le naïf sur 172 paniers de marchés sur 200, et l’équipe sur 139 ;
+     - correction du nombre d’essais : 100 %.
+   - **Mais** il faut acheter **dans la journée, au moment où le prix casse son plus haut de 20 jours**. Avec une décision à la clôture, comme l’équipe trade aujourd’hui, on tombe à +0,19 / +1,01 : pas de permis.
+2. **Le momentum relatif** (acheter le tiers des marchés le plus fort sur 12 mois) : +0,58 / +0,92, permis. Mais il ne fait pas mieux que l’équipe de façon solide : il la bat sur 87 paniers sur 200 seulement.
+
+**Le permis de l’équipe tient la correction du nombre d’essais.**
+
+- La statistique t vaut 3,71, au-dessus du seuil de 3 de Harvey, Liu et Zhu.
+- La probabilité d’un vrai avantage est de 100 % parmi les 3 règles que le permis compare, et de 81 % en comptant les 251 essais (le compte le plus sévère).
+
+**Aucune méthode ne rend chaque trade gagnant.** La médiane est de 33 % de trades gagnants. Les 7 règles à 60 % de gagnants ou plus perdent toutes sur au moins une moitié.
+
+**Pièges évités** :
+
+- l’indice S&P 500 de Yahoo semble prolonger son trou du lundi (t = 7). C’est faux : son ouverture n’est pas un prix négociable, et le fonds SPY ne montre rien ;
+- sept défauts trouvés dans mes propres tests et corrigés avant toute conclusion :
+  - la sortie du RSI était inversée ;
+  - la grille revendait dans la même bougie ;
+  - les départs de la martingale et de la grille n’étaient pas tirés sur tout l’historique ;
+  - le seuil du méta-étiquetage ne gardait aucun trade ;
+  - une sortie de canal ne se déclenchait presque jamais ;
+  - le financement du week-end était oublié dans la simulation des Turtles ;
+  - la variance du Sharpe dégonflé était mal choisie.
+
+**Ce qui change dans les bots : rien.** R7 apporte les études et le registre des 57 fiches, aucune règle de trading. L’installer n’est pas nécessaire. Si tu le fais : `/or_maj`, puis seulement `/or_marches_on`.
+
+**La décision qui t’attend** : faire trader les Turtles (achat seul, avec le filtre) par l’équipe multi-marchés, avec une surveillance des cassures toutes les 5 minutes. Ce serait R7.1.
+
+**Contrôle complet de R7 :**
+
+- **Études** : les 5 études R7 (`recherche_r7`, `autres_r7`, `robustesse_r7`, `fiches_r7`, `analyse_r7`) relancées deux fois donnent des résultats identiques. Les données Yahoo, retéléchargées, redonnent les chiffres de R6.2 à 0,01 près.
+- **Tests** : 242 tests (251 avec TA-Lib), tous réussis :
+  - sous Python 3.11 (celui du pont sous Wine), 3.12 et 3.13 ;
+  - chacun des 15 fichiers seul ;
+  - trois fois de suite avec des graines différentes ;
+  - sur une copie limitée aux fichiers du manifeste, comme sur le serveur.
+- **Nouveaux tests** (moteur des études) : exécution à l’ouverture suivante, stop d’abord, trou de cotation, ordres doubles, et aucune règle du catalogue n’utilise le futur.
+- **Installation** : migrations simulées depuis R5, R6.1 et R6.2, retour arrière compris ; paquet téléchargé depuis GitHub et vérifié.
 
 ## 25 octobre 2026 (R6.2) — les données contrôlées, et un verrou de gain sur chaque trade
 

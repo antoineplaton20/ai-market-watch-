@@ -53,7 +53,7 @@ def diagnostic(maintenant=None):
         'pause_generale_levee':base.lire('pause',False) is False,
         'pause_mt5_levee':base.lire('mt5:pause',True) is False,
     }
-    return {'version':'2.5-R6.2', 'mode_experimental':experimental, 'strategie_qualifiee':OUVERTURES_VALIDEES,'ts':maintenant,'controles':controles,
+    return {'version':'2.5-R7', 'mode_experimental':experimental, 'strategie_qualifiee':OUVERTURES_VALIDEES,'ts':maintenant,'controles':controles,
             'etat':'CONTROLES_OBSERVES_OK' if all(controles.values()) else 'BLOQUE_OU_NON_VERIFIE',
             'motifs':[k for k,v in controles.items() if not v],
             'commandes':file,
