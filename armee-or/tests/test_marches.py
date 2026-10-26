@@ -967,3 +967,25 @@ def test_jamais_zero_lot_demande_au_pont(courtier, monkeypatch):
     marches.bot_marches()
     assert courtier.envois == [] and not marches.lire().get("refus")                  # rien demandé, rien refusé
     assert "trop gros" in " ".join(marches.lire()["exclus"].values())
+
+
+# ============================================================================ R8.8 : l'heure du serveur MT5
+def test_achats_avec_un_serveur_a_l_heure_utc_plus_2(courtier):
+    """Mesuré le 26/10/2026 : les cours MetaQuotes-Demo sont datés 7 200 s en avance ; tout achat était refusé
+    comme « cours périmé » (rangé avec les marchés fermés : nouvel essai toutes les 30 min, sans fin)."""
+    from armee_or import mt5
+    n, vrai = [0], courtier.symbol_info_tick
+
+    def tick(s):
+        t = vrai(s)
+        n[0] += 1
+        t.time += 7200
+        t.time_msc = t.time * 1000 + n[0]
+        return t
+    courtier.symbol_info_tick = tick
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
+    for _ in range(2):
+        mt5.appel("tick", symbole="XAUUSD")                                          # la vigie lit l'or chaque seconde
+    marches.bot_marches()
+    assert {p.symbol for p in courtier.positions} == {"EURUSD", "US500"} and not marches.lire().get("reessai")

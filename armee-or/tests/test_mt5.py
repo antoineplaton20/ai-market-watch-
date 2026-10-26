@@ -841,3 +841,40 @@ def test_relier_l_armee_a_un_nouveau_compte_demo():
     texte = compte.relier({"login": 5550777, "server": "Test-Demo", "demo": True})
     assert "Même compte" in texte and marches.lire()["positions"] == {"USDJPY": {"lots": 0.01}}
     assert b.lire("r2:ordre_incertain") == {"symbole": "USDJPY"} and b.lire("mt5:pause") is True
+
+
+class FauxServeurUTC2(FauxMT5):
+    """Cours datés à l'heure du serveur, 2 h d'avance sur UTC (MetaQuotes-Demo, mesuré le 26/10/2026)."""
+    def __init__(self, fige=False):
+        super().__init__()
+        self.fige, self.n = fige, 0
+
+    def symbol_info_tick(self, s):
+        t = super().symbol_info_tick(s)
+        if self.fige:                                                       # marché sans cours depuis une heure
+            t.time, t.time_msc = int(time.time()) + 7200 - 3600, 42
+        else:
+            self.n += 1
+            t.time, t.time_msc = t.time + 7200, t.time_msc + 7_200_000 + self.n
+        return t
+
+
+def test_heure_du_serveur_mesuree_avant_de_juger_un_cours_perime():
+    """R8.8 : sans le décalage du serveur, tout cours paraissait périmé (-7 200 s) et aucun achat ne partait."""
+    f = FauxServeurUTC2()
+    pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": str(LOGIN), "OR_MT5_SYMBOLE": "XAUUSD"})
+    with pytest.raises(pont_mt5.ErreurPont, match="périmé"):
+        pont._cours_valide("XAUUSD")                                        # une seule lecture : rien de mesuré
+    pont.op_tick()                                                          # le cours a changé depuis : mesure
+    assert pont.decalage == 7200 and pont._cours_valide("XAUUSD").ask > 0
+    assert pont.op_etat()["decalage_serveur"] == 7200
+    fige = pont_mt5.Pont(FauxServeurUTC2(fige=True), {"OR_MT5_LOGIN": str(LOGIN), "OR_MT5_SYMBOLE": "XAUUSD"})
+    for _ in range(3):
+        fige.op_tick()
+    assert fige.decalage is None                                            # cours figé : jamais de mesure
+    with pytest.raises(pont_mt5.ErreurPont, match="périmé"):
+        fige._cours_valide("XAUUSD")
+    pont.horloge["XAUUSD"] = (1, time.time() - 600)                         # lecture précédente trop ancienne
+    pont.decalage = None
+    pont.op_tick()
+    assert pont.decalage is None

@@ -121,6 +121,8 @@ class Pont(EquipesMixin, DemoMixin):
         self.derniere_connexion_ok = time.time()
         self.derniere_erreur = ""
         self.symbole_verifie = False
+        self.horloge = {}                          # R8.8 : symbole -> (time_msc du dernier cours, lu à)
+        self.decalage = None                       # heure du serveur - UTC, en secondes (mesurée sur cours vivants)
 
     # ------------------------------------------------------------------ connexion
     def login(self):
@@ -199,6 +201,7 @@ class Pont(EquipesMixin, DemoMixin):
                                                        "margin_free", "leverage", "currency", "trade_allowed", "margin_mode")}
             compte["demo"] = a.trade_mode == DEMO
         return {"connecte": ok, "erreur": self.derniere_erreur, "compte": compte, "symbole": self.symbole,
+                "decalage_serveur": self.decalage,
                 "terminal": None if t is None else {k: getattr(t, k, None) for k in
                                                     ("connected", "trade_allowed", "build", "name", "ping_last")}}
 
@@ -207,6 +210,7 @@ class Pont(EquipesMixin, DemoMixin):
         t = self.mt5.symbol_info_tick(symbole or self.symbole)
         if t is None:
             raise ErreurPont(f"aucun cours pour {symbole or self.symbole} : {self.mt5.last_error()}")
+        self._noter_horloge(symbole or self.symbole, t)
         return {k: getattr(t, k) for k in ("bid", "ask", "last", "time", "time_msc")}
 
     def op_specs(self, symbole=None, **_):
@@ -301,11 +305,28 @@ class Pont(EquipesMixin, DemoMixin):
                 for x in deals if x.position_id in armee]
 
     # ------------------------------------------------------------------ ordres (démo seulement)
+    def _noter_horloge(self, symbole, tick):
+        """R8.8 : MT5 date ses cours à l'heure du SERVEUR du courtier, pas en UTC (MetaQuotes-Demo : UTC+2 en hiver,
+        +3 en été ; mesuré le 26/10/2026 : 7 200 s d'avance). Le décalage est mesuré sur un cours qui vient de changer
+        (deux lectures à moins de 2 minutes : le nouveau cours a moins de 2 minutes), arrondi au quart d'heure. Sans
+        mesure, rien ne change : un serveur en avance fait juger tout cours périmé, donc aucun ordre."""
+        maintenant = time.time()
+        msc = getattr(tick, "time_msc", None)
+        avant = self.horloge.get(symbole)
+        self.horloge[symbole] = (msc, maintenant)
+        if not avant or msc is None or msc == avant[0] or maintenant - avant[1] > 120:
+            return
+        brut = float(tick.time) - maintenant
+        quart = round(brut / 900) * 900
+        if abs(brut - quart) <= 180 and abs(quart) <= 14 * 3600:
+            self.decalage = quart
+
     def _cours_valide(self, symbole, age_max=AGE_COURS_MAX):
         tick = self.mt5.symbol_info_tick(symbole)
         if tick is None or not all(math.isfinite(x) and x > 0 for x in (tick.bid, tick.ask)) or tick.ask < tick.bid:
             raise ErreurPont("cours invalide")
-        age = time.time() - tick.time
+        self._noter_horloge(symbole, tick)
+        age = time.time() - (tick.time - (self.decalage or 0))
         if not -5 <= age <= age_max:
             raise ErreurPont("cours périmé ou horloge incohérente")
         return tick

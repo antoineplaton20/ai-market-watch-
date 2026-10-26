@@ -1,4 +1,25 @@
-# Armée de l’or 2.5-R8.7 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.8 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.8) — les achats partent enfin : l'heure du serveur MT5
+
+**Ce que ta mesure du 26/10 a montré** : MT5 date ses cours à l'heure du **serveur du courtier**, pas en UTC. Chez MetaQuotes-Demo, c'est UTC+2 en hiver et UTC+3 en été. Tous les cours arrivaient donc avec **7 200 secondes d'avance** : AUDNZD, CADCHF, AUDSEK, DKKSEK, EURCZK et EURUSD, tous à « −7 200 s ».
+
+**La conséquence** : le pont jugeait chaque cours « périmé ou horloge incohérente » et refusait tout ordre avant l'envoi. L'équipe rangeait ce refus avec les marchés fermés et réessayait toutes les 30 minutes, sans fin. C'est pour ça qu'aucun achat ne partait, avec « entrées autorisées » affiché.
+
+**Corrigé** :
+
+- le pont mesure lui-même l'avance du serveur, sur un cours qui vient de changer : deux lectures à moins de 2 minutes, arrondi au quart d'heure ;
+- il juge ensuite la fraîcheur des cours avec cette mesure, toujours avec moins de 60 secondes d'âge exigées ;
+- la vigie de l'or lit le cours chaque seconde, donc la mesure est prête quelques secondes après le démarrage ;
+- un marché figé ne fournit jamais de mesure. Sans mesure, rien ne change : par prudence, aucun ordre ;
+- `or diagnostic` montre la mesure (`decalage_serveur`, 7200 attendu).
+
+**Pas encore corrigé** : les équipes de l'or (sans permis aujourd'hui) contrôlent aussi l'âge de leurs bougies à l'heure UTC. Ce sera à revoir avant de leur donner un permis.
+
+**À faire** : `/or_maj`. L'équipe multi-marchés achète au passage suivant, toutes les 5 minutes, si la règle tient et si le marché est ouvert.
+
+**Contrôle** : 262 tests (271 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Deux tests nouveaux : un serveur à UTC+2, refusé tant que rien n'est mesuré, puis accepté ; et l'équipe achète avec un tel serveur. Migrations simulées depuis R5 jusqu'à R8.7, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.7) — changer le mot de passe sans perdre ses positions
 
@@ -14,7 +35,7 @@
 
 **À faire** : `/or_maj`, puis le changement de mot de passe, donné pas à pas dans la conversation.
 
-**Contrôle** : 260 tests (269 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Migrations simulées depuis R5 jusqu'à R8.6, retour arrière compris.
+**Contrôle** : 260 tests (269 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier et avec trois graines. La copie limitée au manifeste et les migrations simulées ont été faites avec R8.8, qui remplace R8.7 avant toute installation.
 
 
 ## 26 octobre 2026 (R8.6) — l'historique ancien de MT5 peut être retiré sans revenir

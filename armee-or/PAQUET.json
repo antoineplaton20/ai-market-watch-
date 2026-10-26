@@ -13,6 +13,7 @@
    "79f2deab99c97b6992c0ae566163bb7b50ec5b5572307124c03caf459036ac9c",
    "a06606817ad07588836c97e4ea8a2ae5efc17caef0d8997e6cb640cdc038894a",
    "ad2618b30132c926ffa57c42dc15e4549df8350f2b15a4644c8205779ae56ae8",
+   "bbd4fc1f285ddebee6dc21730a47f0477dfba4060af39131a435a95cac7b5988",
    "c748a1bf169e283aa54fb03c959a7eefe9791761fb4fb31daa1dcd531ecd5d69",
    "d2cd085bf6a20f7bc38003dc2a74de6193e1aec440807b46c367864fe78b972d",
    "e3af50079f288fcd9812fbf8d4f8d2fbb2ab8200efc209b4df16a23b699271b1",
@@ -134,6 +135,7 @@
    "52884a9c1024c599919b409d70e7dc26e6a177b23ce2aed5149f84bd06648988",
    "5d630120cc3e6f118970fbef7d26853ecf0ab2d0ce36a351ade5187a52e4d162",
    "5e144dcf40cf34b20c19c93fc5f2478832ce835051ad35c421c62e51839128e4",
+   "6f736f4f9caaba67d315520144c022ef48ce27e6bbe3bedd9c94e6fafb136d00",
    "8fb73bf799e66dfbf6e915a4ee428c87c62b0dbbfd7469b35b37a2b19bfae7ad",
    "94b0c2a3ecb7b350d9ba728aeb9f493a6a1ae86f3224800a86efcf780fd67efb",
    "9be1a7641f28867ed4eb3c811459bb32d0aa85e8adff7fea400d7afaad3d14d4",
@@ -167,12 +169,12 @@
    "6096780375c35c934e53d5b8694532e8e9d657797978119b9567db3c1334af45"
   ]
  },
- "base_commit": "versions accept\u00e9es : 2.5-R4, 2.5-R5, 2.5-R5.1, 2.5-R5.2, 2.5-R5.3, 2.5-R6, 2.5-R6.1, 2.5-R6.2, 2.5-R7, 2.5-R8, 2.5-R8.1, 2.5-R8.2, 2.5-R8.3, 2.5-R8.4, 2.5-R8.5, 2.5-R8.6 ; base R3 0c9d771bb8d8a45018298626c8aa56a439da7ee9",
+ "base_commit": "versions accept\u00e9es : 2.5-R4, 2.5-R5, 2.5-R5.1, 2.5-R5.2, 2.5-R5.3, 2.5-R6, 2.5-R6.1, 2.5-R6.2, 2.5-R7, 2.5-R8, 2.5-R8.1, 2.5-R8.2, 2.5-R8.3, 2.5-R8.4, 2.5-R8.5, 2.5-R8.6, 2.5-R8.7 ; base R3 0c9d771bb8d8a45018298626c8aa56a439da7ee9",
  "fichiers": {
   "CLAUDE.md": "326c50faad7a2e60bb096e07495d3520422a3fac0c2a324348daf4d8fdc1c535",
-  "LISEZMOI.md": "39292902739acfa29a1191e71fcbf7f55d821a436601c6b899b47637f87860b2",
-  "PROMPT_MAITRE.md": "9df856a9bc8bbab62b3ecdabdaaf04b7cb99696a718a5162e91b7b192f3b95f4",
-  "armee_or/__init__.py": "bbd4fc1f285ddebee6dc21730a47f0477dfba4060af39131a435a95cac7b5988",
+  "LISEZMOI.md": "5d68bf59d80ad1959a18b5a87f8c557da620acd86376ff8e8fc0abee53678721",
+  "PROMPT_MAITRE.md": "f63cc27043cbc200ab2d9a9dbc7f0e143e3413a46198df0f7dcfb3d14b09e4fa",
+  "armee_or/__init__.py": "42292d2bea25c757dd19a6219c257b4bd1658571fbe44cb8128a5bfbaf78e7ad",
   "armee_or/__main__.py": "9afdacf5c412635c1e527fd3bdb2b52b1287dd58e175fb9c048f47b722b0d0a6",
   "armee_or/alertes.py": "eda81bc68f21e71ff21d5d223cb30c1866b1a6b555d75ae28a127ba37e4ab6fc",
   "armee_or/apprentissage.py": "6f903ff42c0ac119901fd02fc818e6a2c5a8e4eb48c9b205521246fb7f0c376c",
@@ -202,7 +204,7 @@
   "armee_or/marches_lies.py": "734436bdc1f9580fb69e9b9e2ed69411ec213e14182cd1ceebdc35010698541d",
   "armee_or/mt5.py": "0954acdb901b21c7680bcefa5cf3a9ec94de9b994e25d9966d79df35fe0611a8",
   "armee_or/papier.py": "3e510d63594eb6813b3587433a5a78709f9d19b8e6a3b0b91f6a74b20d5e1616",
-  "armee_or/pont_mt5.py": "09743494e455ec50afaf04078053334fa9aa9e66c331633c90efc412d3621ea8",
+  "armee_or/pont_mt5.py": "44abaaebe0df2824f93413000637b4c4674a30d4b5657e96fd2b7c968972b5f9",
   "armee_or/pronostiqueurs.py": "9e8789bdf578126ee06ca827dc708c44ea9b51f038791524dc20c28a917b3a3e",
   "armee_or/qualification.py": "f2e0fb54e2e16967fc4ee119c6fbcc18f1a5377ccde00b512df1ea8d7511a9d4",
   "armee_or/qualite.py": "c814b1178f1bb7fc6ef892ddc34152cdda72f5fd4b6d0a57d654a914137b10ad",
@@ -212,7 +214,7 @@
   "armee_or/rythme.py": "98bcb7f9b56b920fa2a1de1f7284d2bff66429381849a2907412d4e6c965709b",
   "armee_or/sauvegarde.py": "2ed3ce70047581237cd9b11351e4601d870067537f779b7485f3d5a796d53944",
   "armee_or/strategie.py": "6b27b20ea4ca55c510aca42cc919c7e7a79beb5b5b1272a26ed7aa67dfbf00f1",
-  "armee_or/surveillance.py": "6f736f4f9caaba67d315520144c022ef48ce27e6bbe3bedd9c94e6fafb136d00",
+  "armee_or/surveillance.py": "128ddbc2c9d7301fb6413cedee002f1a223b1bd5da5a4e929093331f75591722",
   "armee_or/systemd.py": "38f46b4b6f43f17eca6a264780eab3a7cc07627fa7bd516b10130c07bcc3080c",
   "armee_or/telegram.py": "db152b949727d8e17c3ba33dc9b8d080fa977349b30fba6e1574410f0e308702",
   "armee_or/terminal.py": "a026317ca2dfeebda8b64bc8b49577366e23246fb93686449b62a9c50de7e35a",
@@ -220,7 +222,7 @@
   "armee_or/veille.py": "4a1c9b91552c1dfd53bc9f1900928dc068370195a03d81a0c411d8767e31bf15",
   "armee_or/video.py": "a1e78e6b2aa4774af8b03306a2d951394f035eb4d0182570fcd54ad43fc1494b",
   "contraintes-validees.txt": "111b395f6377779dcced7798f60ec29b3d362a1dc518c16bf1da36355bc9590f",
-  "deployer.py": "1b3b45c35ab9f062ce9e6e8e5cc289e5a4a6f27b962f3187ed383096804f278d",
+  "deployer.py": "16204da6c3b1eee4a501e51394c93a108471996430aef0d6c0bd7ac787771f97",
   "donnees_initiales/PROVENANCE.md": "47411bf411140752a892ca89ff9ea591c52ec53b691d559be6c5fc02787fe2dc",
   "donnees_initiales/binance/PAXGUSDT-15m-2020-10.zip": "1635790454df3917b2cf3c674dde9605ceeb2420c65fb2f7bef9c8920cfd5f0f",
   "donnees_initiales/binance/PAXGUSDT-15m-2020-11.zip": "1486b431cb5596583cc5557431fb6684c78ad85e636d6f4538088f7d2c2f099e",
@@ -373,8 +375,8 @@
   "tests/test_etudes_r8.py": "f19ad0d7fddff93a0da6c69c4e9a952c9816c560bf71dccff52fdd2551ae0bf3",
   "tests/test_fiabilite_r2.py": "71a1b364fd6b8ea43fad302e0e8f8fc2de98274eb192a1ab73f9b9a32690e039",
   "tests/test_maj.py": "1d09a48580e609535b8a989267ce2727ae656db4e6687818297fe8f24335ba96",
-  "tests/test_marches.py": "f7e3fd12dceed20172c401bf307e45d4c8e220a4a4b0c66bcac14186db02de9d",
-  "tests/test_mt5.py": "b1973996fa852d87416f59d67a00b2c25fbaf67cadf82a06e95dd93dd549d7c8",
+  "tests/test_marches.py": "9aef03bb21e21b99e0274c2df769193eecd97fac6f7a30e3901e06411c4a9509",
+  "tests/test_mt5.py": "bc5a645c5351d55d282cce8b7b1f63255b2ff8246cfb0a346e0762707320db95",
   "tests/test_r3.py": "85cda37beeb05be5c518924e92396fd161f5f9793dd0c53ab4ee803a71ab268c",
   "tests/test_recherche.py": "eb83a328c14ef2ef0c85aaa0f510dd9a599a2530c92e6dac0e7a65a4cadeb582",
   "tests/test_sauvegarde.py": "9bc1845407d73325d26c844f16a3a92b1fb4024ff227e061a8892ee5cdd02b89",
@@ -382,5 +384,5 @@
   "tests/test_veille.py": "e77dffccb8186a0e58ce02b4532f1ed5a13aade29b6a0ca3c8a8e9786f134ada",
   "tests/test_video.py": "d04401e994fb00bc48209c992ace727daf08c16c181057c02ebc7b75ec893d30"
  },
- "version": "2.5-R8.7"
+ "version": "2.5-R8.8"
 }
