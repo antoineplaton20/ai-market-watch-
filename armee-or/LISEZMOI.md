@@ -1,4 +1,31 @@
-# Armée de l’or 2.5-R8.3 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.4 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.4) — changer de compte démo depuis Termius, et une mise à jour sans fausse alerte
+
+**Ce qui s’est passé à l’installation de R8.3.**
+
+- Le message « /usr/local/bin/or: line 117: syntax error » et l’annonce « Mise à jour non installée » étaient **faux** : la 2.5-R8.3 était bien installée (« 2.5-R8.3 installée, en pause »).
+- La cause : l’installateur recopiait la télécommande `or` par-dessus celle qui tournait encore. Bash lisait alors la suite au mauvais endroit du nouveau fichier.
+- **Corrigé** : la télécommande est maintenant remplacée d’un seul coup. La version en cours garde son fichier jusqu’au bout.
+
+**Le compte MT5 refusé** (« le serveur MetaQuotes-Demo REFUSE le login …022 ») : les comptes démo de MetaQuotes peuvent expirer. Le bot te demandait de taper « or mt5 compte », mais cette commande n’existait plus. **Elle existe maintenant** :
+
+1. dans l’app MetaTrader 5 de l’iPhone, ouvre le compte …022. S’il est refusé aussi, crée un nouveau compte démo : Réglages > Nouveau compte. Choisis un dépôt de **1 000 EUR** pour imiter ton compte réel ;
+2. dans Termius : **`or mt5 compte`**. Tape le login, le mot de passe PRINCIPAL (invisible pendant la frappe) et le serveur exact, lu dans l’app : Réglages > touche le compte ;
+3. le pont redémarre sur ce compte et vérifie que c’est bien un compte **démo** (5 minutes au plus) ;
+4. tape **OUI** pour relier l’armée à ce compte. Le verrou de changement de compte est levé et tout reste en pause. Ensuite : **/or_marches_1000** puis **/or_marches_on**.
+
+**Sécurité** :
+
+- les identifiants ne sont jamais affichés ni envoyés ;
+- seules les trois lignes d’identifiants changent, et l’ancien réglage est gardé dans `runtime/` ;
+- la procédure est écrite dans la télécommande de root, rien n’est exécuté depuis le dossier de l’armée ;
+- un compte réel est toujours refusé.
+
+**À faire** : `/or_maj` (cette fois sans fausse alerte), puis la procédure ci-dessus si le compte …022 reste refusé.
+
+**Contrôle** : 253 tests (262 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Migrations simulées depuis R5 jusqu’à R8.3, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.3) — tous les marchés du courtier, 10 positions
 

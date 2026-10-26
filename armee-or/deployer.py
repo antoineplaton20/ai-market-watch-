@@ -1,4 +1,4 @@
-"""Migration locale R8.3 d'une installation connue (R4, R5 à R8.2, ou la base acceptée par R4). Pas d'installation Wine
+"""Migration locale R8.4 d'une installation connue (R4, R5 à R8.3, ou la base acceptée par R4). Pas d'installation Wine
 ni de changement des autres bots. R5 = R4 + équipe multi-marchés + équipe vidéo (2e compte démo), toutes deux
 désactivées. R5.2 : mise à jour depuis Termius (or maj) et Telegram (/or_maj), version plus récente seulement."""
 import argparse
@@ -22,7 +22,7 @@ SAUVEGARDES = Path('/var/backups/armee-or-r5')
 TELECOMMANDE = Path('/usr/local/bin/or')
 SERVICES = ('armee-or-mt5.service','armee-or-flux.service','armee-or-chef.service')
 VIDEO = 'armee-or-mt5-video.service'  # pont du 2e compte : relancé s'il tournait, jamais exigé pour valider
-VERSION = '2.5-R8.3'
+VERSION = '2.5-R8.4'
 UNITE_MAJ = Path('/etc/systemd/system/armee-or-maj.service')
 CHEMIN_MAJ = Path('/etc/systemd/system/armee-or-maj.path')
 DEJA_A_JOUR, PLUS_ANCIENNE = 3, 4  # codes de sortie de « comparer », lus par « or maj »
@@ -84,6 +84,16 @@ def equipes_actives(cible=CIBLE):
                                        (demo,'démo R4','or demo on','/or_demo_on')):
         if actif:out.append((nom,termius,telegram))
     return out
+
+
+def poser_telecommande(source,cible=TELECOMMANDE):
+    """Remplace « or » d'UN COUP (nouveau fichier puis renommage) : le bash qui exécute encore l'ancien « or maj »
+    garde l'ancien fichier ouvert. Une copie par-dessus le faisait lire la suite au mauvais endroit du nouveau
+    (« line 117: syntax error » après R8.3), et le message annonçait à tort un échec."""
+    cible=Path(cible)
+    if cible.is_symlink():raise RuntimeError('télécommande symbolique refusée')
+    tmp=cible.with_name('.'+cible.name+'.nouveau')
+    shutil.copyfile(source,tmp);tmp.chmod(0o755);os.replace(tmp,cible)
 
 
 def poser_maj(cible=CIBLE):
@@ -340,7 +350,7 @@ def installer():
         wrapper=TELECOMMANDE
         if wrapper.is_symlink():raise RuntimeError('télécommande symbolique refusée')
         if wrapper.exists():shutil.copy2(wrapper,dossier/'telecommande')
-        shutil.copyfile(CIBLE/'or',wrapper);wrapper.chmod(0o755)
+        poser_telecommande(CIBLE/'or',wrapper)
         debut=time.time();service('start',*en_marche);sain(en_marche,debut)
         if video:service('start',*video)
         (CIBLE/'runtime/version-r5.json').write_text(json.dumps({'version':VERSION,'sauvegarde':str(dossier),'ts':time.time()}))
@@ -359,7 +369,7 @@ def installer():
         service('stop',*en_marche,*video)
         if dossier and (dossier/'anciens.json').exists():
             retablir(dossier)
-            if (dossier/'telecommande').exists():shutil.copy2(dossier/'telecommande',TELECOMMANDE)
+            if (dossier/'telecommande').exists():poser_telecommande(dossier/'telecommande')
         service('start',*en_marche)
         video_apres_retablissement(bool(video))
         print('Échec : retour du code précédent tenté ; vérifier les services et la pause avec or mt5.',file=sys.stderr)
@@ -427,7 +437,7 @@ def main():
             noms=json.loads((d/'services.json').read_text())
             video=actifs((VIDEO,))
             service('stop',*noms,*video);retablir(d)
-            if (d/'telecommande').exists():shutil.copy2(d/'telecommande',TELECOMMANDE)
+            if (d/'telecommande').exists():poser_telecommande(d/'telecommande')
             service('start',*noms)
             video_apres_retablissement(bool(video))
             print('Code précédent restauré, base courante conservée, ouvertures en pause. Vérifier or etat.'

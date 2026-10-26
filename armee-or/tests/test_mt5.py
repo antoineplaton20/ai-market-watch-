@@ -815,3 +815,22 @@ def test_permis_affiche_le_naif():
     texte = executant.texte_permis({"1d": {"ok": False, "moities": [{"n": 300, "net_pb": 30.0, "naif_pb": 41.0},
                                                                     {"n": 400, "net_pb": 12.0, "naif_pb": 12.0}]}})
     assert "1 j ✖ (+30.0 pb (300) / +12.0 pb (400) · naïf +41.0 / +12.0)" in texte and "battre le naïf" in texte
+
+
+def test_relier_l_armee_a_un_nouveau_compte_demo():
+    """R8.4 : « or mt5 compte » puis OUI : identité notée, verrou R2 levé, suivis effacés, tout en pause ; jamais
+    sur un compte réel."""
+    from armee_or import base as b, compte, marches, mt5 as m
+    b.ecrire("r2:compte_lie", {"login": 111022, "server": "MetaQuotes-Demo"})
+    b.ecrire("r2:compte_change", True)
+    b.ecrire("marches:actif", True)
+    e = marches.lire()
+    e["positions"] = {"EURUSD": {"lots": 0.01}}
+    marches.ecrire(e)
+    with pytest.raises(m.ErreurMT5):
+        compte.relier({"login": 5550777, "server": "Reel", "demo": False})
+    assert b.lire("r2:compte_change") is True                                       # rien n'a bougé
+    texte = compte.relier({"login": 5550777, "server": "Test-Demo", "demo": True})
+    assert "…777" in texte and "…022" in texte and "/or_marches_on" in texte
+    assert b.lire("r2:compte_lie") == {"login": 5550777, "server": "Test-Demo"} and not b.lire("r2:compte_change")
+    assert b.lire("mt5:pause") is True and b.lire("marches:actif") is False and marches.lire()["positions"] == {}

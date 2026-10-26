@@ -35,6 +35,9 @@
 > part, non testées). Il veut des bots qui « tradent sans arrêt et sans limite » : réponse donnée, chiffres à
 > l'appui (lois 2 et 7) ; permis, stops, freins et démo seulement restent.
 >
+> R8.4 : changer de compte démo = « or mt5 compte » dans Termius (identifiants tapés par le propriétaire, relié
+> sur « OUI », tout en pause). La télécommande est remplacée d'un coup à l'installation.
+>
 > R6.2 (25/10/2026) : historiques contrôlés (qualite.py : un marché écarté ne sert ni de preuve ni d'achat) ;
 > verrou de gain (+2 ATR → stop à +0,5 ATR, marches_stop ne fait que monter), au banc comme en direct.
 >
@@ -1652,7 +1655,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 250 tests au 26/10/2026 (R8.3) ; 259 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 253 tests au 26/10/2026 (R8.4) ; 262 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

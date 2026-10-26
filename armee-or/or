@@ -6,6 +6,60 @@ DOSSIER=/home/bots/armee-or
 python_or() {
   runuser -u bots -- bash -c 'cd "$1"; shift; exec .venv/bin/python -m armee_or "$@"' _ "$DOSSIER" "$@"
 }
+changer_compte() {
+  # R8.4 — « or mt5 compte » : nouveau compte DÉMO de l'armée. Ici (fichier de root), jamais dans le dossier « bots ».
+  # Identifiants tapés par le propriétaire (saisie masquée, jamais affichés ni envoyés) ; seules les trois lignes
+  # d'identifiants de .env changent ; le pont redémarre ; compte DÉMO confirmé -> relié seulement sur « OUI ».
+  local ENVF="$DOSSIER/.env" LOGIN="" MDP="" SERVEUR="" NOUVEAU ETAT="" REP="" RES
+  [ -f "$ENVF" ] || { echo "Réglages absents ($ENVF) : installation MT5 d'abord."; exit 1; }
+  echo "Nouveau compte DÉMO pour l'armée (le pont refuse tout compte réel)."
+  echo "  - App MetaTrader 5 de l'iPhone : Réglages > Nouveau compte > ton courtier > compte DÉMO"
+  echo "    (pour imiter ton compte de 1 000 €, choisis un dépôt de 1 000 EUR)."
+  echo "  - Nom exact du serveur : dans l'app, Réglages > touche le compte (ex. MetaQuotes-Demo)."
+  while ! [[ "$LOGIN" =~ ^[0-9]+$ ]]; do
+    read -r -s -p "Login (numéro seul, invisible pendant la frappe) : " LOGIN || exit 1; echo
+    LOGIN=${LOGIN// /}
+    [[ "$LOGIN" =~ ^[0-9]+$ ]] || echo "   ✖ Le login ne contient que des chiffres (pas le mot de passe). Recommence."
+  done
+  echo "   ✔ login …${LOGIN: -3}"
+  while [ -z "$MDP" ]; do
+    read -r -s -p "Mot de passe PRINCIPAL (invisible pendant la frappe, collage possible) : " MDP || exit 1; echo
+  done
+  read -r -p "Serveur, nom exact donné par le courtier [MetaQuotes-Demo] : " SERVEUR || SERVEUR=""
+  SERVEUR=$(echo "$SERVEUR" | sed 's/^ *//;s/ *$//'); SERVEUR=${SERVEUR:-MetaQuotes-Demo}
+  [[ "$SERVEUR" =~ ^[A-Za-z0-9._\ -]+$ ]] || { echo "Nom de serveur invalide : rien n'est changé."; exit 1; }
+  install -m 600 -o bots -g bots "$ENVF" "$DOSSIER/runtime/env-avant-changement-de-compte"
+  NOUVEAU=$(mktemp "$DOSSIER/.env.XXXXXX")
+  grep -v -E '^OR_MT5_(LOGIN|MOT_DE_PASSE|SERVEUR)=' "$ENVF" > "$NOUVEAU" || true
+  cat >> "$NOUVEAU" <<ENV
+OR_MT5_LOGIN=$LOGIN
+OR_MT5_MOT_DE_PASSE=$MDP
+OR_MT5_SERVEUR=$SERVEUR
+ENV
+  unset MDP
+  chown bots:bots "$NOUVEAU"; chmod 600 "$NOUVEAU"; mv -f "$NOUVEAU" "$ENVF"
+  echo "   ✔ identifiants enregistrés (compte …${LOGIN: -3}, serveur $SERVEUR) ; ancien réglage dans runtime/"
+  echo "Redémarrage du pont MT5 sur ce compte (5 minutes au plus)…"
+  systemctl restart armee-or-mt5
+  for _ in $(seq 1 30); do
+    sleep 10
+    ETAT=$(python_or compte 2> /dev/null || true)
+    case "$ETAT" in connecté*) break ;; esac
+  done
+  echo "   $ETAT"
+  case "$ETAT" in
+    connecté*DÉMO*) ;;
+    connecté*) echo "✖ Ce compte n'est pas un compte DÉMO : aucun ordre ne partira dessus. Rien n'est relié."; exit 1 ;;
+    *) echo "✖ Pas de connexion en 5 minutes. Vérifie que ce compte s'ouvre dans l'app MT5 (login, mot de passe"
+       echo "  PRINCIPAL, serveur exact), puis relance « or mt5 compte »."; exit 1 ;;
+  esac
+  read -r -p "Relier l'armée à ce compte démo (tout reste en pause) ? Tape OUI : " REP || REP=""
+  [ "$REP" = "OUI" ] || { echo "Rien n'est relié : le verrou reste, aucun ordre ne partira sur ce compte."; exit 1; }
+  RES=$(python_or compte relier 2>&1 || true)
+  echo "$RES"
+  runuser -u bots -- bash -c 'cd "$1" && .venv/bin/python -c "import sys; from armee_or import telegram; telegram.envoyer(sys.argv[1], True)" "$2"' \
+    _ "$DOSSIER" "$RES" > /dev/null 2>&1 || true
+}
 CMD="${1:-aide}"
 shift || true
 case "${CMD,,}" in
@@ -50,7 +104,8 @@ case "${CMD,,}" in
       etat) python_or mt5 ;;
       fermer|reprendre|profil|entrainement|gain|tendance|permis|agressif|rentable) python_or commande "mt5_$SOUS" "$@" ;;
       journal) journalctl -u armee-or-mt5 -n 80 --no-pager ;;
-      *) echo 'or mt5 [etat|fermer|reprendre|profil|gain|journal]. Installation/compte : utiliser la procédure auditée.'; exit 2 ;;
+      compte) changer_compte ;;
+      *) echo 'or mt5 [etat|fermer|reprendre|profil|gain|journal|compte]'; exit 2 ;;
     esac ;;
   journal) journalctl -u armee-or-chef -n 80 --no-pager ;;
   maj)
@@ -102,6 +157,7 @@ Armée de l'or R5 — chaque équipe qui passe des ordres exige ton activation e
   or demo            état et dernier motif d’attente
   or diagnostic      contrôles observés et blocages
   or mt5             compte démo et suivi des positions
+  or mt5 compte      changer de compte démo (identifiants tapés ici, puis OUI pour y relier l'armée)
   or registre        hypothèses et essais, sans permis automatique
   or grands 1        bibliothèque paginée
   or etat            rapport général

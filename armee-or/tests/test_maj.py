@@ -128,3 +128,61 @@ def test_installer_arrete_vraiment_la_demo_r4(tmp_path):
         kv = dict(c.execute("SELECT cle, valeur FROM kv").fetchall())
     assert kv["mt5:pause"] == "true" and kv["marches:actif"] == "false"
     assert not deployer.arreter_demo(tmp_path / "absent")
+
+
+def test_la_telecommande_est_remplacee_d_un_coup(tmp_path):
+    """R8.4 : le bash qui exécute encore l'ancien « or maj » garde l'ancien fichier ; une copie par-dessus lui faisait
+    lire la suite au mauvais endroit du nouveau (« line 117: syntax error » à l'installation de R8.3)."""
+    cible, source = tmp_path / "or", tmp_path / "nouveau"
+    cible.write_text("ANCIEN " * 50)
+    source.write_text("NOUVEAU " * 80)
+    with open(cible) as lu_par_bash:
+        lu_par_bash.read(14)
+        deployer.poser_telecommande(source, cible)
+        assert lu_par_bash.read(7) == "ANCIEN "                                   # la suite reste l'ancien texte
+    assert cible.read_text() == source.read_text() and cible.stat().st_mode & 0o777 == 0o755
+    assert not list(tmp_path.glob(".*nouveau"))
+    lien = tmp_path / "lien"
+    lien.symlink_to(cible)
+    with pytest.raises(RuntimeError):
+        deployer.poser_telecommande(source, lien)
+
+
+def test_or_mt5_compte_change_seulement_les_identifiants(tmp_path):
+    """R8.4 : « or mt5 compte » (fichier de root) : saisie masquée, les trois lignes d'identifiants seules changent,
+    copie de l'ancien réglage, pont redémarré, compte DÉMO confirmé, relié seulement sur « OUI »."""
+    texte = (RACINE / "or").read_text(encoding="utf-8")
+    fonction = texte[texte.index("changer_compte() {"):texte.index("\n}\n", texte.index("changer_compte() {")) + 3]
+    assert "read -r -s -p \"Login" in fonction and "read -r -s -p \"Mot de passe" in fonction
+    assert '"$DOSSIER/' not in fonction.split("python_or")[0].replace('"$DOSSIER/.env', "").replace(
+        '"$DOSSIER/runtime/env-avant', "").replace('"$DOSSIER/.env.XXXXXX', "")              # rien n'est exécuté du dossier bots
+    dossier = tmp_path / "armee-or"
+    (dossier / "runtime").mkdir(parents=True)
+    (dossier / ".env").write_text("OR_MT5_ACTIF=1\nOR_MT5_LOGIN=111022\nOR_MT5_MOT_DE_PASSE=ancien\n"
+                                  "OR_MT5_SERVEUR=MetaQuotes-Demo\nOR_MT5_TERMINAL=C:\\\\MT5\\\\terminal64.exe\nOR_MT5_PORT=18777\n")
+    journal = tmp_path / "journal.txt"
+    harnais = f"""
+set -euo pipefail
+DOSSIER={dossier}
+systemctl() {{ echo "systemctl $*" >> {journal}; }}
+sleep() {{ :; }}
+chown() {{ :; }}
+install() {{ cp "${{@: -2:1}}" "${{@: -1}}"; }}
+runuser() {{ echo "telegram" >> {journal}; }}
+python_or() {{ echo "python_or $*" >> {journal}; if [ "$*" = "compte" ]; then echo "connecté · compte …777 · serveur Test-Demo · DÉMO · solde 1000 EUR"; else echo "relié"; fi; }}
+{fonction}
+changer_compte
+"""
+    r = subprocess.run(["bash", "-c", harnais], input="5550777\nsecret de test\nTest-Demo\nOUI\n", text=True,
+                       capture_output=True)
+    assert r.returncode == 0, r.stderr
+    env = (dossier / ".env").read_text()
+    assert "OR_MT5_LOGIN=5550777" in env and "OR_MT5_MOT_DE_PASSE=secret de test" in env and "OR_MT5_SERVEUR=Test-Demo" in env
+    assert "111022" not in env and "ancien" not in env and "OR_MT5_TERMINAL=" in env and "OR_MT5_PORT=18777" in env
+    assert "111022" in (dossier / "runtime" / "env-avant-changement-de-compte").read_text()
+    assert "secret de test" not in r.stdout and "5550777" not in r.stdout                  # jamais affichés en entier
+    j = journal.read_text()
+    assert "systemctl restart armee-or-mt5" in j and "python_or compte relier" in j
+    (dossier / ".env").write_text(env)
+    r = subprocess.run(["bash", "-c", harnais], input="5550777\nsecret\nTest-Demo\nnon\n", text=True, capture_output=True)
+    assert r.returncode == 1 and "Rien n'est relié" in r.stdout                          # sans « OUI » : rien n'est relié

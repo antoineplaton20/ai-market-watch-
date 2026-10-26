@@ -100,6 +100,16 @@ def main(argv=None):
     elif cmd == "restaurer":
         from . import sauvegarde
         print(sauvegarde.restaurer(argv[1] if len(argv) > 1 else None))
+    elif cmd == "compte":                            # R8.4 : « or mt5 compte » (Termius, en root, après la saisie)
+        from . import compte, mt5
+        if argv[1:2] == ["relier"]:
+            try:
+                print(compte.relier_compte_actuel())
+            except mt5.ErreurMT5 as ex:
+                print(f"Rien n'est relié : {ex}")
+                return 1
+        else:
+            print(compte.etat())
     elif cmd == "risque":
         from . import risque
         print(risque.reprendre() if argv[1:2] == ["reprendre"] else risque.texte())
