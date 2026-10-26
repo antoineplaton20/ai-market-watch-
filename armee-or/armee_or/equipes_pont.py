@@ -9,8 +9,9 @@
   contact du cours ;
 - mode « capital 1 000 » (R8.1, décision du propriétaire du 26/10/2026 : la démo imite son compte de 1 000 €) : les
   plafonds se calculent sur min(1 000, équité) dans la devise du compte : 3 % par ordre, 9 % au total jusqu'aux stops
-  (toutes positions du compte comprises), 3 positions multi-marchés au plus. Ces nombres sont fixés ICI : l'appelant
-  ne peut que demander le mode, jamais un risque plus grand.
+  (toutes positions du compte comprises), 3 positions multi-marchés au plus, et chaque ordre fait EXACTEMENT 0,01 lot
+  (R8.2) : s'il risquerait plus, il n'est pas passé. Ces nombres sont fixés ICI : l'appelant ne peut que demander le
+  mode, jamais un risque ou un volume plus grand.
 Les deux refusent tout compte réel. Un refus AVANT l'envoi revient en réponse (ok False, avant_envoi True) : côté
 Linux, seule une réponse perdue reste un ordre incertain.
 """
@@ -27,6 +28,7 @@ CAPITAL_REFERENCE = 1000.0          # R8.1 : capital imité (devise du compte), 
 CAPITAL_RISQUE_ORDRE = 0.03         # perte jusqu'au stop par ordre, en part de ce capital
 CAPITAL_RISQUE_TOTAL = 0.09         # pertes cumulées jusqu'aux stops, toutes positions du compte
 CAPITAL_MAX_MARCHES = 3
+CAPITAL_LOT = 0.01                  # R8.2 : chaque trade du mode fait exactement 0,01 lot (décision du propriétaire)
 NEGOCIABLE = (4,)                   # SYMBOL_TRADE_MODE_FULL
 ACHAT_PERMIS = (1, 4)               # LONGONLY, FULL
 
@@ -74,7 +76,7 @@ class EquipesMixin:
             plafond = CAPITAL_MAX_MARCHES if mode_capital else MAX_MARCHES
             if len(propres) >= plafond:
                 raise RuntimeError(f"{plafond} marchés tenus au plus")
-            volume = self._volume(info, volume)
+            volume = self._volume(info, CAPITAL_LOT if mode_capital else volume)   # mode : toujours 0,01 lot
             if mode_capital:                                    # plafonds en part de l'équité, pour _dimensionner
                 cap = min(CAPITAL_REFERENCE, a.equity)
                 controle = self._dimensionner(1, sl, volume, symbole, CAPITAL_RISQUE_ORDRE * cap / a.equity,
@@ -85,6 +87,8 @@ class EquipesMixin:
                                               age_positions=AGE_POSITIONS)
             if controle["volume"] <= 0:
                 return refus(controle["motif"])
+            if mode_capital and abs(controle["volume"] - CAPITAL_LOT) > 1e-9:
+                return refus("0,01 lot risquerait plus que le plafond du mode 1 000")
             volume = min(volume, controle["volume"])
         except Exception as ex:                                 # rien n'est parti chez le courtier
             return refus(ex)

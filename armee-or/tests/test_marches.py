@@ -719,6 +719,12 @@ def test_capital_1000_un_lot_minimum_si_le_risque_tient_dans_3_pourcents():
     lots, _ = marches.lots_marche(2700, 400_000, 0.16, 1e-9, {**forex, "_atr_rel": 0.015}, capital=True)
     assert lots == 0                                                  # or : 375 jusqu'au stop
     assert marches.lots_marche(2700, 110_000, 0.07, 1e-9, {"volume_min": 0.01}, capital=True)[0] == 0   # ATR inconnu
+    lots, note = marches.lots_marche(2700, 110_000, 0.07, 1e-9, {**forex, "volume_min": 0.1, "volume_step": 0.1},
+                                     capital=True)
+    assert lots == 0 and "0,01 lot impossible" in note                # R8.2 : 0,01 lot exactement, sinon rien
+    lots, _ = marches.lots_marche(2700, 110_000, 0.07, 1e-9, {**forex, "volume_min": 0.001, "volume_step": 0.001},
+                                  capital=True)
+    assert lots == 0.01                                               # même si le courtier permet plus petit
 
 
 def test_capital_1000_le_pont_garde_ses_propres_plafonds(courtier):
@@ -733,12 +739,21 @@ def test_capital_1000_le_pont_garde_ses_propres_plafonds(courtier):
     cap = min(1000.0, courtier.solde)
     for s in ("A1", "A2", "A3"):
         r = ouvrir(symbole=s, volume=50.0, sl=courtier.prix(s) * 0.99, capital=True)
-        assert r["ok"] and r["risque"] <= 0.03 * cap + 1e-6
+        assert r["ok"] and r["risque"] <= 0.03 * cap + 1e-6 and r["volume"] == 0.01      # R8.2 : 0,01 lot exactement
     r = ouvrir(symbole="A4", volume=0.01, sl=courtier.prix("A4") * 0.99, capital=True)
     assert not r["ok"] and "3 marchés" in r["commentaire"]                                # 3 positions au plus
     total = sum((courtier.symbol_info_tick(p.symbol).bid - p.sl) * p.volume * courtier.series[p.symbol][1]
                 * pont_mt5.RESERVE_COUTS for p in courtier.positions)
-    assert total <= 0.09 * cap + 1e-6
+    assert total <= 0.09 * cap + 1e-6 and all(p.volume == 0.01 for p in courtier.positions)
+    courtier.positions = []
+    r = ouvrir(symbole="XAUUSD", volume=0.01, sl=courtier.prix("XAUUSD") * 0.5, capital=True)
+    assert not r["ok"] and courtier.positions == []                   # 0,01 lot d'or risquerait bien plus de 30
+    info = courtier.symbol_info
+    courtier.symbol_info = lambda s: (NS(**{**vars(info(s)), "volume_min": 0.1, "volume_step": 0.1}) if s == "A1"
+                                      else info(s))
+    r = ouvrir(symbole="A1", volume=0.1, sl=courtier.prix("A1") * 0.99, capital=True)
+    assert not r["ok"] and "hors limites" in r["commentaire"]         # le courtier n'accepte pas 0,01 : rien ne part
+    courtier.symbol_info = info
     courtier.positions = []
     for faux in (1, "oui", "true", 2.0):                              # rien d'autre que True n'active le mode
         r = ouvrir(symbole="A1", volume=50.0, sl=courtier.prix("A1") * 0.99, capital=faux)
@@ -790,6 +805,7 @@ def test_capital_1000_l_equipe_achete_au_plus_3_marches(monkeypatch):
         activer()
         r = marches.bot_marches()
         assert len(f.positions) == 3 and "XAUUSD" not in {p.symbol for p in f.positions}, (r, marches.lire().get("exclus"))
+        assert all(p.volume == 0.01 for p in f.positions)                                 # R8.2 : 0,01 lot chacun
         assert all(e.get("magic") == marches.MAGIQUE for e in f.envois)
         assert "Capital imité" in marches.texte_marches() and "XAUUSD" in marches.texte_marches()
         assert "comme un compte de 1000" in marches.ligne_courte()

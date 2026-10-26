@@ -28,9 +28,10 @@
 >
 > Décision du propriétaire, 25/10/2026 : pas de limite de perte « à la Millennium » (H42) : « On laisse tel quel ».
 >
-> Décision du propriétaire, 26/10/2026 (R8.1) : la démo peut imiter son compte réel de 1 000 € (/or_marches_1000) :
-> un lot minimum par marché si sa perte jusqu'au stop tient dans 3 % de 1 000, 3 positions au plus, 9 % au total.
-> Plafonds fixés dans le pont (equipes_pont.py). Permis, stops, freins et démo seulement inchangés.
+> Décisions du propriétaire, 26/10/2026 (R8.1, R8.2) : la démo peut imiter son compte réel de 1 000 €
+> (/or_marches_1000) : chaque trade fait exactement 0,01 lot, seulement si sa perte jusqu'au stop tient dans 3 % de
+> 1 000 ; 3 positions au plus, 9 % au total. Plafonds fixés dans le pont (equipes_pont.py). Permis, stops, freins
+> et démo seulement inchangés.
 >
 > R6.2 (25/10/2026) : historiques contrôlés (qualite.py : un marché écarté ne sert ni de preuve ni d'achat) ;
 > verrou de gain (+2 ATR → stop à +0,5 ATR, marches_stop ne fait que monter), au banc comme en direct.
@@ -1649,7 +1650,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 249 tests au 26/10/2026 (R8.1) ; 258 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 249 tests au 26/10/2026 (R8.2) ; 258 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

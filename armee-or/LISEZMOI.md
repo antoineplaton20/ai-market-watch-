@@ -1,4 +1,22 @@
-# Armée de l’or 2.5-R8.1 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.2 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.2) — chaque trade fait 0,01 lot
+
+**Ta décision** : « chaque trade se fait par 0,01 », comme sur ton écran MT5.
+
+**Ce qui change en mode 1 000 €** (/or_marches_1000) :
+
+- chaque ordre de l’équipe multi-marchés fait **exactement 0,01 lot**, jamais plus, jamais moins ;
+- un marché où 0,01 lot risquerait plus de 30 € (3 % de 1 000 €) jusqu’à son stop n’est pas tradé. C’est le cas de l’or : 0,01 lot d’or, c’est une once, soit environ 250 à 350 € de perte possible jusqu’au stop ;
+- un marché où le courtier n’accepte pas 0,01 lot (minimum plus grand) n’est pas tradé non plus ;
+- le pont MT5 lui-même force 0,01 lot et refuse tout autre volume dans ce mode.
+
+**Le reste ne change pas** : 3 positions au plus, 9 % au total, permis obligatoire, stops chez le courtier, freins, démo seulement.
+
+**À faire** : `/or_maj`, puis **/or_marches_1000** et **/or_marches_on**, puis **/or_marches** pour voir les marchés tenables.
+
+**Contrôle** : 249 tests (258 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Migrations simulées depuis R5 jusqu’à R8.1, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.1) — la démo peut imiter ton compte de 1 000 €
 

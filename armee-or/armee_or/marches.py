@@ -23,9 +23,10 @@ et le plafond R3 de 2 % de pertes cumulées jusqu'aux stops, toutes positions du
 tenus à la fois). Intention écrite avant l'envoi (r2:ordre_incertain) : une réponse perdue verrouille les entrées
 jusqu'à réconciliation, comme pour les autres équipes.
 
-R8.1 (décision du propriétaire du 26/10/2026) : /or_marches_1000 fait imiter à la démo un compte de 1 000 € : un lot
-minimum par marché si sa perte jusqu'au stop tient dans 3 % de min(1 000, équité), 3 positions au plus (familles
-différentes d'abord), 9 % au total ; plafonds fixés dans le pont (equipes_pont). /or_marches_normal : retour.
+R8.1 et R8.2 (décisions du propriétaire du 26/10/2026) : /or_marches_1000 fait imiter à la démo un compte de 1 000 € :
+chaque trade fait exactement 0,01 lot, s'il risque jusqu'au stop au plus 3 % de min(1 000, équité) ; 3 positions au
+plus (familles différentes d'abord), 9 % au total ; plafonds fixés dans le pont (equipes_pont). /or_marches_normal :
+retour.
 """
 from __future__ import annotations
 
@@ -37,7 +38,8 @@ import time
 import numpy as np
 
 from . import base, config, donnees, indicateurs as I, mt5, qualite as Q, risque, telegram
-from .equipes_pont import CAPITAL_MAX_MARCHES, CAPITAL_REFERENCE, CAPITAL_RISQUE_ORDRE, CAPITAL_RISQUE_TOTAL
+from .equipes_pont import (CAPITAL_LOT, CAPITAL_MAX_MARCHES, CAPITAL_REFERENCE, CAPITAL_RISQUE_ORDRE,
+                           CAPITAL_RISQUE_TOTAL)
 
 _log = logging.getLogger("or.marches")
 
@@ -466,17 +468,21 @@ def mode_capital():
 def lots_marche(equite, valeur_lot, vol, budget, specs, capital=False):
     """-> (lots, explication). valeur_lot : notionnel d'UN lot en devise du compte. Lot minimum accepté s'il ne
     dépasse pas 2 fois le budget ; au-delà, le marché est trop gros pour ce capital.
-    capital (R8.1) : un lot minimum, si sa perte jusqu'au stop (STOP_ATR × ATR, avec la réserve de coûts du pont) ne
-    dépasse pas CAPITAL_RISQUE_ORDRE de min(CAPITAL_REFERENCE, équité) ; specs["_atr_rel"] = ATR(20) / cours."""
+    capital (R8.1, R8.2) : exactement CAPITAL_LOT (0,01 lot), si le courtier l'accepte et si sa perte jusqu'au stop
+    (STOP_ATR × ATR, avec la réserve de coûts du pont) ne dépasse pas CAPITAL_RISQUE_ORDRE de min(CAPITAL_REFERENCE,
+    équité) ; specs["_atr_rel"] = ATR(20) / cours."""
     if capital:
-        mini, atr_rel = specs.get("volume_min") or 0.01, specs.get("_atr_rel")
+        atr_rel = specs.get("_atr_rel")
+        mini, pas = specs.get("volume_min") or 0.01, specs.get("volume_step") or 0.01
         if not (valeur_lot and atr_rel and math.isfinite(atr_rel) and atr_rel > 0):
             return 0.0, "ATR ou valeur du lot inconnue"
-        perte = mini * valeur_lot * STOP_ATR * atr_rel * RESERVE_COUTS
+        if mini > CAPITAL_LOT + 1e-9 or abs(CAPITAL_LOT / pas - round(CAPITAL_LOT / pas)) > 1e-6:
+            return 0.0, f"0,01 lot impossible chez ce courtier (minimum {mini:g}, pas {pas:g})"
+        perte = CAPITAL_LOT * valeur_lot * STOP_ATR * atr_rel * RESERVE_COUTS
         permis = CAPITAL_RISQUE_ORDRE * min(CAPITAL_REFERENCE, equite)
         if perte <= permis:
-            return mini, f"lot minimum, {_n(perte)} risqués jusqu'au stop ({_n(permis)} permis)"
-        return 0.0, f"lot minimum trop risqué pour {CAPITAL_REFERENCE:g} ({_n(perte)} jusqu'au stop, {_n(permis)} permis)"
+            return CAPITAL_LOT, f"0,01 lot, {_n(perte)} risqués jusqu'au stop ({_n(permis)} permis)"
+        return 0.0, f"0,01 lot trop risqué pour {CAPITAL_REFERENCE:g} ({_n(perte)} jusqu'au stop, {_n(permis)} permis)"
     if not (valeur_lot and vol and budget):
         return 0.0, "volatilité ou valeur du lot inconnue"
     cible = equite * budget / vol
@@ -795,9 +801,10 @@ def commande(c, chef=None):
     if c == "marches_1000":
         base.ecrire(CLE_CAPITAL, True)
         return (f"💶 Multi-marchés : le compte démo imite maintenant un compte de {CAPITAL_REFERENCE:g} (décision du "
-                f"26/10/2026). Un lot minimum par marché, {CAPITAL_RISQUE_ORDRE * 100:g} % du capital risqués au plus "
-                f"par trade jusqu'au stop, {CAPITAL_MAX_MARCHES} positions au plus, {CAPITAL_RISQUE_TOTAL * 100:g} % "
-                "au total. Les marchés dont le lot minimum risque plus sont exclus (souvent l'or et le bitcoin). "
+                f"26/10/2026). Chaque trade fait {CAPITAL_LOT:g} lot, {CAPITAL_RISQUE_ORDRE * 100:g} % du capital "
+                f"risqués au plus jusqu'au stop, {CAPITAL_MAX_MARCHES} positions au plus, "
+                f"{CAPITAL_RISQUE_TOTAL * 100:g} % au total. Les marchés où {CAPITAL_LOT:g} lot risque plus sont "
+                "exclus (souvent l'or et le bitcoin). "
                 "Toujours sous permis ; freins du jour et coupe-circuit inchangés. /or_marches pour voir les marchés "
                 "tenables · /or_marches_normal pour revenir aux règles d'avant.")
     if c == "marches_normal":
@@ -865,7 +872,8 @@ def texte_marches():
     if tradables or exclus:
         fams = sorted({univers[s]["famille"] for s in tradables if s in univers})
         if mode_capital():
-            lignes.append(f"Capital imité : {CAPITAL_REFERENCE:g} ({CAPITAL_RISQUE_ORDRE * 100:g} % par trade, "
+            lignes.append(f"Capital imité : {CAPITAL_REFERENCE:g} ({CAPITAL_LOT:g} lot par trade, "
+                          f"{CAPITAL_RISQUE_ORDRE * 100:g} % au plus, "
                           f"{CAPITAL_MAX_MARCHES} positions au plus, {CAPITAL_RISQUE_TOTAL * 100:g} % au total) · "
                           f"{len(tradables)} marchés tenables ({', '.join(sorted(tradables)) or '—'})")
             if exclus:
