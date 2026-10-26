@@ -834,3 +834,10 @@ def test_relier_l_armee_a_un_nouveau_compte_demo():
     assert "…777" in texte and "…022" in texte and "/or_marches_on" in texte
     assert b.lire("r2:compte_lie") == {"login": 5550777, "server": "Test-Demo"} and not b.lire("r2:compte_change")
     assert b.lire("mt5:pause") is True and b.lire("marches:actif") is False and marches.lire()["positions"] == {}
+    e = marches.lire()                                                              # R8.7 : même compte, nouveau
+    e["positions"] = {"USDJPY": {"lots": 0.01}}                                     # mot de passe : rien d'oublié
+    marches.ecrire(e)
+    b.ecrire("r2:ordre_incertain", {"symbole": "USDJPY"})
+    texte = compte.relier({"login": 5550777, "server": "Test-Demo", "demo": True})
+    assert "Même compte" in texte and marches.lire()["positions"] == {"USDJPY": {"lots": 0.01}}
+    assert b.lire("r2:ordre_incertain") == {"symbole": "USDJPY"} and b.lire("mt5:pause") is True

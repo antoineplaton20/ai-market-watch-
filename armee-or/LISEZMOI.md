@@ -1,4 +1,21 @@
-# Armée de l’or 2.5-R8.6 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.7 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.7) — changer le mot de passe sans perdre ses positions
+
+**Pourquoi** : une capture a montré en clair le mot de passe du compte démo de l'armée, il faut donc le changer. Jusqu'ici, `or mt5 compte` effaçait le suivi des positions, même quand le compte restait le même.
+
+**Ce qui change** :
+
+- **Même compte, seul le mot de passe change** : `or mt5 compte` puis OUI met à jour les identifiants et garde tout : positions suivies, verrous de gain, ordre incertain éventuel. Tout reste en pause jusqu'à `/or_marches_on`.
+- L'équipe multi-marchés **retrouve d'elle-même ses positions** (magic 770050) sur le compte relié, et les suit de nouveau : stop, verrou de gain, sortie.
+- **Jamais 0 lot demandé au pont** : un marché dont la taille tombe à 0 est écarté avec sa raison. Fini les refus « volume invalide ».
+
+**Constaté le 26/10** : chez MetaQuotes-Demo, les 26 indices sont désactivés (mode 0) et il n'y a aucun crypto. L'armée a raison de les ignorer.
+
+**À faire** : `/or_maj`, puis le changement de mot de passe, donné pas à pas dans la conversation.
+
+**Contrôle** : 260 tests (269 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Migrations simulées depuis R5 jusqu'à R8.6, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.6) — l'historique ancien de MT5 peut être retiré sans revenir
 

@@ -4,6 +4,7 @@ Le verrou R2 bloque tout ordre dès que le pont se connecte à un compte différ
 changement de compte ne doit jamais passer inaperçu. Après la saisie des nouveaux identifiants (dans Termius, par le
 propriétaire) et sa confirmation explicite, l'armée se relie au nouveau compte : identité notée, verrou levé, suivis
 de l'ancien compte effacés. Tout reste en pause : les équipes ne reprennent que sur /or_marches_on.
+R8.7 : même compte (seul le mot de passe change) : rien n'est effacé, les positions restent suivies.
 """
 from __future__ import annotations
 
@@ -31,13 +32,19 @@ def relier(compte):
     if not identite["login"] or not identite["server"]:
         raise mt5.ErreurMT5("identité du compte indisponible : rien n'est relié")
     ancien = base.lire("r2:compte_lie")
+    meme = isinstance(ancien, dict) and str(ancien.get("login")) == str(identite["login"]) \
+        and ancien.get("server") == identite["server"]
     base.ecrire("r2:compte_lie", identite)
     base.ecrire("r2:compte_change", False)
-    base.ecrire("r2:ordre_incertain", None)            # une intention de l'ancien compte n'a plus de sens ici
-    base.ecrire("mt5:suivi", {})
     base.ecrire("mt5:pause", True)
     base.ecrire("pause", True)
     base.ecrire("marches:actif", False)
+    if meme:                                            # R8.7 : même compte, nouveau mot de passe : rien n'est oublié
+        return (f"🔗 Même compte démo …{str(identite['login'])[-3:]} ({identite['server']}) : identifiants mis à "
+                "jour. Ses positions restent suivies, avec leurs stops. Tout est en pause ; pour reprendre : "
+                "/or_marches_on.")
+    base.ecrire("r2:ordre_incertain", None)            # une intention de l'ancien compte n'a plus de sens ici
+    base.ecrire("mt5:suivi", {})
     from . import marches
     e = marches.lire()
     for cle in ("positions", "vu", "bloque", "reessai", "refus"):

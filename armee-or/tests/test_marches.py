@@ -940,3 +940,30 @@ def test_le_plancher_laisse_assez_d_histoire_au_banc():
     jours_ouvres = (time.time() - 1_640_995_200) / JOUR * 5 / 7
     assert jours_ouvres > marches.MIN_BOUGIES                                        # nouveaux marchés jugeables
     assert disque.PLANCHER_HISTORIQUE == 0                                           # tests : faux historiques 2017-2019
+
+
+# ============================================================================ R8.7 : positions retrouvées, jamais 0 lot
+def test_positions_de_l_equipe_retrouvees_et_suivies(courtier):
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
+    marches.bot_marches()
+    assert {p.symbol for p in courtier.positions} == {"EURUSD", "US500"}
+    e = marches.lire()
+    e["positions"] = {}                                                              # suivi perdu (ancien « relier »)
+    marches.ecrire(e)
+    n = len(courtier.envois)
+    marches.bot_marches()
+    suivi = marches.lire()["positions"]
+    assert set(suivi) == {"EURUSD", "US500"} and all(v["stop"] > 0 for v in suivi.values())
+    assert any("retrouvée" in t for t in courtier.messages) and len(courtier.envois) == n    # aucun ordre en plus
+
+
+def test_jamais_zero_lot_demande_au_pont(courtier, monkeypatch):
+    base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+    activer()
+    vraie = marches.selection
+    monkeypatch.setattr(marches, "selection", lambda c, eq, f=None, cap=False: (
+        lambda r: (r[0], {s: 1e-12 for s in r[0]}, r[2]))(vraie(c, eq, f, cap)))      # budgets devenus minuscules
+    marches.bot_marches()
+    assert courtier.envois == [] and not marches.lire().get("refus")                  # rien demandé, rien refusé
+    assert "trop gros" in " ".join(marches.lire()["exclus"].values())

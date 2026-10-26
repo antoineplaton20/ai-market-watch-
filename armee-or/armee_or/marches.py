@@ -629,6 +629,13 @@ def bot_marches(chef=None, maintenant=None):
                                 "signal n'est pas retombé")
                 e.setdefault("bloque", {})[s] = True
             suivi.pop(s)
+    for s, ps in positions.items():                         # R8.7 : position de l'équipe sur CE compte, non suivie
+        if s not in suivi:                                  # (mot de passe changé, base restaurée…) : reprise
+            p = ps[0]
+            suivi[s] = {"strategie": strategie_permise() or "sma200", "ts": m, "lots": p["volume"],
+                        "prix": p["price_open"], "stop": p["sl"]}
+            annonces.append(f"{s} : position {p['volume']:g} lot retrouvée sur ce compte, de nouveau suivie "
+                            f"(stop {p['sl']})")
     strat = strategie_permise()
     risque_ok, raison_risque = risque.autorise()
     marge_ok = float(compte.get("margin_free") or equite) >= (1 - MARGE_MAX) * equite
@@ -731,6 +738,11 @@ def bot_marches(chef=None, maintenant=None):
               and (places is None or s in places)):
             valeur, vol, specs = retenus[s]
             lots, note = lots_marche(equite, valeur, vol, budgets[s], specs, capital)
+            if not lots:                                    # R8.7 : jamais 0 lot demandé au pont (« volume invalide »)
+                exclus[s] = note
+                msgs.append(f"{s} : {note}")
+                vus[s] = t_barre
+                continue
             atr = I.atr(h, l, c, 20)[-1]
             tick = mt5.appel("tick", symbole=s)
             stop = round(tick["ask"] - STOP_ATR * atr, int(specs.get("digits") or 5))

@@ -43,6 +43,9 @@
 > historique ancien ni marché sans archive demandé à MT5 ; alerte Telegram une fois par jour.
 > R8.6 : plancher d'historique au 1er janvier 2022 (disque.PLANCHER_HISTORIQUE) : MT5 ne re-télécharge pas les
 > années retirées ; ~4,8 ans laissés aux nouveaux marchés, au-dessus des 750 bougies du banc.
+> R8.7 : même compte, nouveau mot de passe (« or mt5 compte ») : rien n'est effacé ; l'équipe multi-marchés
+> retrouve ses positions 770050 du compte relié ; jamais 0 lot demandé au pont. MetaQuotes-Demo : 26 indices en
+> mode 0 (désactivés), aucun crypto (vérifié le 26/10/2026).
 >
 > R6.2 (25/10/2026) : historiques contrôlés (qualite.py : un marché écarté ne sert ni de preuve ni d'achat) ;
 > verrou de gain (+2 ATR → stop à +0,5 ATR, marches_stop ne fait que monter), au banc comme en direct.
@@ -1661,7 +1664,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 258 tests au 26/10/2026 (R8.6) ; 267 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 260 tests au 26/10/2026 (R8.7) ; 269 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;
