@@ -1,4 +1,34 @@
-# Armée de l’or 2.5-R8.2 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.3 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.3) — tous les marchés du courtier, 10 positions
+
+**Tes décisions** : les bots tradent « tout ce qu’il y a » chez le courtier (126 devises, 14 métaux, 26 indices sur ton écran), avec **10 positions au plus** sur le compte imité de 1 000 €.
+
+**Ce qui change** :
+
+- **L’univers** : en plus des 34 marchés connus, l’équipe prend chaque instrument négociable des dossiers devises, métaux, indices, énergie, crypto et agricoles de ton courtier. Il y a un seul symbole par marché ; les doublons comme « EURUSD.a » sont écartés.
+- **Les actions du Nasdaq** (12 094) restent à part : la règle n’a jamais été testée sur des actions seules. Ce serait une étude à faire d’abord (R9).
+- **Mode 1 000 €** (/or_marches_1000) :
+  - jusqu’à **10 positions**, chacune de 0,01 lot et au plus 30 € de risque jusqu’au stop ;
+  - **300 € (30 %) au total** jusqu’aux stops, positions des autres équipes comprises ;
+  - priorité aux familles pas encore tenues, puis aux marchés les moins risqués.
+- **L’archive** des cours journaliers est remplie deux fois plus vite. Un nouveau marché ne compte au banc qu’après environ 3 ans d’historique, ce qui prend quelques heures après l’installation.
+
+**Ce qui ne change pas** :
+
+- chaque marché passe le contrôle de qualité des données ; un marché nouveau n’est acheté qu’après ce contrôle ;
+- rien n’est acheté sans permis ;
+- le stop est chez le courtier, avec le verrou de gain ;
+- le frein du jour arrête les nouveaux achats ;
+- le coupe-circuit, à −5 % du compte démo (environ 134 €), ferme tout et attend ton feu vert ;
+- démo seulement.
+
+**À savoir** : 10 positions ouvertes, c’est jusqu’à 300 € de pertes possibles jusqu’aux stops, soit 30 % d’un compte de 1 000 €. C’est ton choix, noté par écrit. Le coupe-circuit coupe avant d’en arriver là sur le compte démo.
+
+**À faire** : `/or_maj`, puis **/or_marches_1000** et **/or_marches_on**, puis **/or_marches** quelques heures plus tard, quand l’archive est remplie.
+
+**Contrôle** : 250 tests (259 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Migrations simulées depuis R5 jusqu’à R8.2, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.2) — chaque trade fait 0,01 lot
 

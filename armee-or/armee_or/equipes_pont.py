@@ -8,9 +8,9 @@
 - verrou de gain multi-marchés (R6.2) : un stop 770050 ne peut que MONTER (le risque ne fait que baisser), jamais au
   contact du cours ;
 - mode « capital 1 000 » (R8.1, décision du propriétaire du 26/10/2026 : la démo imite son compte de 1 000 €) : les
-  plafonds se calculent sur min(1 000, équité) dans la devise du compte : 3 % par ordre, 9 % au total jusqu'aux stops
-  (toutes positions du compte comprises), 3 positions multi-marchés au plus, et chaque ordre fait EXACTEMENT 0,01 lot
-  (R8.2) : s'il risquerait plus, il n'est pas passé. Ces nombres sont fixés ICI : l'appelant ne peut que demander le
+  plafonds se calculent sur min(1 000, équité) dans la devise du compte : 3 % par ordre, 30 % au total jusqu'aux stops
+  (toutes positions du compte comprises), 10 positions multi-marchés au plus (R8.3), et chaque ordre fait EXACTEMENT
+  0,01 lot (R8.2) : s'il risquerait plus, il n'est pas passé. Ces nombres sont fixés ICI : l'appelant ne peut que demander le
   mode, jamais un risque ou un volume plus grand.
 Les deux refusent tout compte réel. Un refus AVANT l'envoi revient en réponse (ok False, avant_envoi True) : côté
 Linux, seule une réponse perdue reste un ordre incertain.
@@ -26,8 +26,8 @@ VIDEO_MARGE_MAX = 0.95
 AGE_POSITIONS = 7 * 86400           # marché tenu mais fermé : son dernier cours compte dans le plafond cumulé
 CAPITAL_REFERENCE = 1000.0          # R8.1 : capital imité (devise du compte), plafonné par l'équité
 CAPITAL_RISQUE_ORDRE = 0.03         # perte jusqu'au stop par ordre, en part de ce capital
-CAPITAL_RISQUE_TOTAL = 0.09         # pertes cumulées jusqu'aux stops, toutes positions du compte
-CAPITAL_MAX_MARCHES = 3
+CAPITAL_RISQUE_TOTAL = 0.30         # pertes cumulées jusqu'aux stops, toutes positions du compte (R8.3)
+CAPITAL_MAX_MARCHES = 10            # R8.3 : 10 positions au plus (décision du propriétaire)
 CAPITAL_LOT = 0.01                  # R8.2 : chaque trade du mode fait exactement 0,01 lot (décision du propriétaire)
 NEGOCIABLE = (4,)                   # SYMBOL_TRADE_MODE_FULL
 ACHAT_PERMIS = (1, 4)               # LONGONLY, FULL

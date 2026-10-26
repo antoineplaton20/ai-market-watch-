@@ -24,9 +24,10 @@ tenus à la fois). Intention écrite avant l'envoi (r2:ordre_incertain) : une r�
 jusqu'à réconciliation, comme pour les autres équipes.
 
 R8.1 et R8.2 (décisions du propriétaire du 26/10/2026) : /or_marches_1000 fait imiter à la démo un compte de 1 000 € :
-chaque trade fait exactement 0,01 lot, s'il risque jusqu'au stop au plus 3 % de min(1 000, équité) ; 3 positions au
-plus (familles différentes d'abord), 9 % au total ; plafonds fixés dans le pont (equipes_pont). /or_marches_normal :
-retour.
+chaque trade fait exactement 0,01 lot, s'il risque jusqu'au stop au plus 3 % de min(1 000, équité) ; 10 positions au
+plus (R8.3 ; familles différentes d'abord, puis le moindre risque), 30 % au total ; plafonds fixés dans le pont
+(equipes_pont). /or_marches_normal : retour. R8.3 : l'univers comprend tout instrument négociable des dossiers devises,
+métaux, indices, énergie, crypto et agricoles du courtier (actions à part).
 """
 from __future__ import annotations
 
@@ -123,15 +124,38 @@ def _rang(nom, candidat):
     return None
 
 
+# R8.3 (décision du propriétaire, 26/10/2026 : « tout ce qu'il y a » chez le courtier) : en plus des marchés connus,
+# chaque instrument négociable rangé par le courtier dans un dossier de devises, métaux, indices, énergie, crypto ou
+# agricoles. Les actions (Nasdaq, NYSE…) restent à part : la règle n'a jamais été testée sur des actions seules.
+DOSSIERS = (("forex", r"forex|currenc|devise|\bfx\b"), ("métaux", r"metal|métaux|precious"),
+            ("indices", r"index|indexes|indices|indice"), ("énergie", r"energ|\boil\b"), ("crypto", r"crypto"),
+            ("agricoles", r"agri|soft|grain"))
+DOSSIERS_EXCLUS = r"nasdaq|nyse|stock|share|equit|\betf|action|bond|obligation"
+
+
+def _cle(nom):
+    return re.split(r"[.\-_#]", nom.upper())[0]
+
+
 def choisir_univers(symboles):
-    """symboles : [{name, trade_mode, …}] du serveur -> {symbole: {"famille", "nom"}} (un symbole par marché)."""
+    """symboles : [{name, path, trade_mode, …}] du serveur -> {symbole: {"famille", "nom"}} (un symbole par marché) :
+    les marchés connus (UNIVERS), puis tout instrument négociable des dossiers de DOSSIERS (R8.3)."""
     utilisables = [s["name"] for s in symboles if s.get("trade_mode") in (None, 4)]
     choix = {}
     for famille, nom, candidats in UNIVERS:
         meilleurs = sorted((r, i, s) for i, c in enumerate(candidats) for s in utilisables
                            if (r := _rang(s, c)) is not None)
         if meilleurs and meilleurs[0][2] not in choix:
-            choix[meilleurs[0][2]] = {"famille": famille, "nom": nom}
+            choix[meilleurs[0][2]] = {"famille": famille, "nom": nom, "connu": True}
+    vus = {_cle(s) for s in choix}
+    for x in sorted(symboles, key=lambda x: str(x.get("name") or "")):
+        nom, chemin = str(x.get("name") or ""), str(x.get("path") or "").lower()
+        if x.get("trade_mode") not in (None, 4) or not nom or not chemin or re.search(DOSSIERS_EXCLUS, chemin):
+            continue
+        famille = next((f for f, motif in DOSSIERS if re.search(motif, chemin)), None)
+        if famille and _cle(nom) not in vus:
+            choix[nom] = {"famille": famille, "nom": (str(x.get("description") or "") or nom)[:40], "connu": False}
+            vus.add(_cle(nom))
     return choix
 
 
@@ -620,19 +644,25 @@ def bot_marches(chef=None, maintenant=None):
             valeur = mt5.appel("valeur_lot", symbole=s)
         except mt5.ErreurMT5:
             continue
-        if (base.lire("marches:qualite") or {}).get(s, {}).get("verdict") == "écarté":
+        verdict = (base.lire("marches:qualite") or {}).get(s, {}).get("verdict")
+        if verdict == "écarté":
             msgs.append(f"{s} : historique douteux, aucun achat")     # ses sorties restent gérées
+            continue
+        if verdict is None and not univers[s].get("connu", True):    # R8.3 : marché nouveau, pas encore contrôlé
             continue
         atr_rel = float(I.atr(h, l, c, 20)[-1]) / c[-1]
         candidats[s] = (valeur, vol, {**(specs_tous.get(s) or {}), "_atr_rel": atr_rel})
     capital = mode_capital()
     retenus, budgets, exclus = selection(candidats, equite, {s: univers[s]["famille"] for s in candidats}, capital)
-    places = None                                           # R8.1 : 3 positions au plus, familles nouvelles d'abord
+    places = None                                           # R8.1, R8.3 : 10 positions au plus, familles nouvelles d'abord
     if capital:
         libres = CAPITAL_MAX_MARCHES - len(positions)
         prises = [univers.get(x, {}).get("famille") for x in positions]
-        prets = sorted(s for s, v in signaux.items() if v[0] == 1 and s in retenus and s not in positions
-                       and not e.get("bloque", {}).get(s))
+        def risque_lot(s):                                  # perte jusqu'au stop pour 0,01 lot : la plus petite d'abord
+            valeur, _, sp = retenus[s]
+            return CAPITAL_LOT * valeur * STOP_ATR * sp.get("_atr_rel", 1.0)
+        prets = sorted((s for s, v in signaux.items() if v[0] == 1 and s in retenus and s not in positions
+                        and not e.get("bloque", {}).get(s)), key=lambda s: (risque_lot(s), s))
         places = []
         for tour in (0, 1):
             for s in prets:
@@ -744,7 +774,7 @@ def bot_marches(chef=None, maintenant=None):
 def bot_archive(chef=None):
     if not config.MT5_ACTIF:
         return "MT5 non configuré"
-    return archiver()
+    return archiver(par_passage=6)                          # R8.3 : jusqu'à ~170 marchés à archiver
 
 
 # ============================================================================ pilotage

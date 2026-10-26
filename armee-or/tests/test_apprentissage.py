@@ -71,6 +71,7 @@ def test_frais_reels_mesures_puis_utilises_progressivement():
 
 def test_archive_de_la_veille(monkeypatch):
     t = time.time()
+    t -= max(0.0, t % 900 - 800)                                            # t et t + 10 dans le même quart d'heure
     base.ecrire("microstructure", {"ts": t, "financement_pct": 0.01, "acheteurs_pct": 70.0, "desequilibre_pct": -12.0})
     base.ecrire("marches", {"ts": t, "contexte": -0.4, "ratio_or_argent": 66.0})
     base.ecrire("tendances", {"ts": t, "alignement": -3})

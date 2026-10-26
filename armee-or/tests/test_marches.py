@@ -728,23 +728,30 @@ def test_capital_1000_un_lot_minimum_si_le_risque_tient_dans_3_pourcents():
 
 
 def test_capital_1000_le_pont_garde_ses_propres_plafonds(courtier):
-    """3 % de min(1 000, équité) par ordre, 9 % au total, 3 positions : fixés dans le pont ; l'appelant ne choisit
-    que le mode (le vrai booléen), jamais un risque plus grand."""
+    """3 % de min(1 000, équité) par ordre, 30 % au total, 10 positions (R8.3) : fixés dans le pont ; l'appelant ne
+    choisit que le mode (le vrai booléen), jamais un risque plus grand."""
     pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
 
     def ouvrir(**k):
         return pont.traiter({"op": "marches_ouvrir", **k})["r"]
-    for s in ("A1", "A2", "A3", "A4"):
+    noms = [f"A{i}" for i in range(1, 12)]
+    for s in noms:
         courtier.series[s] = ("Indices\\" + s, 1.0, (4000.0 + 2.0 * np.arange(900)) * bruit(900, 5))
     cap = min(1000.0, courtier.solde)
-    for s in ("A1", "A2", "A3"):
+    for s in noms[:10]:
         r = ouvrir(symbole=s, volume=50.0, sl=courtier.prix(s) * 0.99, capital=True)
         assert r["ok"] and r["risque"] <= 0.03 * cap + 1e-6 and r["volume"] == 0.01      # R8.2 : 0,01 lot exactement
-    r = ouvrir(symbole="A4", volume=0.01, sl=courtier.prix("A4") * 0.99, capital=True)
-    assert not r["ok"] and "3 marchés" in r["commentaire"]                                # 3 positions au plus
+    r = ouvrir(symbole="A11", volume=0.01, sl=courtier.prix("A11") * 0.99, capital=True)
+    assert not r["ok"] and "10 marchés" in r["commentaire"]                               # 10 positions au plus
     total = sum((courtier.symbol_info_tick(p.symbol).bid - p.sl) * p.volume * courtier.series[p.symbol][1]
                 * pont_mt5.RESERVE_COUTS for p in courtier.positions)
-    assert total <= 0.09 * cap + 1e-6 and all(p.volume == 0.01 for p in courtier.positions)
+    assert total <= 0.30 * cap + 1e-6 and all(p.volume == 0.01 for p in courtier.positions)
+    courtier.positions = []
+    us = courtier.prix("US500")                         # une position d'une autre équipe prend 280 des 300 permis
+    courtier.positions.append(NS(ticket=9, type=0, volume=1.0, price_open=us, price_current=us, sl=us - 224.0, tp=0.0,
+                                 profit=0.0, swap=0.0, magic=770090, comment="demo R4", time=0, symbol="US500"))
+    r = ouvrir(symbole="A1", volume=0.01, sl=courtier.prix("A1") * 0.5, capital=True)
+    assert not r["ok"] and "budget" in r["commentaire"]                                   # 30 % au total, tout compris
     courtier.positions = []
     r = ouvrir(symbole="XAUUSD", volume=0.01, sl=courtier.prix("XAUUSD") * 0.5, capital=True)
     assert not r["ok"] and courtier.positions == []                   # 0,01 lot d'or risquerait bien plus de 30
@@ -765,9 +772,9 @@ def test_capital_1000_au_hasard_jamais_plus_de_9_pourcents_ni_de_3_positions(cou
     import random
     rnd = random.Random(5)
     pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
-    for s in ("A1", "A2", "A3", "A4", "A5"):
-        courtier.series[s] = ("Indices\\" + s, 1.0, (4000.0 + 2.0 * np.arange(900)) * bruit(900, 6))
-    symboles = ["EURUSD", "USDJPY", "XAUUSD", "US500", "A1", "A2", "A3", "A4", "A5"]
+    for i in range(1, 14):
+        courtier.series[f"A{i}"] = (f"Indices\\A{i}", 1.0, (4000.0 + 2.0 * np.arange(900)) * bruit(900, 6))
+    symboles = ["EURUSD", "USDJPY", "XAUUSD", "US500"] + [f"A{i}" for i in range(1, 14)]
     passes = 0
     for _ in range(400):
         s = rnd.choice(symboles)
@@ -780,14 +787,14 @@ def test_capital_1000_au_hasard_jamais_plus_de_9_pourcents_ni_de_3_positions(cou
             courtier.positions.pop(rnd.randrange(len(courtier.positions)))
         perte = sum(max(0.0, courtier.symbol_info_tick(p.symbol).bid - p.sl) * p.volume * courtier.series[p.symbol][1]
                     * pont_mt5.RESERVE_COUTS for p in courtier.positions)
-        assert perte <= 0.09 * min(1000.0, courtier.solde) + 1e-6 and len(courtier.positions) <= 3
+        assert perte <= 0.30 * min(1000.0, courtier.solde) + 1e-6 and len(courtier.positions) <= 10
     assert passes >= 3
 
 
-def test_capital_1000_l_equipe_achete_au_plus_3_marches(monkeypatch):
+def test_capital_1000_l_equipe_achete_au_plus_10_marches(monkeypatch):
     n = 900
-    f = FauxMulti({**{s: (f"Indices\\{s}", 1.0, (4000.0 + 2.0 * np.arange(n)) * bruit(n, i))
-                      for i, s in enumerate(("US500", "NAS100", "US30", "GER40", "UK100"), 1)},
+    f = FauxMulti({**{s: (f"Indexes\\{s}", 1.0, (4000.0 + 2.0 * np.arange(n)) * bruit(n, i))     # R8.3 : dossier
+                      for i, s in enumerate(["US500", "NAS100"] + [f"IDX{k:02d}" for k in range(1, 11)], 1)},
                    "XAUUSD": ("Metals\\XAUUSD", 100.0, (1500.0 + 3.0 * np.arange(n)) * bruit(n, 3))})
     pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
     serveur = pont.serveur(0)
@@ -803,8 +810,14 @@ def test_capital_1000_l_equipe_achete_au_plus_3_marches(monkeypatch):
         base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
         assert "1 000" in marches.commande("/or_marches_1000") or "1000" in marches.commande("/or_marches_1000")
         activer()
+        assert marches.bot_marches().startswith("2 marchés en position")                  # R8.3 : les marchés nouveaux
+        base.ecrire("marches:qualite", {s: {"verdict": "bon", "raisons": []} for s in f.series})   # … attendent leur
+        e = marches.lire()                                                                 # contrôle de qualité
+        e["vu"] = {}
+        marches.ecrire(e)
         r = marches.bot_marches()
-        assert len(f.positions) == 3 and "XAUUSD" not in {p.symbol for p in f.positions}, (r, marches.lire().get("exclus"))
+        assert len(f.positions) == 10 and "XAUUSD" not in {p.symbol for p in f.positions}, (r, marches.lire().get("exclus"))
+        assert len(marches.lire()["univers"]) == 13                                       # 12 indices du dossier + l'or
         assert all(p.volume == 0.01 for p in f.positions)                                 # R8.2 : 0,01 lot chacun
         assert all(e.get("magic") == marches.MAGIQUE for e in f.envois)
         assert "Capital imité" in marches.texte_marches() and "XAUUSD" in marches.texte_marches()
@@ -813,8 +826,23 @@ def test_capital_1000_l_equipe_achete_au_plus_3_marches(monkeypatch):
         e["vu"] = {}
         marches.ecrire(e)
         marches.bot_marches()
-        assert len(f.positions) == 3                                                      # jamais plus de 3
+        assert len(f.positions) == 10                                                     # jamais plus de 10
         assert "règles normales" in marches.commande("/or_marches_normal") and not marches.mode_capital()
     finally:
         serveur.shutdown()
         serveur.server_close()
+
+
+def test_tout_le_courtier_devises_metaux_indices_mais_pas_les_actions():
+    """R8.3 : en plus des marchés connus, chaque instrument négociable des dossiers devises, métaux, indices… du
+    courtier ; un seul symbole par marché ; les actions (Nasdaq…) et les symboles non négociables restent à part."""
+    s = [{"name": n, "path": p, "trade_mode": m, "description": d} for n, p, m, d in [
+        ("EURUSD", "Forex\\EURUSD", 4, "Euro"), ("EURUSD.a", "Forex\\EURUSD.a", 4, ""),
+        ("AUDDKK", "Forex\\AUDDKK", 4, "Australian Dollar vs Danish Krona"), ("USDTRY", "Forex\\USDTRY", 0, ""),
+        ("XAUUSD", "Metals\\XAUUSD", 4, ""), ("XPDUSD", "Metals\\XPDUSD", 4, "Palladium"),
+        ("HK50", "Indexes\\HK50", 4, "Hang Seng"), ("AAPL", "Nasdaq\\AAPL", 4, "Apple Inc."),
+        ("TSLA", "Stocks\\US\\TSLA", 4, "Tesla")]]
+    c = marches.choisir_univers(s)
+    assert set(c) == {"EURUSD", "AUDDKK", "XAUUSD", "XPDUSD", "HK50"}
+    assert c["AUDDKK"]["famille"] == "forex" and c["XPDUSD"]["famille"] == "métaux" and c["HK50"]["famille"] == "indices"
+    assert c["HK50"]["nom"] == "Hang Seng" and c["XAUUSD"]["nom"] == "or"

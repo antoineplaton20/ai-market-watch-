@@ -93,7 +93,7 @@ case "${CMD,,}" in
 Armée de l'or R5 — chaque équipe qui passe des ordres exige ton activation explicite.
   or marches         multi-marchés : forex, métaux, énergie, agricoles, indices, crypto (banc, permis, positions)
   or marches on|off  activer (achats sous permis, plafond R3 de 2 %) / arrêter les achats · or marches fermer
-  or marches 1000    la démo imite un compte de 1 000 € (0,01 lot par trade, 3 % au plus, 3 positions) · or marches normal : retour
+  or marches 1000    la démo imite un compte de 1 000 € (0,01 lot par trade, 3 % au plus, 10 positions) · or marches normal : retour
   or video installer équipe vidéo : 2e compte DÉMO à fort levier (login, mot de passe, serveur tapés ici)
   or video           ses paniers et ses loteries · or video on|off|fermer · or video gain 2 · or video rejouer
   or video symbole EURUSD   autre marché pour l'équipe vidéo (or video symbole or : retour à l'or)
