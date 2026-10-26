@@ -18,6 +18,10 @@
 > R6 (25/10/2026) : recherche sur internet demandée par le propriétaire (« être positifs quoi qu'il arrive »).
 > Seul le momentum 12 mois passe tous les contrôles : ajouté aux candidats du permis multi-marchés (§5).
 >
+> R8 (26/10/2026) : tout internet passé au crible (podcasts transcrits, Trading Rush, TradingView, Odysee, forums,
+> discours de PDG et de gérants) ; 167 essais de plus, 418 depuis R3. Aucune méthode nouvelle n'a de vrai permis ;
+> la candidate H01 tient l'épreuve heure par heure. Aucune règle de trading ne change.
+>
 > R7 (25/10/2026) : les vidéos de trading les plus vues (inventaire YouTube, 3 831 vidéos) et les 22 fiches de
 > départ, toutes testées (251 essais comptés, Sharpe dégonflé). Aucune règle de trading ne change. Candidate pour
 > R7.1, à la décision du propriétaire : Turtles système 1 acheteur avec filtre, exécuté DANS LA JOURNÉE (§5, H01).
@@ -501,6 +505,26 @@ Question du propriétaire : « t'es-tu inspiré des plus grands groupes, de Pari
 - **Attention** : la force de la 2e moitié doit beaucoup aux cryptos. Sans elles, le momentum par famille donne +0,53 / +0,32. Si le courtier ne propose pas BTCUSD et ETHUSD, le permis le dira.
 - **Renaissance** (Simons) : selon un propos rapporté de Robert Mercer (formulation exacte non vérifiée), le fonds le plus rentable de l'histoire n'aurait raison qu'environ 50,75 % du temps. Même chez eux, le gain vient du nombre de paris et de la taille, pas d'un trade toujours gagnant.
 - **Les dirigeants des grandes entreprises** (Apple, Microsoft, LVMH…) ne sont pas des traders. Les grands gérants déjà au §8 (Buffett, Dalio, Simons, Soros, Druckenmiller, Tudor Jones, Bouchaud) disent la même chose : survivre d'abord, diversifier, couper les pertes.
+
+### R8 (26/10/2026) : tout internet passé au crible
+
+- **Corpus** (`etudes/corpus_r8/`, index publiés, textes non recopiés) :
+  - YouTube refuse les serveurs, Invidious et Piped compris. Les mêmes personnes sont prises par d'autres portes : 1 013 podcasts (242 085 épisodes et leurs notes), dont les épisodes clés transcrits sur le serveur par Whisper (82 épisodes, 40 heures à la publication) ; 11 936 vidéos Odysee ; les textes des 306 vidéos de Trading Rush ;
+  - 6 700 scripts TradingView classés par « j'aime » (les dix premiers, de Smart Money Concepts à 176 303 j'aime jusqu'aux blocs d'ordres, étaient déjà testés en R7) ;
+  - 778 discours et entretiens transcrits (PDG de Nvidia, SpaceX et Tesla, Apple, Microsoft ; Buffett, Dalio, Marks, Griffin, Ackman, Powell…) ;
+  - Reddit, Stack Exchange, Hacker News, MQL5, arXiv, les grandes maisons, Quantpedia ;
+  - carte de couverture : 273 728 documents, chaque famille citée est testée ou non applicable.
+- **Méthode** (`etudes/recherche_r8.py`, `etudes/catalogue_r8.py`, `etudes/validation_r8.py`) : mêmes juges qu'en R7. Les règles d'exposition doivent aussi compter 30 entrées par moitié. 167 essais, 418 depuis R3 ; deux passes identiques.
+- **Résultats** :
+  - 45 règles nouvelles (N01 à N45, 122 essais) : aucun vrai permis. En 15 min, aucune ne gagne sur les deux moitiés ; en 1 h, une seule (PMax), sous le naïf. Les indicateurs de Trading Rush et les scripts TradingView les plus suivis sont tous rejetés (H67, H68) ;
+  - cassure de Larry Williams : +1,73 / +2,17 en journalier, un artefact des ouvertures Yahoo. Jouée dans la journée, elle perd (H59) ;
+  - EWMAC de Carver achat seul : permis, moins bon que l'équipe (H61) ; pyramidage des Turtles : dégrade (H62) ;
+  - sélections entre marchés (valeur, faible volatilité, bêta, inversion, asymétrie) : aucune ne bat le naïf (H63) ;
+  - Fed (222 dates officielles) : effet sur la 1re moitié seulement (H36). Résultats des 7 géants, lune, fêtes, calendrier : rien (H64, H65) ;
+  - pétrole : permis, mais Sharpe dégonflé 17 % (H66). All Weather, parité de risque, 60/40, Grantham, peur et avidité : rejetés (H70) ;
+  - les discours des PDG ne contiennent aucune règle de trading.
+- **H01 heure par heure** : sur le vrai chemin des prix (bougies d'une heure), le bitcoin donne +1,24 (journalier +1,12), l'ether +1,03 (+1,06), l'or +0,53 (+0,55) et le S&P 500 (Dukascopy 2012-2018) +0,35 (+0,25). La candidate ne doit rien aux bougies journalières.
+- **Non fait** : l'audio d'Odysee (le serveur de vidéos refuse), les dates de l'inflation américaine (BLS et FRED refusent), l'or, le pétrole et le DAX horaires de Dukascopy (téléchargement en cours).
 
 ### R7 (25/10/2026) : les vidéos les plus vues et chaque fiche, toutes testées
 
@@ -1621,7 +1645,7 @@ Le stop est posé chez le courtier : il s'exécute même si le serveur tombe.
 
 ### 12.4 Les tests
 
-- **pytest** : 242 tests au 25/10/2026 (R7) ; 251 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
+- **pytest** : 245 tests au 26/10/2026 (R8) ; 254 avec TA-Lib (`requirements-recherche.txt`), Python 3.11 à 3.13. Lance `python -m pytest -q` en redirigeant la sortie dans un fichier, puis vérifie le code de sortie.
 - **Pour chaque nouvelle règle, quatre tests :**
   1. sa logique, sur des bougies synthétiques ;
   2. le non-regard : tronquer le futur ne change aucune décision passée ;

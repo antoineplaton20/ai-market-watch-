@@ -1,4 +1,66 @@
-# Armée de l’or 2.5-R7 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8) — tout internet passé au crible : podcasts, influenceurs, TradingView, forums, discours
+
+**Ce qui a été passé en revue** (index publiés dans `etudes/corpus_r8/`, textes non recopiés) :
+
+- **YouTube refuse toujours les serveurs**, même par Invidious ou Piped. J'ai donc pris les mêmes personnes par d’autres portes :
+  - **1 013 podcasts** (annuaire Apple), soit **242 085 épisodes** avec leurs notes ;
+  - les épisodes clés **écoutés et transcrits par Whisper** sur le serveur (Chat With Traders, Top Traders Unplugged, Better System Trader, Meb Faber, Michael Covel, Linda Raschke, Peter Brandt, Toby Crabel, Rob Carver, Ernie Chan, Larry Hite…) : 82 épisodes, 40 heures d’écoute à la publication, et la transcription continue ;
+  - **11 936 vidéos Odysee** (beaucoup de chaînes YouTube y sont recopiées), titres et descriptions ;
+  - **Trading Rush** (une des plus grosses chaînes YouTube de trading) : le texte de ses **306 vidéos**, publié sur son site.
+- **TradingView** : **6 700 scripts publics**, classés par nombre de « j’aime ». Les dix premiers (Smart Money Concepts 176 303, SuperTrend 84 245, WaveTrend, UT Bot, Killzones ICT, lignes de tendance, blocs d’ordres…) étaient déjà testés en R7 ; les suivants le sont maintenant.
+- **Discours et entretiens** : **778 transcriptions** (Jensen Huang, Elon Musk, Tim Cook, Satya Nadella, Warren Buffett, Ray Dalio, Howard Marks, Ken Griffin, Bill Ackman, Jerome Powell, Larry Fink, Jamie Dimon…).
+- **Forums et sites** : Reddit (6 049 messages les mieux notés, 30 forums), Stack Exchange, Hacker News, MQL5 (1 761 codes publiés), arXiv (1 684 articles), les pages de recherche des grandes maisons, et les 82 stratégies gratuites de Quantpedia.
+- **Carte de couverture** : 273 728 documents. Chaque méthode citée est comptée par source, et chaque famille est désormais **testée ou non applicable** (options, haute fréquence, copie de signaux).
+
+**Comment** : mêmes juges qu’en R7 (permis, naïf, frais réels, deux moitiés, Sharpe dégonflé). Les règles d’exposition doivent aussi compter 30 entrées par moitié. **167 essais de plus, 418 en tout depuis R3.** Deux passes complètes donnent des résultats identiques.
+
+| Ce qui a été testé | Résultat |
+|---|---|
+| 45 règles nouvelles (122 essais, 15 min, 1 h, journalier) : Gann, Camarilla, TTM Squeeze, Hull, Kaufman, Aroon, Vortex, biseau, achat du creux, plus haut de 52 semaines, cassure de Larry Williams, Connors RSI, Fisher, TRIX, McGinley, Schaff, Alligator, fractales, chiffres ronds, Holy Grail de Raschke… | aucun vrai permis ; en 15 min, aucune des 38 ne gagne sur les deux moitiés ; en 1 h, une seule, sans battre le naïf |
+| Les indicateurs de Trading Rush (« 76 % de gagnants ») | aucun permis : ses taux viennent de marchés « très porteurs » choisis à la main, après coup |
+| Les scripts TradingView les plus suivis (WaveTrend, UT Bot, Chandelier, QQE, SSL, HalfTrend, Nadaraya-Watson, classification « lorentzienne », Vix Fix, OTT, PMax, SuperTrend IA) | aucun permis |
+| Cassure de volatilité de Larry Williams | +1,73 / +2,17 en journalier, mais c’est un **artefact** : jouée dans la journée, avec le vrai ordre des prix, elle perd |
+| EWMAC de Robert Carver, achat seul | permis (+0,18 / +0,96), mais moins bon que notre équipe en 1re moitié : non déployé |
+| Pyramidage des Turtles | dégrade la candidate (+0,32 / +1,16 au lieu de +0,44 / +1,24) |
+| Valeur, faible volatilité, faible bêta, inversion, asymétrie, saisonnalité croisée | aucune ne bat le naïf |
+| Réunions de la Fed (222 dates officielles) | effet réel sur la 1re moitié, disparu sur la 2e (t = 2,76 puis 0,71) |
+| Résultats de Nvidia, Apple, Microsoft, Amazon, Alphabet, Meta et Tesla (583 dates de la SEC) | rien de significatif |
+| Lune, Diwali, Nouvel An chinois, veille de férié, expiration des options, jours de paie, baromètre de janvier | rien |
+| Peur (VIX > 30), courbe des taux, crédit, structure du VIX | rien ; le « mois après une baisse du pétrole » a le permis, mais Sharpe dégonflé 17 % : du bruit |
+| All Weather de Dalio, parité de risque, 60/40, bulles de Grantham, « craintif quand les autres sont avides » (Buffett) | sous le naïf, ou trop peu de décisions pour juger |
+| Discours des PDG (Nvidia, SpaceX, Apple…) | aucune règle de trading : ils parlent de leurs entreprises, pas de marchés |
+
+**La candidate de R7 tient l’épreuve heure par heure.** Turtles système 1 en achat seul, avec filtre, rejoué sur le vrai chemin des prix (bougies d’une heure, `etudes/validation_r8.py`) :
+
+- bitcoin +1,24 (journalier +1,12) ;
+- ether +1,03 (+1,06) ;
+- or +0,53 (+0,55) ;
+- S&P 500 Dukascopy 2012-2018 : +0,35 (+0,25).
+
+Le résultat ne vient donc pas des bougies journalières.
+
+**Ce qui n’a pas pu être fait** :
+
+- l’audio et la vidéo d’Odysee (le serveur de vidéos répond « trop de demandes ») ;
+- les dates de l’inflation américaine (BLS et FRED refusent le serveur), donc la stratégie « CPI » de Trading Rush ;
+- les historiques d’une heure de l’or, du pétrole et du DAX chez Dukascopy (téléchargement très lent, en cours).
+
+**Ce qui change dans les bots : rien.** R8 apporte les études, 14 fiches nouvelles (registre de 71 fiches) et aucune règle de trading. L’installer n’est pas nécessaire. Si tu le fais : `/or_maj`, puis seulement `/or_marches_on`.
+
+**La décision qui t’attend reste la même** : faire trader les Turtles (achat seul, avec le filtre) par l’équipe multi-marchés, avec une surveillance des cassures toutes les 5 minutes. Ce serait R7.1.
+
+**Contrôle complet de R8 :**
+
+- **Études** : `recherche_r8` et `validation_r8` lancées deux fois : résultats identiques. `telecharger_r8` redonne les mêmes dates de la Fed et de la SEC.
+- **Tests** : 245 tests (254 avec TA-Lib), tous réussis :
+  - sous Python 3.11 (celui du pont sous Wine), 3.12 et 3.13 ;
+  - chacun des 16 fichiers seul ;
+  - trois fois de suite avec des graines différentes ;
+  - sur une copie limitée aux fichiers du manifeste, comme sur le serveur.
+- **Nouveaux tests** : aucune des 45 règles R8 n’utilise le futur (coupure en milieu et en fin de journée), et les fichiers Dukascopy sont lus exactement.
+- **Installation** : migrations simulées depuis R5, R6.1, R6.2 et R7, retour arrière compris ; paquet téléchargé depuis GitHub et vérifié.
 
 ## 25 octobre 2026 (R7) — les vidéos de trading les plus vues et chaque fiche, toutes testées
 

@@ -19,7 +19,9 @@ SYMBOLES = {
     "N225": "^N225", "STOXX50E": "^STOXX50E", "BTC-USD": "BTC-USD", "ETH-USD": "ETH-USD"}
 EXTRA = {"HSI": "^HSI", "AXJO": "^AXJO", "KS11": "^KS11", "STI": "^STI", "NSEI": "^NSEI", "000001SS": "000001.SS",
          "SSMI": "^SSMI", "IBEX": "^IBEX", "ZNF": "ZN=F", "ZBF": "ZB=F",
-         "GLD": "GLD", "SLV": "SLV", "SPY": "SPY"}              # R7 : or, argent, S&P 500 par leurs fonds cotés
+         "GLD": "GLD", "SLV": "SLV", "SPY": "SPY",               # R7 : or, argent, S&P 500 par leurs fonds cotés
+         "QQQ": "QQQ", "VIX": "^VIX", "VIX3M": "^VIX3M", "NVDA": "NVDA", "AAPL": "AAPL", "MSFT": "MSFT",   # R8
+         "AMZN": "AMZN", "GOOGL": "GOOGL", "META": "META", "TSLA": "TSLA"}
 
 
 def telecharger(symbole):

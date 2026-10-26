@@ -1,0 +1,20 @@
+{
+ "podcasts": 1013,
+ "episodes_de_podcasts": 242085,
+ "videos_odysee": 11936,
+ "chaines_odysee": 2316,
+ "forums_et_sites": {
+  "reddit": 6049,
+  "stackexchange": 1000,
+  "hackernews": 1171,
+  "mql5": 1761,
+  "arxiv": 1684,
+  "maison": 104
+ },
+ "strategies_quantpedia": 82,
+ "scripts_tradingview": 6700,
+ "textes_trading_rush": 306,
+ "discours_transcrits": 778,
+ "episodes_transcrits_whisper": 82,
+ "minutes_transcrites": 2389
+}

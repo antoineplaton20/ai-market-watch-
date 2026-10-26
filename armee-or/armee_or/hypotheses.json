@@ -3,10 +3,10 @@
   "id": "H01",
   "nom": "Turtles",
   "description": "(Dennis, Eckhardt, Donchian).\n  - Système 1 : cassure de 20 jours, avec le filtre « sauter le signal après un gain », et sortie sur 10 jours.\n  - Système 2 : cassure de 55 jours, et sortie sur 20 jours.\n  - Taille : N = ATR sur 20 jours, et 1 unité = 1 % du capital par N.\n  - Stop à 2 N.\n  - Variante en 4 h, avec le même nombre de bougies.",
-  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py",
+  "source": "PROMPT_MAITRE.md §10.3 fourni par le propriétaire ; etudes/fiches_r7.py, etudes/recherche_r7.py ; etudes/validation_r8.py",
   "etat": "candidate_R7",
   "parametres_a_formaliser": false,
-  "resultat": "Testée telle qu'écrite (etudes/fiches_r7.py, 25 marchés propres 2000-2026, naïf +0,23 / +0,74, équipe +0,30 / +0,92). Système 1 ACHETEUR avec le filtre, entrée et sortie DANS LA JOURNÉE (ordre à la cassure) : +0,46 / +1,23, permis et mieux que l'équipe ; frais triplés +0,40 / +1,19 ; sans cryptos +0,48 / +0,33 ; bat le naïf sur 172 sous-paniers sur 200 et l'équipe sur 139 ; 4 périodes de 5 ans sur 5 au-dessus de l'équipe sauf 2001-2005 ; Sharpe dégonflé 100 % même sur 251 essais. Achat et vente : +0,34 / +1,08. Mais à la CLÔTURE (comme l'équipe trade aujourd'hui) : +0,19 / +1,01, pas de permis ; sans le filtre +0,21 / +0,92 ; système 2 +0,14 / +0,63 ; en 4 h, perd sur la 2e moitié. À déployer seulement avec une exécution dans la journée (décision du propriétaire)."
+  "resultat": "Testée telle qu'écrite (etudes/fiches_r7.py, 25 marchés propres 2000-2026, naïf +0,23 / +0,74, équipe +0,30 / +0,92). Système 1 ACHETEUR avec le filtre, entrée et sortie DANS LA JOURNÉE (ordre à la cassure) : +0,46 / +1,23, permis et mieux que l'équipe ; frais triplés +0,40 / +1,19 ; sans cryptos +0,48 / +0,33 ; bat le naïf sur 172 sous-paniers sur 200 et l'équipe sur 139 ; 4 périodes de 5 ans sur 5 au-dessus de l'équipe sauf 2001-2005 ; Sharpe dégonflé 100 % même sur 251 essais. Achat et vente : +0,34 / +1,08. Mais à la CLÔTURE (comme l'équipe trade aujourd'hui) : +0,19 / +1,01, pas de permis ; sans le filtre +0,21 / +0,92 ; système 2 +0,14 / +0,63 ; en 4 h, perd sur la 2e moitié. À déployer seulement avec une exécution dans la journée (décision du propriétaire). R8 : le pyramidage la dégrade (+0,32 / +1,16). Contre-épreuve heure par heure (niveaux de la veille, vrai chemin des prix) : bitcoin +1,24 contre +1,12 en journalier, ether +1,03 contre +1,06, or (PAXG) +0,53 contre +0,55, euro −0,91 contre −0,82, S&P 500 (Dukascopy 2012-2018) +0,35 contre +0,25 : le résultat ne vient pas des bougies journalières."
  },
  {
   "id": "H02",
@@ -318,9 +318,9 @@
   "id": "H36",
   "nom": "Dérive avant les réunions de la Fed",
   "description": "Acheter les indices 24 h avant une décision de la Fed.",
-  "source": "Lucca et Moench (2015) ; Kurov, Wolfe et Gilbert, « The Disappearing Pre-FOMC Announcement Drift »",
-  "etat": "rejetee_sources",
-  "resultat": "Disparue après 2015 selon Kurov, Wolfe et Gilbert ; non retestée (calendrier des réunions non archivé).",
+  "source": "Lucca et Moench (2015) ; Kurov, Wolfe et Gilbert, « The Disappearing Pre-FOMC Announcement Drift » ; etudes/recherche_r8.py, etudes/telecharger_r8.py (222 décisions de la Fed, federalreserve.gov)",
+  "etat": "rejetee_R8",
+  "resultat": "Retestée en R8 avec les dates officielles : le jour de décision, le S&P monte de +0,22 % de plus qu'un jour ordinaire (t = 2,54), mais seulement en 1re moitié (t = 2,76 puis 0,71) ; l'euro-dollar de même (t = 3,52 puis 0,60). Acheter le S&P pour ces seuls jours : +0,22 / −0,09. L'effet a disparu, comme l'écrivent Kurov, Wolfe et Gilbert.",
   "parametres_a_formaliser": false
  },
  {
@@ -510,6 +510,132 @@
   "source": "etudes/inventaire_r7.csv",
   "etat": "non_applicable",
   "resultat": "Pas d'options sur le compte MT5 ; options binaires interdites à la vente aux particuliers dans l'Union européenne (ESMA, 2018) ; signaux et copie : pas de règle vérifiable à tester ; haute fréquence : hors de portée d'un serveur à 3 000 €.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H58",
+  "nom": "Indicateurs du corpus R8 : Gann, Camarilla, TTM Squeeze, Hull, Kaufman, Aroon, Vortex, biseau, achat du creux",
+  "description": "Méthodes citées dans les podcasts, vidéos Odysee et forums, jamais testées avant R8 ; règles fixées avant le test (etudes/catalogue_r8.py, N01 à N10).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Aucun permis en 15 min, 1 h ni en journalier ; en 15 min, toutes perdent après frais (de −1,1 à −10,2 de Sharpe). Les pivots Camarilla gagnent 57 à 58 % de leurs trades et perdent quand même ; l'achat du creux gagne sur les deux moitiés en journalier (+0,34 / +0,13) sans battre le naïf (+0,23 / +0,74).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H59",
+  "nom": "Cassure de volatilité de Larry Williams",
+  "description": "Ordres à l'ouverture ± 0,6 × l'amplitude de la veille, le premier touché, stop à l'ordre opposé, sortie en fin de journée (N04 en journalier, N04b dans la journée).",
+  "source": "etudes/recherche_r8.py, etudes/validation_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Le journalier sort +1,73 / +2,17 : un artefact (une bougie journalière ne dit pas quel ordre est touché en premier). Jouée dans la journée sur les mêmes marchés : +0,49 / −0,44 (15 min) et +0,50 / −0,36 (1 h). En bougies d'une heure (etudes/validation_r8.py), elle perd sur l'or, l'euro, le S&P 500 (−1,06 / −1,58, Dukascopy 2012-2018) et l'argent ; le journalier du S&P Dukascopy donne +0,26 / −0,35 : le +1,73 / +2,17 tient aux ouvertures Yahoo, non négociables ; sur le bitcoin et l'ether seuls (choix fait après coup, essai compté) : +1,64 / +0,59, sous le naïf (+1,01 / +0,73) en 2e moitié.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H60",
+  "nom": "Nouveau plus haut de 52 semaines",
+  "description": "Achat à la clôture au-dessus du plus haut des 252 jours précédents, sortie sous le plus bas de 20 jours, stop 2 ATR (N12) ; et sélection des marchés proches de leur plus haut (D4 ; George et Hwang, 2004).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "N12 : +0,234 / +0,741 contre +0,231 / +0,736 pour le naïf : permis à 0,003 près, Sharpe dégonflé 57 % sur 418 essais, donc rien de plus que le naïf. D4 : +0,35 / +0,46, sous le naïf.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H61",
+  "nom": "EWMAC de Robert Carver (4 vitesses)",
+  "description": "Prévision (EMA rapide − EMA lente) / volatilité pour 8/32, 16/64, 32/128, 64/256, mise à l'échelle sur sa moyenne passée, plafonnée à ±20 (Systematic Trading, 2015).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "mesuree_non_deployee",
+  "resultat": "Achat et vente : +0,09 / +0,48, rejeté. Achat seul : +0,18 / +0,96, permis, Sharpe dégonflé 68 % sur 418 essais, mais moins bon que le momentum de l'équipe (+0,30 / +0,94) en 1re moitié : non déployé.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H62",
+  "nom": "Pyramidage des Turtles",
+  "description": "Une unité de plus à chaque +½ N, 4 unités au plus, stop de toutes les unités à 2 N sous la dernière entrée (règles des Turtles).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "+0,32 / +1,16 avec pyramidage contre +0,44 / +1,24 sans (H01) : le pyramidage dégrade la candidate.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H63",
+  "nom": "Sélections entre marchés : valeur, faible volatilité, faible bêta, inversion, asymétrie, saisonnalité croisée",
+  "description": "Chaque mois, le tiers des marchés au meilleur score (Asness, Moskowitz et Pedersen 2013 ; Frazzini et Pedersen 2014 ; Heston et Sadka 2008…).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Aucune ne bat le naïf (+0,24 / +0,78) : valeur −0,21 / +0,34, faible volatilité −0,88 / −0,62, faible bêta −0,74 / −0,66, inversion d'une semaine −0,09 / +0,50, asymétrie +0,46 / +0,77, valeur et momentum +0,23 / +0,44, saisonnalité croisée +0,02 / +0,69, valeur des devises −0,40 / −0,66.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H64",
+  "nom": "Résultats des 7 géants (Nvidia, Apple, Microsoft, Amazon, Alphabet, Meta, Tesla)",
+  "description": "Dates officielles des résultats (SEC, 8-K item 2.02) : le Nasdaq le lendemain, l'action avant ses résultats, la dérive après.",
+  "source": "etudes/recherche_r8.py, etudes/telecharger_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "583 publications : rien de significatif (t = −0,35, +0,90 et +1,28, seuil 2,39 après correction).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H65",
+  "nom": "Calendrier et croyances : lune, Diwali, Nouvel An chinois, veille de férié, expiration des options, jours de paie, baromètre de janvier",
+  "description": "Effets cités dans les podcasts, forums et la base Quantpedia (#0083, #0102, #0113, #0419 ; Dichev et Janes 2003).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Aucun effet significatif après correction ; le baromètre de janvier ne bat pas le naïf (+0,08 / +0,47 contre +0,11 / +0,51).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H66",
+  "nom": "Peur, courbe des taux, crédit, pétrole, structure du VIX (S&P tenu seulement quand le signal est favorable)",
+  "description": "VIX au-dessus de 30, courbe 10 ans − 2 ans, écart BAA − 10 ans, baisse du pétrole le mois d'avant (Driesprong, Jacobsen et Maat 2008), VIX sous le VIX 3 mois.",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Seul le pétrole a le permis (+0,12 / +0,63 contre +0,03 / +0,52, 37 et 34 entrées) mais son Sharpe dégonflé n'est que de 17 % sur 418 essais : du bruit. Écart de crédit +0,28 / +0,53, 29 entrées en 1re moitié (moins de 30) ; VIX > 30, courbe, structure du VIX : rejetés.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H67",
+  "nom": "Indicateurs testés par Trading Rush (Connors RSI, Fisher, RVI, TRIX, CMO, TEMA, McGinley, Schaff, Chaikin, Awesome, Alligator, fractales, choppiness, Beep Boop, chiffres ronds, RSI stochastique, canal de moyennes)",
+  "description": "Textes des vidéos de Trading Rush (306 articles, tradingrush.net) ; gabarit de ses essais : filtre EMA 200, stop au dernier creux, objectif 1,5 R (N13 à N27, N39, N40).",
+  "source": "etudes/recherche_r8.py, etudes/corpus_r8/tradingrush_index.csv",
+  "etat": "rejetee_R8",
+  "resultat": "Aucun permis sur 49 essais. Ses taux de réussite (jusqu'à 76 %) sont mesurés à la main, sur l'or en 30 minutes, dans des « marchés très porteurs » choisis après coup : ils ne se retrouvent pas. Connors RSI gagne 64 à 65 % de ses trades et perd sur une moitié.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H68",
+  "nom": "Scripts TradingView les plus suivis (WaveTrend, UT Bot, Chandelier Exit, Range Filter, QQE, SSL, HalfTrend, Nadaraya-Watson, classification lorentzienne, Williams Vix Fix, OTT, PMax, SuperTrend IA)",
+  "description": "6 700 scripts publics classés par « j'aime » (etudes/corpus_r8/tradingview_top1000.csv) ; les dix premiers (Smart Money Concepts 176 303, SuperTrend 84 245…) étaient déjà testés en R7 ; les autres sont écrits d'après leur description et leurs réglages par défaut (N28 à N37, N41 à N43).",
+  "source": "etudes/recherche_r8.py, etudes/corpus_r8/tradingview_top1000.csv",
+  "etat": "rejetee_R8",
+  "resultat": "Aucun permis sur 36 essais ; seul PMax en 1 h gagne sur les deux moitiés (+0,45 / +0,31), sous le naïf. « Flawless Victory » (11 062 j'aime) n'est pas testable tel quel : ses seuils de RSI ne sont pas publiés et l'auteur dit les avoir optimisés sur un an de bitcoin ; sa famille (Bollinger + RSI) est rejetée en R7 (V09).",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H69",
+  "nom": "Bande de bruit de Zarattini, Aziz et Barbon (2024)",
+  "description": "Momentum dans la journée : sortie de la bande de bruit (moyenne de 14 jours des écarts à l'ouverture, à la même heure), contrôles chaque demi-heure, sortie au VWAP ou en fin de journée (N38).",
+  "source": "etudes/recherche_r8.py, etudes/validation_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Or, euro, bitcoin, ether : −1,76 / −1,63 (15 min), −1,25 / −1,05 (1 h). S&P 500 (Dukascopy 2012-2018, séance de New York, contrôles chaque heure ; l'article contrôle chaque demi-heure, sur le SPY) : −0,57 / −0,53, contre +1,25 / +0,79 pour le S&P gardé.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H70",
+  "nom": "Idées des grands investisseurs : All Weather (Dalio), parité de risque, 60/40, bulles (Grantham), « craintif quand les autres sont avides » (Buffett)",
+  "description": "Portefeuille 30/40/15/7,5/7,5 ; même 5 actifs à risque égal ; sortie du S&P ou de l'or à +2 écarts-types de leur tendance de 10 ans ; bitcoin selon l'indice peur et avidité (alternative.me).",
+  "source": "etudes/recherche_r8.py, etudes/telecharger_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "All Weather +0,26 / +0,28, 60/40 +0,04 / +0,40, parité de risque +0,07 / −0,04 : sous le naïf S&P. Grantham : une seule sortie par moitié, rien à juger. Peur et avidité : −0,18 / +0,55 et −0,12 / +0,60, sous le naïf (+0,42 / +0,63), 3 à 9 entrées par moitié. Les discours des PDG (Nvidia, SpaceX, Apple…) ne donnent aucune règle de trading.",
+  "parametres_a_formaliser": false
+ },
+ {
+  "id": "H71",
+  "nom": "Méthodes de Linda Raschke : oscillateur 3-10 et « Holy Grail »",
+  "description": "Citées dans les podcasts transcrits (Chat With Traders, épisode 48) ; Connors et Raschke, Street Smarts (1995) (N44, N45).",
+  "source": "etudes/recherche_r8.py",
+  "etat": "rejetee_R8",
+  "resultat": "Oscillateur 3-10 : perd en 15 min et 1 h (−6,59 à −0,98), −0,11 / +0,39 en journalier. Holy Grail : +0,10 / +0,17 en journalier (73 trades), sous le naïf ; perd en 15 min et 1 h.",
   "parametres_a_formaliser": false
  }
 ]

@@ -1,11 +1,27 @@
-# Études reproductibles (R5.1 à R7, 25 octobre 2026)
+# Études reproductibles (R5.1 à R8, 25 et 26 octobre 2026)
 
 Chaque chiffre cité dans `LISEZMOI.md` et `PROMPT_MAITRE.md` sur ces sujets sort de ces scripts. Rien n'est ajusté
 après coup ; chaque variante essayée est listée.
 
 Dossier MACRO (R7) : séries FRED (`DFII10`, `DGS10`, `T10YIE`, `DTWEXBGS`, `WALCL`, taux 3 mois `IR3TIB01*M156N`)
 au format CSV de `fred.stlouisfed.org/graph/fredgraph.csv?id=…`, et COT de la CFTC (`publicreporting.cftc.gov`,
-jeu 72hh-3qpy) en JSON (`cot_or.json`, `cot_SIF.json`…).
+jeu 72hh-3qpy) en JSON (`cot_or.json`, `cot_SIF.json`…). R8 y ajoute `fomc.json`, `resultats_geants.json` et
+`fng.json` (`telecharger_r8.py`), et `BAA10Y.csv`, `T10Y2Y.csv` (FRED).
+
+Dossier DUKASCOPY (R8) : bougies d'une heure de `datafeed.dukascopy.com` (S&P 500, or, argent, pétrole, DAX),
+fichiers mensuels `.bi5` téléchargés lentement par `corpus_r8/dukascopy.py` (8 s entre deux fichiers).
+
+Dossier `corpus_r8/` (R8) : les collecteurs du corpus (podcasts, Odysee, forums, discours, Trading Rush,
+TradingView), le choix et la transcription Whisper des épisodes, la carte de couverture, et les index publiables
+(titres, auteurs, liens ; jamais les textes). Chaque collecteur se lance seul :
+`python etudes/corpus_r8/podcasts.py etudes/corpus_r8/termes_podcasts.txt CORPUS/podcasts.json`,
+`odysee.py requetes_odysee.txt CORPUS/odysee.json`, `forums.py CORPUS/forums.json`,
+`discours.py noms_discours.txt CORPUS/discours.json`, `tradingrush.py CORPUS/tradingrush.json`,
+`tradingview.py mots_tradingview.txt CORPUS/tradingview.json`,
+`choisir_episodes.py CORPUS/podcasts.json CORPUS/selection.json`,
+`transcrire.py CORPUS/selection.json CORPUS/transcriptions 30` (faster-whisper, à installer à part, et ffmpeg ; modèle « base », sur le processeur),
+`analyse_corpus.py CORPUS`, `extraits.py CORPUS`, `index_corpus.py CORPUS etudes/corpus_r8`,
+`dukascopy.py DOSSIER_DUKASCOPY USA500IDXUSD,XAUUSD,XAGUSD,LIGHTCMDUSD,DEUIDXEUR 2012 2026`.
 
 | Script | Données | Commande (depuis `armee-or/`) |
 |---|---|---|
@@ -27,6 +43,9 @@ jeu 72hh-3qpy) en JSON (`cot_or.json`, `cot_SIF.json`…).
 | `robustesse_r7.py` : le momentum relatif face aux contrôles | Yahoo | `.venv/bin/python etudes/robustesse_r7.py DOSSIER_YAHOO DOSSIER_YAHOO_EXTRA .` |
 | `fiches_r7.py` : les fiches H01 à H21 telles qu'écrites, et la batterie de contrôles des Turtles | Yahoo, GLD, SLV, SPY, Binance, FRED, CFTC | `.venv/bin/python etudes/fiches_r7.py DOSSIER_BINANCE DOSSIER_YAHOO DOSSIER_YAHOO_EXTRA DOSSIER_MACRO .` |
 | `analyse_r7.py` : jugement des essais, entrées au hasard, frais doublés, ordre probable des bougies, Sharpe dégonflé | sorties des deux scripts ci-dessus | `.venv/bin/python etudes/analyse_r7.py DOSSIER_BINANCE DOSSIER_YAHOO DOSSIER_MACRO . essais_r7.json autres_r7.json analyse_r7.json` |
+| `telecharger_r8.py` : jours de décision de la Fed, résultats des 7 géants (SEC), indice peur et avidité | federalreserve.gov, data.sec.gov, api.alternative.me | `.venv/bin/python etudes/telecharger_r8.py DOSSIER_MACRO` |
+| `recherche_r8.py` : les méthodes du corpus R8 jamais testées (règles N01 à N45 de `catalogue_r8.py`, EWMAC, pyramidage, sélections entre marchés, événements, Quantpedia, grands investisseurs) | Binance + Yahoo + FRED + dates R8 | `.venv/bin/python etudes/recherche_r8.py DOSSIER_BINANCE DOSSIER_YAHOO DOSSIER_YAHOO_EXTRA DOSSIER_MACRO . essais_r8.json` |
+| `validation_r8.py` : contre-épreuves en bougies d'une heure (Turtles heure par heure, Williams journalier contre dans la journée, bande de bruit sur la séance de New York) | Binance + Dukascopy + Yahoo | `.venv/bin/python etudes/validation_r8.py DOSSIER_BINANCE DOSSIER_YAHOO DOSSIER_YAHOO_EXTRA DOSSIER_MACRO . DOSSIER_DUKASCOPY` |
 
 Résultats du 25/10/2026 :
 

@@ -9,4 +9,4 @@ Archivistes : historique de l'or depuis 1833, COMEX depuis 2000, bougies Binance
 R3 : observation et gestion des positions existantes sur compte démo seulement.
 Aucune nouvelle ouverture MT5 : qualification selon le prompt maître encore incomplète.
 """
-__version__ = "2.5-R7"
+__version__ = "2.5-R8"

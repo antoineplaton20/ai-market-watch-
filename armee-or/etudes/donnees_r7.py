@@ -3,10 +3,16 @@
 Binance (data.binance.vision, sommes SHA-256 vérifiées au téléchargement par etudes/telecharger_r7.py) :
   colonnes : ouverture (ms, ou µs depuis 2025), o, h, l, c, volume, clôture, volume en devise, nombre de trades,
   volume ACHETEUR (preneur), …
+Dukascopy (R8, datafeed.dukascopy.com, fichiers mensuels BID_candles_hour_1.bi5 compressés LZMA, téléchargés par
+etudes/corpus_r8/dukascopy.py) : enregistrements de 24 octets (secondes depuis le début du mois, o, c, l, h en
+entiers, volume) ; l'échelle des prix est trouvée en comparant au niveau d'une référence (Yahoo).
 """
+import calendar
 import glob
 import io
+import lzma
 import os
+import struct
 import zipfile
 
 import numpy as np
@@ -27,6 +33,32 @@ def charger_binance(dossier, symbole, intervalle):
     a = np.array(sorted(set(lignes)), dtype=float)
     return {"ts": a[:, 0].astype(np.int64), "o": a[:, 1], "h": a[:, 2], "l": a[:, 3], "c": a[:, 4], "v": a[:, 5],
             "vb": a[:, 6]}
+
+
+def charger_dukascopy(dossier, symbole, reference=None):
+    """Bougies d'une heure, heures de cotation seulement (volume ou amplitude non nuls). reference : dict avec ts (ms)
+    et c d'un même marché, pour l'échelle (puissance de 10) ; sans référence, les prix restent en entiers."""
+    rep = os.path.join(dossier, symbole)
+    lignes = []
+    for f in sorted(os.listdir(rep)) if os.path.isdir(rep) else []:
+        brut = open(os.path.join(rep, f), "rb").read()
+        if not brut:                                              # mois absent chez Dukascopy (404 noté vide)
+            continue
+        t0 = calendar.timegm((int(f[:4]), int(f[5:7]), 1, 0, 0, 0))
+        x = lzma.decompress(brut)
+        for k in range(len(x) // 24):
+            t, o, c, l, h, v = struct.unpack(">5if", x[24 * k:24 * k + 24])
+            if v > 0 or h > l:
+                lignes.append((t0 + t, o, h, l, c, v))
+    if not lignes:
+        return None
+    a = np.array(sorted(set(lignes)), dtype=float)
+    echelle = 1.0
+    if reference is not None:
+        sel = (reference["ts"] >= a[0, 0] * 1000) & (reference["ts"] <= a[-1, 0] * 1000)
+        echelle = 10.0 ** round(float(np.log10(np.median(a[:, 4]) / np.median(reference["c"][sel]))))
+    return {"ts": (a[:, 0] * 1000).astype(np.int64), "o": a[:, 1] / echelle, "h": a[:, 2] / echelle,
+            "l": a[:, 3] / echelle, "c": a[:, 4] / echelle, "v": a[:, 5], "vb": a[:, 5] / 2}
 
 
 def regrouper(d, minutes):

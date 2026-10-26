@@ -1,0 +1,153 @@
+strategy
+indicator
+supertrend
+wavetrend
+squeeze momentum
+ut bot
+chandelier exit
+nadaraya watson
+lorentzian
+range filter
+qqe
+ssl channel
+half trend
+hull
+williams vix fix
+smart money concepts
+order block
+fair value gap
+liquidity
+market structure
+support resistance
+trendlines
+volume profile
+vwap
+rsi
+macd
+stochastic
+bollinger
+keltner
+ichimoku
+parabolic sar
+adx
+atr
+ema cross
+moving average
+heikin ashi
+renko
+pivot points
+fibonacci
+elliott wave
+harmonic
+divergence
+breakout
+opening range
+mean reversion
+trend following
+momentum
+scalping
+gold
+xauusd
+bitcoin
+forex
+machine learning
+kernel regression
+regression channel
+linear regression
+zigzag
+fractal
+alligator
+awesome oscillator
+gann
+wyckoff
+ict
+killzone
+silver bullet
+session
+noise band
+volatility
+donchian
+turtle
+darvas
+cci
+mfi
+obv
+cmf
+vortex
+aroon
+kama
+tema
+dema
+alma
+zlema
+jurik
+mcginley
+stc schaff
+fisher transform
+ehlers
+cycle
+seasonality
+correlation
+pairs
+grid
+dca
+martingale
+pyramiding
+trailing stop
+risk management
+position size
+kelly
+candlestick patterns
+engulfing
+pin bar
+inside bar
+chart patterns
+head and shoulders
+double top
+triangle
+wedge
+flag
+cup and handle
+supply demand
+liquidity sweep
+stop hunt
+delta volume
+cumulative delta
+footprint
+order flow
+open interest
+funding rate
+put call
+vix
+breadth
+advance decline
+new highs
+relative strength
+sector rotation
+dual momentum
+all weather
+risk parity
+buy the dip
+connors rsi
+ibs internal bar strength
+turnaround tuesday
+end of month
+overnight
+gap
+dark pool
+whale
+sentiment
+fear greed
+mvrv
+stock to flow
+halving
+rainbow
+pi cycle
+golden cross
+death cross
+200 day
+weinstein stage
+minervini
+canslim
+volatility contraction
+pocket pivot
