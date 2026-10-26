@@ -6,6 +6,7 @@
    "14d320a337cc24e2f5caeefe346d7ad49c6bb002de16215ff8c9f5dc6d2fcb63",
    "23095cbf127f8aada9bfe9826c16997db07814b93b68a9946748e90c2f2c05e8",
    "362b3266a745d2c8a10b987b8aa138d25c2293af4d777afa26ba1ada3e2a1420",
+   "43bfab4af3d0ed5eab9a857d9cab5b1560e49dae254dd1aaee95ea7059b951ab",
    "4e0943fb53e6cd9f1a3349688ad0bed367120c3540368a816c3eb8c024a10be2",
    "75bfe8c6139b7b26db60ed73381e61f0a77e9b91518327c6f26ea74df19d6bdc",
    "79f2deab99c97b6992c0ae566163bb7b50ec5b5572307124c03caf459036ac9c",
@@ -31,7 +32,8 @@
    "6f903ff42c0ac119901fd02fc818e6a2c5a8e4eb48c9b205521246fb7f0c376c"
   ],
   "armee_or/archive_mt5.py": [
-   "63a87dd814fda9a15164e949decff74526c5fc71ba4d256ef61143f63c1eb8da"
+   "63a87dd814fda9a15164e949decff74526c5fc71ba4d256ef61143f63c1eb8da",
+   "b63af3e2ba825e20159612bd0d53237cf2a449058418c3f5ac7f8f7fbdac03d3"
   ],
   "armee_or/base.py": [
    "7b07c6984db3be248b09efdee599c9ea939aa17787d0cb23b67818ea40f8e265"
@@ -50,7 +52,8 @@
    "12a9db1b657a0e5dc5aaf656aae90f0ab9c516b317124c65240d23d57b8d2d25",
    "45d435c5d89c4457706eaaed201465e65a3734749a29a92b25b3220a9e5f30ea",
    "5fb3ec8fea54a5e49f30b2e8780c3525c3aa9e0afa72483a97611442d212df40",
-   "657f2bfb91ae4c79da18715c9a85c06f0d499661da9c0386dac83287b10651be"
+   "657f2bfb91ae4c79da18715c9a85c06f0d499661da9c0386dac83287b10651be",
+   "bb2225015d22f243222977649e77bdb6bdbb3055003b2c7e3fc8322a17a72fad"
   ],
   "armee_or/commandes.py": [
    "1890a8cd5402a7eaf7a9b2d5db6c3fcb51ff2d4ed682036efa394d1082dd8383"
@@ -130,6 +133,7 @@
    "5d630120cc3e6f118970fbef7d26853ecf0ab2d0ce36a351ade5187a52e4d162",
    "5e144dcf40cf34b20c19c93fc5f2478832ce835051ad35c421c62e51839128e4",
    "8fb73bf799e66dfbf6e915a4ee428c87c62b0dbbfd7469b35b37a2b19bfae7ad",
+   "94b0c2a3ecb7b350d9ba728aeb9f493a6a1ae86f3224800a86efcf780fd67efb",
    "9be1a7641f28867ed4eb3c811459bb32d0aa85e8adff7fea400d7afaad3d14d4",
    "a757a89fdd928e1d38f1761c553154f92e2eab2e2b566fc1e9b6e2cde7458146",
    "c630484c5707d9c6e5d7371903eb6061714f2189f9f27aa8b19064e18d99dd8e",
@@ -160,16 +164,16 @@
    "6096780375c35c934e53d5b8694532e8e9d657797978119b9567db3c1334af45"
   ]
  },
- "base_commit": "versions accept\u00e9es : 2.5-R4, 2.5-R5, 2.5-R5.1, 2.5-R5.2, 2.5-R5.3, 2.5-R6, 2.5-R6.1, 2.5-R6.2, 2.5-R7, 2.5-R8, 2.5-R8.1, 2.5-R8.2, 2.5-R8.3, 2.5-R8.4 ; base R3 0c9d771bb8d8a45018298626c8aa56a439da7ee9",
+ "base_commit": "versions accept\u00e9es : 2.5-R4, 2.5-R5, 2.5-R5.1, 2.5-R5.2, 2.5-R5.3, 2.5-R6, 2.5-R6.1, 2.5-R6.2, 2.5-R7, 2.5-R8, 2.5-R8.1, 2.5-R8.2, 2.5-R8.3, 2.5-R8.4, 2.5-R8.5 ; base R3 0c9d771bb8d8a45018298626c8aa56a439da7ee9",
  "fichiers": {
   "CLAUDE.md": "326c50faad7a2e60bb096e07495d3520422a3fac0c2a324348daf4d8fdc1c535",
-  "LISEZMOI.md": "08fd60472e697bfeb5d72b735daa179b216499ec14908b758baa006cc56bc50d",
-  "PROMPT_MAITRE.md": "dce8a07ccb5feb5c70fbc8cb6bfcabb14d555b1f54b2ea9676a43b78d6ef7c11",
-  "armee_or/__init__.py": "43bfab4af3d0ed5eab9a857d9cab5b1560e49dae254dd1aaee95ea7059b951ab",
+  "LISEZMOI.md": "ad3fd22a34081a6106279a338ee0926b3ac65a667656e0f583802ad39c7a2855",
+  "PROMPT_MAITRE.md": "f0c9588af7728316578dd3b14a9477c83aa6d0e9ed3e8e2e9f54f14b96b57693",
+  "armee_or/__init__.py": "1cdf2d1b13169d71f052bec22a2280874ee58e8f02e10312d3689da0fc1dde78",
   "armee_or/__main__.py": "9afdacf5c412635c1e527fd3bdb2b52b1287dd58e175fb9c048f47b722b0d0a6",
   "armee_or/alertes.py": "eda81bc68f21e71ff21d5d223cb30c1866b1a6b555d75ae28a127ba37e4ab6fc",
   "armee_or/apprentissage.py": "6f903ff42c0ac119901fd02fc818e6a2c5a8e4eb48c9b205521246fb7f0c376c",
-  "armee_or/archive_mt5.py": "b63af3e2ba825e20159612bd0d53237cf2a449058418c3f5ac7f8f7fbdac03d3",
+  "armee_or/archive_mt5.py": "a9f33d177019c50c6962cc5345b0c8030e756376b07bf329752f668380188a48",
   "armee_or/base.py": "7b07c6984db3be248b09efdee599c9ea939aa17787d0cb23b67818ea40f8e265",
   "armee_or/bibliotheque.py": "6ccc5e5b22df4bddd7563ac98637a4a07531dded20bed0cd334a0ee779313d62",
   "armee_or/brief.py": "a64fe83aa7e935cf489ab5b450445211483b00addff159d814f560c7df47673e",
@@ -181,7 +185,7 @@
   "armee_or/demo_auto.py": "9b6b81cb8fa9243a5a66ac15d09c04db57dab1cc8b0348fad7f4eced0e009734",
   "armee_or/demo_pont.py": "2552027d07b8255358dbae4307b85aea3687d7170940d5fca2064b90ba9fa95c",
   "armee_or/demo_regles.py": "e23e13d00878d543268b550137f4b75a3516236ae43a53ad96520c3ecc74fc18",
-  "armee_or/disque.py": "1ff8b2646af39bba91d8b2b8f3d11b07837d7eb40bfea227988518afe94fe7be",
+  "armee_or/disque.py": "c254acdb2d2a6ac17611cedbe930f1e8740e226ae273cee228ffe7813dfd2495",
   "armee_or/donnees.py": "87bec080430ac001b59f3d59681742583223db9046b3f4be75c96318649d6bf6",
   "armee_or/equipes_pont.py": "db9901a0c41cf2b6ee804d6d8493dcff4b6b5a8e5a439e31d547d44dfae94069",
   "armee_or/executant.py": "4fffa9505f0610194ba6a7ad090e551421f31001f2958e60137a9e74ec18d7c9",
@@ -191,7 +195,7 @@
   "armee_or/import_csv.py": "c73d606dc8809804607fa905aa24fd9627c31ac778296b80b7280347ec8a2105",
   "armee_or/indicateurs.py": "8cc9d1b65a64bfa71e5adccf36492f37c42d5dbf74fe732b07738366a4bdb17e",
   "armee_or/levier.py": "7951244e33b822d55b9cfb4aa6cda3939b40a0b60e20a94369a3a4448860d4c0",
-  "armee_or/marches.py": "e25e1cd84aa3cfd89fb9a59a8e2de1b46e734c47537cf1c6b270d9be6dab8779",
+  "armee_or/marches.py": "61cec58068d55dc51342cc12b2bd5ac11bc200d23ef17656731b54fe50cb269e",
   "armee_or/marches_lies.py": "734436bdc1f9580fb69e9b9e2ed69411ec213e14182cd1ceebdc35010698541d",
   "armee_or/mt5.py": "0954acdb901b21c7680bcefa5cf3a9ec94de9b994e25d9966d79df35fe0611a8",
   "armee_or/papier.py": "3e510d63594eb6813b3587433a5a78709f9d19b8e6a3b0b91f6a74b20d5e1616",
@@ -205,7 +209,7 @@
   "armee_or/rythme.py": "98bcb7f9b56b920fa2a1de1f7284d2bff66429381849a2907412d4e6c965709b",
   "armee_or/sauvegarde.py": "2ed3ce70047581237cd9b11351e4601d870067537f779b7485f3d5a796d53944",
   "armee_or/strategie.py": "6b27b20ea4ca55c510aca42cc919c7e7a79beb5b5b1272a26ed7aa67dfbf00f1",
-  "armee_or/surveillance.py": "94b0c2a3ecb7b350d9ba728aeb9f493a6a1ae86f3224800a86efcf780fd67efb",
+  "armee_or/surveillance.py": "b8195e93ebb79c1ccc88c9f4258b120fb2b19c756ce4c0f7fab6ccdc4fd249cd",
   "armee_or/systemd.py": "38f46b4b6f43f17eca6a264780eab3a7cc07627fa7bd516b10130c07bcc3080c",
   "armee_or/telegram.py": "db152b949727d8e17c3ba33dc9b8d080fa977349b30fba6e1574410f0e308702",
   "armee_or/terminal.py": "a026317ca2dfeebda8b64bc8b49577366e23246fb93686449b62a9c50de7e35a",
@@ -213,7 +217,7 @@
   "armee_or/veille.py": "4a1c9b91552c1dfd53bc9f1900928dc068370195a03d81a0c411d8767e31bf15",
   "armee_or/video.py": "a1e78e6b2aa4774af8b03306a2d951394f035eb4d0182570fcd54ad43fc1494b",
   "contraintes-validees.txt": "111b395f6377779dcced7798f60ec29b3d362a1dc518c16bf1da36355bc9590f",
-  "deployer.py": "187b4a399a9ee020e4ee2f8cbbf766b53aa7e77ef7325d377f24d86051cfac61",
+  "deployer.py": "cc3c585113fa08a3d5400b287a9a0c9357674d4adc1556450e05cd59efe70e44",
   "donnees_initiales/PROVENANCE.md": "47411bf411140752a892ca89ff9ea591c52ec53b691d559be6c5fc02787fe2dc",
   "donnees_initiales/binance/PAXGUSDT-15m-2020-10.zip": "1635790454df3917b2cf3c674dde9605ceeb2420c65fb2f7bef9c8920cfd5f0f",
   "donnees_initiales/binance/PAXGUSDT-15m-2020-11.zip": "1486b431cb5596583cc5557431fb6684c78ad85e636d6f4538088f7d2c2f099e",
@@ -357,7 +361,7 @@
   "or": "9ce541ae3b8ad6e023b78449c0124e3074c801f158481e64dd93bf103f9e507e",
   "requirements-recherche.txt": "6bbd0ac639b9dabf7a24ddedd3485d72e57d24a902a643747f7a66546a5b9f72",
   "requirements.txt": "6096780375c35c934e53d5b8694532e8e9d657797978119b9567db3c1334af45",
-  "tests/conftest.py": "817418d1f8d4830e8c5beed6a5b28f6d668b39c79f3015b11518cdf1436e9f79",
+  "tests/conftest.py": "f78aef9ddc0c70477a8ea3d80d74638af61cd39e24969b4ec5e54c95c48059f2",
   "tests/test_alertes.py": "e920a80cb4667de654e077871ca3a4de76beed834b77a7b3fe1f2a3047185ed3",
   "tests/test_apprentissage.py": "cd00d7a25016c31223a899f132f2b82fbaaea34db0cb2002976767a887c74434",
   "tests/test_armee.py": "3aa87afaaa4224746fe701698fe25da7f26ae5a0f27ca73ca21c218fdc979d80",
@@ -366,7 +370,7 @@
   "tests/test_etudes_r8.py": "f19ad0d7fddff93a0da6c69c4e9a952c9816c560bf71dccff52fdd2551ae0bf3",
   "tests/test_fiabilite_r2.py": "71a1b364fd6b8ea43fad302e0e8f8fc2de98274eb192a1ab73f9b9a32690e039",
   "tests/test_maj.py": "1d09a48580e609535b8a989267ce2727ae656db4e6687818297fe8f24335ba96",
-  "tests/test_marches.py": "281fb7ce0a64cf12a0de3658155ecf3207b958e0a2f06301c99bdc5a9ddee54a",
+  "tests/test_marches.py": "03be84e3abf4df06db77ef57775bff5dfd43f10113986d6621485a4a775ba8a8",
   "tests/test_mt5.py": "11182f033803031a7f8881854c94cf2b808dfabf08af3debcedd5baa57dfb9cb",
   "tests/test_r3.py": "85cda37beeb05be5c518924e92396fd161f5f9793dd0c53ab4ee803a71ab268c",
   "tests/test_recherche.py": "eb83a328c14ef2ef0c85aaa0f510dd9a599a2530c92e6dac0e7a65a4cadeb582",
@@ -375,5 +379,5 @@
   "tests/test_veille.py": "e77dffccb8186a0e58ce02b4532f1ed5a13aade29b6a0ca3c8a8e9786f134ada",
   "tests/test_video.py": "d04401e994fb00bc48209c992ace727daf08c16c181057c02ebc7b75ec893d30"
  },
- "version": "2.5-R8.5"
+ "version": "2.5-R8.6"
 }

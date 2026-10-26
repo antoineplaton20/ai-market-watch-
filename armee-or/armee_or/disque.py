@@ -4,6 +4,7 @@ MT5 garde son historique en bougies d'une minute, même quand on ne lui demande 
 de ~170 marchés (R8.3) lui a fait télécharger 14 Go, dont 6 Go en 8 heures (mesure du 26/10/2026, 3,3 Go libres).
 Sous le seuil d'espace libre, l'armée ne lui demande plus d'historique ancien ni de marché qu'il n'a pas encore : le
 disque plein arrêterait la base, MT5 et le bot Gold. Le trading et le suivi des positions ne changent pas.
+R8.6 : un plancher daté, pour que les années anciennes retirées de MT5 ne soient jamais re-téléchargées.
 """
 from __future__ import annotations
 
@@ -13,6 +14,10 @@ import time
 from . import base, config, telegram
 
 SEUIL_GO = 5.0                          # sous 5 Go libres : plus de nouvel historique demandé à MT5
+# R8.6 : jamais d'historique demandé à MT5 avant le 1er janvier 2022 (UTC). MT5 gardait des minutes jusqu'en 1989 :
+# 10,7 Go pour les années 2024 et avant (mesure du 26/10/2026). 2022 laisse ~4,8 ans, au-dessus des 750 bougies
+# (marches.MIN_BOUGIES) qu'exigent le banc et le contrôle de qualité ; les bougies déjà gardées dans la base restent.
+PLANCHER_HISTORIQUE = 1_640_995_200
 ALERTE_S = 86400                        # une alerte Telegram par jour au plus
 
 

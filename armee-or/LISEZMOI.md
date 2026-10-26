@@ -1,4 +1,21 @@
-# Armée de l’or 2.5-R8.5 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.6 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.6) — l'historique ancien de MT5 peut être retiré sans revenir
+
+**Ton tableau du 26/10** : l'historique de MT5 remonte jusqu'en 1989. Les années 2024 et avant pèsent **10,7 Go**, et 2025 et 2026 pèsent 2,9 Go.
+
+**Ce qui change** : les deux archivistes ne demandent plus jamais à MT5 de bougies d'avant le **1er janvier 2022** (`disque.PLANCHER_HISTORIQUE`).
+
+- Les bougies journalières déjà gardées dans la base de l'armée restent, même les plus anciennes : le banc d'essai et les permis s'en servent toujours.
+- 2022 laisse environ 4,8 ans d'historique aux nouveaux marchés, plus que les 750 bougies qu'exige le banc pour les juger.
+- Chaque jour, l'équipe multi-marchés ne demande que les 260 dernières bougies, donc 2025 et 2026.
+
+**Ce que ça permet** : une fois les fichiers d'avant 2025 retirés de MT5, il ne re-télécharge au plus que 2022 à 2024, et seulement pour les marchés dont l'archive n'est pas encore complète. Ensuite, plus rien d'ancien.
+
+**À faire** : `/or_maj`, puis le nettoyage donné pas à pas dans la conversation (MT5 arrêté quelques minutes).
+
+**Contrôle** : 258 tests (267 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Trois tests nouveaux : aucune demande à MT5 avant le plancher (multi-marchés et or), l'archive déjà gardée reste, et le plancher laisse assez d'histoire au banc. Migrations simulées depuis R5 jusqu'à R8.5, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.5) — le disque du serveur ne se remplit plus
 

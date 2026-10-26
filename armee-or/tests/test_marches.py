@@ -895,3 +895,48 @@ def test_archive_de_l_or_disque_presque_plein(monkeypatch):
     appels.clear()
     archive_mt5.archiver()
     assert len(appels) > 4                                                           # en arrière, comme avant
+
+
+# ============================================================================ R8.6 : rien d'avant le plancher
+def test_plancher_jamais_d_historique_plus_ancien(courtier, monkeypatch):
+    from armee_or import disque
+    marches.bot_marches()                                                            # inventaire
+    marches.archiver(par_passage=1)                                                  # EURUSD, avant le plancher
+    assert marches.charger_marches()["EURUSD"]["c"].size == 900
+    plancher = DEBUT + 600 * JOUR                                                    # « 1er janvier 2022 » des tests
+    monkeypatch.setattr(disque, "PLANCHER_HISTORIQUE", plancher)
+    plages = []
+    plage = courtier.copy_rates_range
+    courtier.copy_rates_range = lambda s, tf, debut, fin: plages.append((s, debut)) or plage(s, tf, debut, fin)
+    for _ in range(8):
+        marches.archiver(par_passage=4)
+    assert plages and all(debut >= plancher for _, debut in plages)                  # MT5 n'a rien d'ancien à chercher
+    d = marches.charger_marches()
+    assert d["EURUSD"]["c"].size == 900                                              # l'archive déjà gardée reste
+    from armee_or import donnees
+    assert all(donnees.charger(marches.source(s), "1d")["ts"].min() >= plancher * 1000
+               for s in ("USDJPY", "XAUUSD", "US500"))
+    assert all(a["fini"] for a in marches.lire()["archive"].values())
+    n = len(plages)
+    marches.archiver(par_passage=4)
+    assert all(debut > DEBUT + 899 * JOUR for _, debut in plages[n:])                # ensuite : les jours récents seuls
+
+
+def test_plancher_archive_de_l_or(monkeypatch):
+    from armee_or import archive_mt5, disque, mt5
+    appels = []
+    monkeypatch.setattr(mt5, "appel", lambda op, **k: appels.append(k) or [])
+    plancher = int(time.time()) - 400 * JOUR
+    monkeypatch.setattr(disque, "PLANCHER_HISTORIQUE", plancher)
+    texte = archive_mt5.archiver()
+    assert appels and all(k["debut"] >= plancher for k in appels)                    # aucune fenêtre avant le plancher
+    assert texte.count("(complet)") == 4                                             # puis plus rien en arrière
+
+
+def test_le_plancher_laisse_assez_d_histoire_au_banc():
+    import calendar
+    from armee_or import disque
+    assert calendar.timegm((2022, 1, 1, 0, 0, 0)) == 1_640_995_200                   # valeur de disque.py (hors tests)
+    jours_ouvres = (time.time() - 1_640_995_200) / JOUR * 5 / 7
+    assert jours_ouvres > marches.MIN_BOUGIES                                        # nouveaux marchés jugeables
+    assert disque.PLANCHER_HISTORIQUE == 0                                           # tests : faux historiques 2017-2019

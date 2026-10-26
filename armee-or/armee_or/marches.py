@@ -228,11 +228,14 @@ def archiver(par_passage=3, maintenant=None):
         if dernier:
             lots.append(mt5.appel("bougies_periode", tf="1d", debut=int(dernier / 1000 + 86400), fin=int(serveur),
                                   symbole=s, delai=180))
+        plancher = disque.PLANCHER_HISTORIQUE                # R8.6 : rien d'avant 2022 (des Go de minutes MT5)
+        if not a["fini"] and fin_avant <= plancher:
+            a["fini"] = True
         if not a["fini"] and not plein:                     # plein : seulement les jours récents des marchés gardés
-            arriere = mt5.appel("bougies_periode", tf="1d", debut=fin_avant - 10 * 365 * 86400, fin=fin_avant,
-                                symbole=s, delai=180)
+            debut_fenetre = max(fin_avant - 10 * 365 * 86400, plancher)
+            arriere = mt5.appel("bougies_periode", tf="1d", debut=debut_fenetre, fin=fin_avant, symbole=s, delai=180)
             a["vides"] = 0 if arriere else a["vides"] + 1
-            a["fini"] = a["vides"] >= 2 or fin_avant < 946_684_800          # 2 fenêtres vides, ou avant l'an 2000
+            a["fini"] = a["vides"] >= 2 or debut_fenetre <= plancher or fin_avant < 946_684_800
             lots.append(arriere)
         ajout = donnees.inserer(source(s), "1d", [[t * 1000, o, h, l, c, v] for barres in lots
                                                   for t, o, h, l, c, v in barres if t + 86400 <= serveur])

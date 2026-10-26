@@ -39,6 +39,7 @@ def isolement(tmp_path, monkeypatch):
     monkeypatch.setattr(executant, "heure_d_entrainement", lambda *a, **k: True)       # et à toute heure
     from armee_or import disque
     monkeypatch.setattr(disque, "libre_go", lambda chemin=None: 100.0)              # quel que soit le disque de la machine
+    monkeypatch.setattr(disque, "PLANCHER_HISTORIQUE", 0)                            # faux historiques datés de 2017-2019
     (tmp_path / "runtime").mkdir()
     yield
 

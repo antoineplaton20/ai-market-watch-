@@ -38,6 +38,7 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
         return "en attente de l'ouverture du marché (décalage horaire du serveur MT5 inconnu)"
     serveur = time.time() + dec
     plein = disque.garde()                                  # R8.5 : pas d'historique ancien quand le disque est plein
+    plancher = disque.PLANCHER_HISTORIQUE
     msgs = []
     for tf in unites:
         etat = base.lire(f"mt5:archive:utc-r3:{tf}") or {"vides": 0, "fini": False}
@@ -46,7 +47,7 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
             msgs.append(f"{tf}: suspendu")
             continue
         # 1) en avant : bougies nouvelles depuis la dernière gardée
-        debut = (dernier / 1000 + dec + PAS_S[tf]) if dernier else serveur - FENETRE_S[tf]
+        debut = (dernier / 1000 + dec + PAS_S[tf]) if dernier else max(serveur - FENETRE_S[tf], plancher)
         ajout = _inserer(tf, mt5.appel("bougies_periode", tf=tf, debut=int(debut), fin=int(serveur), delai=180),
                          dec, serveur)
         # 2) en arrière : jusqu'au début de l'historique du courtier
@@ -55,13 +56,17 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
                 break
             premier, _, _ = _etendue(tf)
             fin = (premier / 1000 + dec - 1) if premier else serveur - FENETRE_S[tf]
-            barres = mt5.appel("bougies_periode", tf=tf, debut=int(fin - FENETRE_S[tf]), fin=int(fin), delai=180)
+            if fin <= plancher:                             # R8.6 : rien d'avant 2022
+                etat["fini"] = True
+                break
+            debut_fenetre = max(fin - FENETRE_S[tf], plancher)
+            barres = mt5.appel("bougies_periode", tf=tf, debut=int(debut_fenetre), fin=int(fin), delai=180)
             if barres:
                 ajout += _inserer(tf, barres, dec, serveur)
                 etat["vides"] = 0
             else:
                 etat["vides"] += 1
-                etat["fini"] = etat["vides"] >= 2
+            etat["fini"] = etat["vides"] >= 2 or debut_fenetre <= plancher
         base.ecrire(f"mt5:archive:utc-r3:{tf}", etat)
         premier, _, n = _etendue(tf)
         msgs.append(f"{tf}: {n} bougies" + (f" depuis {time.strftime('%Y', time.gmtime(premier / 1000))}" if premier else "")
