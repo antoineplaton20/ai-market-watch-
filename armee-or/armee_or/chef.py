@@ -580,7 +580,8 @@ def bot_commandes(chef):
             elif c in ("/or_diagnostic", "diagnostic"):
                 from .surveillance import diagnostic
                 d = diagnostic()
-                telegram.envoyer(d['version'] + " : " + d['etat'] + "\n" + ", ".join(d['motifs']))
+                telegram.envoyer(d['version'] + " : " + d['etat'] + f" · disque {d['disque_libre_go']} Go libres\n"
+                                 + ", ".join(d['motifs']))
             elif c in ("/or_bibliotheque", "bibliotheque"):
                 telegram.envoyer("📚 Bibliothèque de l'armée\n" + bibliotheque.texte())
             elif c in ("/or_veille", "veille"):

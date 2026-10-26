@@ -37,6 +37,8 @@ def isolement(tmp_path, monkeypatch):
     from armee_or import executant
     monkeypatch.setattr(executant, "ferme_avant_le_week_end", lambda *a, **k: True)   # tests valables le week-end aussi
     monkeypatch.setattr(executant, "heure_d_entrainement", lambda *a, **k: True)       # et à toute heure
+    from armee_or import disque
+    monkeypatch.setattr(disque, "libre_go", lambda chemin=None: 100.0)              # quel que soit le disque de la machine
     (tmp_path / "runtime").mkdir()
     yield
 

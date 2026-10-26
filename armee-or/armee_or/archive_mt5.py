@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 
-from . import base, donnees, mt5
+from . import base, disque, donnees, mt5
 
 SOURCE = "MT5_UTC_R3"
 PAS_S = {"1d": 86400, "4h": 14400, "1h": 3600, "15m": 900}
@@ -37,17 +37,21 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
     if dec is None:
         return "en attente de l'ouverture du marché (décalage horaire du serveur MT5 inconnu)"
     serveur = time.time() + dec
+    plein = disque.garde()                                  # R8.5 : pas d'historique ancien quand le disque est plein
     msgs = []
     for tf in unites:
         etat = base.lire(f"mt5:archive:utc-r3:{tf}") or {"vides": 0, "fini": False}
         premier, dernier, n = _etendue(tf)
+        if plein and not dernier:
+            msgs.append(f"{tf}: suspendu")
+            continue
         # 1) en avant : bougies nouvelles depuis la dernière gardée
         debut = (dernier / 1000 + dec + PAS_S[tf]) if dernier else serveur - FENETRE_S[tf]
         ajout = _inserer(tf, mt5.appel("bougies_periode", tf=tf, debut=int(debut), fin=int(serveur), delai=180),
                          dec, serveur)
         # 2) en arrière : jusqu'au début de l'historique du courtier
         for _ in range(fenetres_par_passage):
-            if etat["fini"]:
+            if etat["fini"] or plein:
                 break
             premier, _, _ = _etendue(tf)
             fin = (premier / 1000 + dec - 1) if premier else serveur - FENETRE_S[tf]
@@ -62,7 +66,7 @@ def archiver(unites=UNITES, fenetres_par_passage=4):
         premier, _, n = _etendue(tf)
         msgs.append(f"{tf}: {n} bougies" + (f" depuis {time.strftime('%Y', time.gmtime(premier / 1000))}" if premier else "")
                     + (" (complet)" if etat["fini"] else "") + (f", +{ajout}" if ajout else ""))
-    return "historique MT5 " + " · ".join(msgs)
+    return "historique MT5 " + " · ".join(msgs) + (f" (historique ancien suspendu : {plein})" if plein else "")
 
 
 def resume():

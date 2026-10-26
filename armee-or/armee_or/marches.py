@@ -38,7 +38,7 @@ import time
 
 import numpy as np
 
-from . import base, config, donnees, indicateurs as I, mt5, qualite as Q, risque, telegram
+from . import base, config, disque, donnees, indicateurs as I, mt5, qualite as Q, risque, telegram
 from .equipes_pont import (CAPITAL_LOT, CAPITAL_MAX_MARCHES, CAPITAL_REFERENCE, CAPITAL_RISQUE_ORDRE,
                            CAPITAL_RISQUE_TOTAL)
 
@@ -199,6 +199,13 @@ def source(symbole):
     return f"MT5:{symbole}"
 
 
+def archive(symbole):
+    """Le marché a-t-il déjà des bougies journalières gardées (donc un historique chez MT5) ?"""
+    with base.connexion() as c:
+        return c.execute("SELECT 1 FROM bougies WHERE source=? AND tf='1d' LIMIT 1", (source(symbole),)).fetchone() \
+            is not None
+
+
 def archiver(par_passage=3, maintenant=None):
     e = lire()
     univers = sorted(e.get("univers") or {})
@@ -208,6 +215,7 @@ def archiver(par_passage=3, maintenant=None):
     serveur = m + (base.lire("mt5:decalage") or 0)
     etat = e.setdefault("archive", {})
     debut = e.get("archive_i", 0) % len(univers)
+    plein = disque.garde(m)                                 # R8.5 : chaque fenêtre de 10 ans = des Go de minutes MT5
     msgs = []
     for s in (univers[debut:] + univers[:debut])[:par_passage]:
         a = etat.setdefault(s, {"vides": 0, "fini": False})
@@ -220,7 +228,7 @@ def archiver(par_passage=3, maintenant=None):
         if dernier:
             lots.append(mt5.appel("bougies_periode", tf="1d", debut=int(dernier / 1000 + 86400), fin=int(serveur),
                                   symbole=s, delai=180))
-        if not a["fini"]:
+        if not a["fini"] and not plein:                     # plein : seulement les jours récents des marchés gardés
             arriere = mt5.appel("bougies_periode", tf="1d", debut=fin_avant - 10 * 365 * 86400, fin=fin_avant,
                                 symbole=s, delai=180)
             a["vides"] = 0 if arriere else a["vides"] + 1
@@ -231,7 +239,8 @@ def archiver(par_passage=3, maintenant=None):
         msgs.append(f"{s} {n + ajout}")
     e["archive_i"] = debut + par_passage
     ecrire(e)
-    return "archive journalière : " + " · ".join(msgs)
+    return ("archive journalière" + (f" (historique ancien suspendu : {plein})" if plein else "") + " : "
+            + " · ".join(msgs))
 
 
 # ============================================================================ 3) banc d'essai (mêmes règles qu'en direct)
@@ -627,7 +636,10 @@ def bot_marches(chef=None, maintenant=None):
     univers, specs_tous = e.get("univers") or {}, e.get("specs") or {}
     vus, msgs = e.setdefault("vu", {}), []
     candidats, signaux = {}, {}
+    plein = disque.garde(m)
     for s in sorted(univers):
+        if plein and s not in positions and not archive(s):  # R8.5 : MT5 téléchargerait un an de minutes
+            continue
         try:
             barres = mt5.appel("bougies", tf="1d", n=260, symbole=s)[:-1]          # la dernière est en cours
         except mt5.ErreurMT5 as ex:

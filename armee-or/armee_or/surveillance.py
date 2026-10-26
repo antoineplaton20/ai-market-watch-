@@ -1,7 +1,7 @@
 """Un seul chef par dossier ; diagnostic explicite à partir de l'état observé."""
 import time
 from contextlib import contextmanager
-from . import base,config
+from . import base,config,disque
 
 
 @contextmanager
@@ -53,10 +53,11 @@ def diagnostic(maintenant=None):
         'pause_generale_levee':base.lire('pause',False) is False,
         'pause_mt5_levee':base.lire('mt5:pause',True) is False,
     }
-    return {'version':'2.5-R8.4', 'mode_experimental':experimental, 'strategie_qualifiee':OUVERTURES_VALIDEES,'ts':maintenant,'controles':controles,
+    return {'version':'2.5-R8.5', 'mode_experimental':experimental, 'strategie_qualifiee':OUVERTURES_VALIDEES,'ts':maintenant,'controles':controles,
             'etat':'CONTROLES_OBSERVES_OK' if all(controles.values()) else 'BLOQUE_OU_NON_VERIFIE',
             'motifs':[k for k,v in controles.items() if not v],
             'commandes':file,
             'equipes_r5':{'multi_marches':marches_actif,'video':base.lire('video:actif',False) is True},
+            'disque_libre_go':round(disque.libre_go(),1),  # R8.5 : sous disque.SEUIL_GO, plus d'historique ancien
             'incident_ordre':None if not incident else {k:v for k,v in incident.items() if k not in ('compte','serveur')},
             'limite':"État local observé, pas une certification de bon fonctionnement ni de rentabilité."}

@@ -1,4 +1,32 @@
-# Armée de l’or 2.5-R8.4 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.5 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.5) — le disque du serveur ne se remplit plus
+
+**Ce que tes mesures du 26/10 ont montré** :
+
+- disque de 38 Go, **3,3 Go libres** (91 %) ;
+- l'historique de MT5 (dossier `Bases` du MT5 Gold) pèse **14 Go** pour 137 marchés, dont environ 590 Mo pour chacune des grandes paires (EURUSD, USDJPY, USDCHF, GBPUSD, GBPJPY) ;
+- 6 Go y ont été écrits en 8 heures.
+
+**La cause, une erreur de R8.3** :
+
+- depuis R8.3, l'archiviste multi-marchés demande à MT5 l'historique journalier d'environ 170 marchés, par fenêtres de 10 ans ;
+- or MT5 garde son historique en **bougies d'une minute**, même quand on ne lui demande que des journées ;
+- chaque fenêtre lui fait donc télécharger des années de minutes. À ce rythme, le disque plein aurait arrêté la base, MT5 et le bot Gold.
+
+**Corrigé** : sous **5 Go libres** (`armee_or/disque.py`) :
+
+- les deux archivistes ne demandent plus d'historique ancien. Ils gardent seulement à jour, de quelques jours, les marchés déjà archivés ;
+- l'équipe multi-marchés ne demande plus rien pour les marchés qu'elle n'a pas encore en archive. Ces marchés ne pouvaient de toute façon pas être achetés : sans historique, pas de contrôle de qualité. Les positions ouvertes restent suivies ;
+- une alerte Telegram 💾, une fois par jour au plus ;
+- `/or_diagnostic` affiche l'espace libre.
+
+Au-dessus de 5 Go libres, tout reprend comme avant. Le trading, les stops, les freins et le permis ne changent pas.
+
+**À faire** : `/or_maj`. Les 14 Go déjà téléchargés restent sur le disque : libérer de la place est une décision à part, prise avec toi.
+
+**Contrôle** : 255 tests (264 avec TA-Lib), tous réussis sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines et sur une copie limitée au manifeste. Deux tests nouveaux : avec 3,3 Go libres, MT5 ne reçoit plus que des demandes de jours récents pour les marchés déjà archivés, et rien pour les autres ; avec la place libérée, tout reprend. Migrations simulées depuis R5 jusqu'à R8.4, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8.4) — changer de compte démo depuis Termius, et une mise à jour sans fausse alerte
 

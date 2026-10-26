@@ -846,3 +846,52 @@ def test_tout_le_courtier_devises_metaux_indices_mais_pas_les_actions():
     assert set(c) == {"EURUSD", "AUDDKK", "XAUUSD", "XPDUSD", "HK50"}
     assert c["AUDDKK"]["famille"] == "forex" and c["XPDUSD"]["famille"] == "métaux" and c["HK50"]["famille"] == "indices"
     assert c["HK50"]["nom"] == "Hang Seng" and c["XAUUSD"]["nom"] == "or"
+
+
+# ============================================================================ R8.5 : garde du disque
+def test_disque_presque_plein_plus_d_historique_ancien(courtier, monkeypatch):
+    from armee_or import disque
+    marches.bot_marches()                                                            # inventaire
+    marches.archiver(par_passage=2)                                                  # EURUSD et US500 seulement
+    assert {s for s in marches.lire()["univers"] if marches.archive(s)} == {"EURUSD", "US500"}
+    dernier = DEBUT + 899 * JOUR
+    plages, series = [], []
+    plage, depuis = courtier.copy_rates_range, courtier.copy_rates_from_pos
+    courtier.copy_rates_range = lambda s, tf, debut, fin: plages.append((s, debut)) or plage(s, tf, debut, fin)
+    courtier.copy_rates_from_pos = lambda s, tf, debut, n: series.append(s) or depuis(s, tf, debut, n)
+    monkeypatch.setattr(disque, "libre_go", lambda chemin=None: 3.3)                 # mesure du 26/10/2026
+    texte = marches.archiver(par_passage=4)
+    assert "historique ancien suspendu" in texte and "3.3 Go libres" in texte
+    assert {s for s, _ in plages} == {"EURUSD", "US500"}                             # rien pour les marchés nouveaux
+    assert all(debut > dernier for _, debut in plages)                               # seulement les jours récents
+    alertes = [t for t in courtier.messages if t.startswith("💾")]
+    eur = courtier.series["EURUSD"]                                                  # trois journées de plus…
+    courtier.series["EURUSD"] = (eur[0], eur[1], np.concatenate((eur[2], eur[2][-1] * np.ones(3))))
+    marches.archiver(par_passage=4)
+    assert marches.charger_marches()["EURUSD"]["c"].size == 903                      # … gardées malgré le disque
+    assert len(alertes) == 1 and [t for t in courtier.messages if t.startswith("💾")] == alertes   # une par jour
+    e = marches.lire()
+    e["vu"] = {}
+    marches.ecrire(e)
+    marches.bot_marches()
+    assert set(series) == {"EURUSD", "US500"}                                        # MT5 n'a rien à télécharger
+    monkeypatch.setattr(disque, "libre_go", lambda chemin=None: 12.0)                # place libérée : tout reprend
+    plages.clear()
+    assert "suspendu" not in marches.archiver(par_passage=4)
+    assert {"USDJPY", "XAUUSD"} <= {s for s, _ in plages}
+
+
+def test_archive_de_l_or_disque_presque_plein(monkeypatch):
+    from armee_or import archive_mt5, disque, donnees, mt5
+    appels = []
+    monkeypatch.setattr(mt5, "appel", lambda op, **k: appels.append(k) or [])
+    monkeypatch.setattr(disque, "libre_go", lambda chemin=None: 2.0)
+    assert "suspendu" in archive_mt5.archiver() and appels == []                     # aucune fenêtre de 10 ans
+    ts = (DEBUT + 10 * JOUR) * 1000
+    donnees.inserer(archive_mt5.SOURCE, "1d", [[ts, 1.0, 1.0, 1.0, 1.0, 1.0]])
+    archive_mt5.archiver()
+    assert len(appels) == 1 and appels[0]["tf"] == "1d" and appels[0]["debut"] > ts / 1000    # jours récents seulement
+    monkeypatch.setattr(disque, "libre_go", lambda chemin=None: 40.0)
+    appels.clear()
+    archive_mt5.archiver()
+    assert len(appels) > 4                                                           # en arrière, comme avant
