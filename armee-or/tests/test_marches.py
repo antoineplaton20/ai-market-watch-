@@ -705,3 +705,100 @@ def test_le_banc_juge_avec_le_verrou_et_sans_les_historiques_douteux(courtier, m
     assert vus["sorties"] == marches.SORTIES and "USDJPY" not in vus["marches"]
     assert base.lire("marches:qualite")["USDJPY"]["verdict"] == "écarté"
     assert "Données contrôlées" in marches.texte_marches() and "USDJPY" in marches.texte_marches()
+
+
+# ============================================================================ R8.1 : la démo imite un compte de 1 000 €
+def test_capital_1000_un_lot_minimum_si_le_risque_tient_dans_3_pourcents():
+    forex = {"volume_min": 0.01, "volume_step": 0.01, "_atr_rel": 0.004}
+    lots, note = marches.lots_marche(2700, 110_000, 0.07, 1e-9, forex, capital=True)
+    assert lots == 0.01 and "30 permis" in note                       # 0,01 × 110 000 × 5 × 0,4 % × 1,25 = 27,5 ≤ 30
+    lots, note = marches.lots_marche(2700, 110_000, 0.07, 1e-9, {**forex, "_atr_rel": 0.006}, capital=True)
+    assert lots == 0 and "trop risqué" in note                        # 41,25 > 30
+    lots, _ = marches.lots_marche(500, 110_000, 0.07, 1e-9, forex, capital=True)
+    assert lots == 0                                                  # équité 500 < 1 000 : 3 % de 500 = 15
+    lots, _ = marches.lots_marche(2700, 400_000, 0.16, 1e-9, {**forex, "_atr_rel": 0.015}, capital=True)
+    assert lots == 0                                                  # or : 375 jusqu'au stop
+    assert marches.lots_marche(2700, 110_000, 0.07, 1e-9, {"volume_min": 0.01}, capital=True)[0] == 0   # ATR inconnu
+
+
+def test_capital_1000_le_pont_garde_ses_propres_plafonds(courtier):
+    """3 % de min(1 000, équité) par ordre, 9 % au total, 3 positions : fixés dans le pont ; l'appelant ne choisit
+    que le mode (le vrai booléen), jamais un risque plus grand."""
+    pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+
+    def ouvrir(**k):
+        return pont.traiter({"op": "marches_ouvrir", **k})["r"]
+    for s in ("A1", "A2", "A3", "A4"):
+        courtier.series[s] = ("Indices\\" + s, 1.0, (4000.0 + 2.0 * np.arange(900)) * bruit(900, 5))
+    cap = min(1000.0, courtier.solde)
+    for s in ("A1", "A2", "A3"):
+        r = ouvrir(symbole=s, volume=50.0, sl=courtier.prix(s) * 0.99, capital=True)
+        assert r["ok"] and r["risque"] <= 0.03 * cap + 1e-6
+    r = ouvrir(symbole="A4", volume=0.01, sl=courtier.prix("A4") * 0.99, capital=True)
+    assert not r["ok"] and "3 marchés" in r["commentaire"]                                # 3 positions au plus
+    total = sum((courtier.symbol_info_tick(p.symbol).bid - p.sl) * p.volume * courtier.series[p.symbol][1]
+                * pont_mt5.RESERVE_COUTS for p in courtier.positions)
+    assert total <= 0.09 * cap + 1e-6
+    courtier.positions = []
+    for faux in (1, "oui", "true", 2.0):                              # rien d'autre que True n'active le mode
+        r = ouvrir(symbole="A1", volume=50.0, sl=courtier.prix("A1") * 0.99, capital=faux)
+        assert r["ok"] and r["risque"] <= 0.005 * courtier.solde + 1e-6
+        courtier.positions = []
+
+
+def test_capital_1000_au_hasard_jamais_plus_de_9_pourcents_ni_de_3_positions(courtier):
+    import random
+    rnd = random.Random(5)
+    pont = pont_mt5.Pont(courtier, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+    for s in ("A1", "A2", "A3", "A4", "A5"):
+        courtier.series[s] = ("Indices\\" + s, 1.0, (4000.0 + 2.0 * np.arange(900)) * bruit(900, 6))
+    symboles = ["EURUSD", "USDJPY", "XAUUSD", "US500", "A1", "A2", "A3", "A4", "A5"]
+    passes = 0
+    for _ in range(400):
+        s = rnd.choice(symboles)
+        prix = courtier.prix(s)
+        r = pont.traiter({"op": "marches_ouvrir", "symbole": s, "capital": True, "sens": 1,
+                          "volume": rnd.choice([0.01, 0.5, 5.0, 1e9]), "sl": prix * rnd.uniform(0.5, 0.999)})
+        assert r["ok"] is True
+        passes += bool(r["r"]["ok"])
+        if rnd.random() < 0.1 and courtier.positions:
+            courtier.positions.pop(rnd.randrange(len(courtier.positions)))
+        perte = sum(max(0.0, courtier.symbol_info_tick(p.symbol).bid - p.sl) * p.volume * courtier.series[p.symbol][1]
+                    * pont_mt5.RESERVE_COUTS for p in courtier.positions)
+        assert perte <= 0.09 * min(1000.0, courtier.solde) + 1e-6 and len(courtier.positions) <= 3
+    assert passes >= 3
+
+
+def test_capital_1000_l_equipe_achete_au_plus_3_marches(monkeypatch):
+    n = 900
+    f = FauxMulti({**{s: (f"Indices\\{s}", 1.0, (4000.0 + 2.0 * np.arange(n)) * bruit(n, i))
+                      for i, s in enumerate(("US500", "NAS100", "US30", "GER40", "UK100"), 1)},
+                   "XAUUSD": ("Metals\\XAUUSD", 100.0, (1500.0 + 3.0 * np.arange(n)) * bruit(n, 3))})
+    pont = pont_mt5.Pont(f, {"OR_MT5_LOGIN": "1", "OR_MT5_SYMBOLE": "XAUUSD"})
+    serveur = pont.serveur(0)
+    threading.Thread(target=serveur.serve_forever, daemon=True).start()
+    try:
+        monkeypatch.setattr(config, "MT5_PORT", serveur.server_address[1])
+        monkeypatch.setattr(config, "MT5_ACTIF", True)
+        messages = []
+        monkeypatch.setattr(telegram, "envoyer", lambda t, important=False, **k: messages.append(t) or True)
+        base.ecrire("mt5:etat", {"connecte": True, "compte": {"equity": 2700.0, "currency": "USD", "demo": True,
+                                                             "margin_free": 2700.0, "login": 1,
+                                                             "server": "MetaQuotes-Demo"}, "ts": 9e12})
+        base.ecrire("marches:permis", {"sma200": {"ok": True, "sharpe": (0.3, 0.5)}})
+        assert "1 000" in marches.commande("/or_marches_1000") or "1000" in marches.commande("/or_marches_1000")
+        activer()
+        r = marches.bot_marches()
+        assert len(f.positions) == 3 and "XAUUSD" not in {p.symbol for p in f.positions}, (r, marches.lire().get("exclus"))
+        assert all(e.get("magic") == marches.MAGIQUE for e in f.envois)
+        assert "Capital imité" in marches.texte_marches() and "XAUUSD" in marches.texte_marches()
+        assert "comme un compte de 1000" in marches.ligne_courte()
+        e = marches.lire()
+        e["vu"] = {}
+        marches.ecrire(e)
+        marches.bot_marches()
+        assert len(f.positions) == 3                                                      # jamais plus de 3
+        assert "règles normales" in marches.commande("/or_marches_normal") and not marches.mode_capital()
+    finally:
+        serveur.shutdown()
+        serveur.server_close()

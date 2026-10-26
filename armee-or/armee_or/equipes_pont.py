@@ -6,7 +6,11 @@
 - vidéo (770077) : 2e compte démo seulement (instance « video »), sans stop comme dans les vidéos, 10 positions et
   95 % de la marge au plus ;
 - verrou de gain multi-marchés (R6.2) : un stop 770050 ne peut que MONTER (le risque ne fait que baisser), jamais au
-  contact du cours.
+  contact du cours ;
+- mode « capital 1 000 » (R8.1, décision du propriétaire du 26/10/2026 : la démo imite son compte de 1 000 €) : les
+  plafonds se calculent sur min(1 000, équité) dans la devise du compte : 3 % par ordre, 9 % au total jusqu'aux stops
+  (toutes positions du compte comprises), 3 positions multi-marchés au plus. Ces nombres sont fixés ICI : l'appelant
+  ne peut que demander le mode, jamais un risque plus grand.
 Les deux refusent tout compte réel. Un refus AVANT l'envoi revient en réponse (ok False, avant_envoi True) : côté
 Linux, seule une réponse perdue reste un ordre incertain.
 """
@@ -19,6 +23,10 @@ MAX_MARCHES = 20
 VIDEO_MAX_POSITIONS = 10
 VIDEO_MARGE_MAX = 0.95
 AGE_POSITIONS = 7 * 86400           # marché tenu mais fermé : son dernier cours compte dans le plafond cumulé
+CAPITAL_REFERENCE = 1000.0          # R8.1 : capital imité (devise du compte), plafonné par l'équité
+CAPITAL_RISQUE_ORDRE = 0.03         # perte jusqu'au stop par ordre, en part de ce capital
+CAPITAL_RISQUE_TOTAL = 0.09         # pertes cumulées jusqu'aux stops, toutes positions du compte
+CAPITAL_MAX_MARCHES = 3
 NEGOCIABLE = (4,)                   # SYMBOL_TRADE_MODE_FULL
 ACHAT_PERMIS = (1, 4)               # LONGONLY, FULL
 
@@ -44,11 +52,14 @@ class EquipesMixin:
             raise RuntimeError(f"volume {v} hors limites ({info.volume_min} – {info.volume_max})")
         return v
 
-    def op_marches_ouvrir(self, symbole, volume, sl, sens=1, **_):
+    def op_marches_ouvrir(self, symbole, volume, sl, sens=1, capital=False, **_):
         if self.instance:
             raise RuntimeError("multi-marchés : compte de l'armée seulement")
         try:
             a = self._demo_exige()
+            mode_capital = capital is True                      # seulement le vrai booléen : rien d'autre n'élargit
+            if mode_capital and not (math.isfinite(a.equity) and a.equity > 0):
+                raise RuntimeError("équité indisponible")
             if sens != 1:
                 raise RuntimeError("multi-marchés : achat seulement")
             if not isinstance(symbole, str) or not symbole or len(symbole) > 32:
@@ -60,11 +71,18 @@ class EquipesMixin:
             propres = [p for p in self._positions() if p.magic == MAGIQUE_MARCHES]
             if any(p.symbol == symbole for p in propres):
                 raise RuntimeError(f"{symbole} : position multi-marchés déjà ouverte")
-            if len(propres) >= MAX_MARCHES:
-                raise RuntimeError(f"{MAX_MARCHES} marchés tenus au plus")
+            plafond = CAPITAL_MAX_MARCHES if mode_capital else MAX_MARCHES
+            if len(propres) >= plafond:
+                raise RuntimeError(f"{plafond} marchés tenus au plus")
             volume = self._volume(info, volume)
-            controle = self._dimensionner(1, sl, volume, symbole, RISQUE_MARCHE, or_seul=False,
-                                          age_positions=AGE_POSITIONS)
+            if mode_capital:                                    # plafonds en part de l'équité, pour _dimensionner
+                cap = min(CAPITAL_REFERENCE, a.equity)
+                controle = self._dimensionner(1, sl, volume, symbole, CAPITAL_RISQUE_ORDRE * cap / a.equity,
+                                              or_seul=False, age_positions=AGE_POSITIONS,
+                                              risque_cumule=CAPITAL_RISQUE_TOTAL * cap / a.equity)
+            else:
+                controle = self._dimensionner(1, sl, volume, symbole, RISQUE_MARCHE, or_seul=False,
+                                              age_positions=AGE_POSITIONS)
             if controle["volume"] <= 0:
                 return refus(controle["motif"])
             volume = min(volume, controle["volume"])

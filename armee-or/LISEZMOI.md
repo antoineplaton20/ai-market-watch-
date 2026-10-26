@@ -1,4 +1,35 @@
-# Armée de l’or 2.5-R8 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+# Armée de l’or 2.5-R8.1 — R4 + multi-marchés + équipe vidéo, pilotée par Termius et Telegram
+
+## 26 octobre 2026 (R8.1) — la démo peut imiter ton compte de 1 000 €
+
+**Ta décision** : « se rapprocher d’un compte de 1 000 € », avec **3 % de risque par trade** au plus.
+
+**Pourquoi l’équipe ne tradait pas.** Avec 2 673 € et ses règles d’origine (0,5 % par ordre, 2 % au total), le lot minimum du courtier risquait souvent plus que permis jusqu’au stop de 5 ATR. L’équipe classait donc presque tout « trop gros pour ce capital ».
+
+**Ce qui change** (seulement si tu tapes la commande) :
+
+- **/or_marches_1000** (ou `or marches 1000`) : l’équipe multi-marchés se dimensionne comme un compte de 1 000 € :
+  - un lot minimum par marché, si sa perte jusqu’au stop (frais compris) ne dépasse pas 30 € (3 %) ;
+  - 3 positions au plus, de familles différentes d’abord ;
+  - 90 € (9 %) au total jusqu’aux stops.
+- **Les marchés trop risqués** pour 1 000 € (souvent l’or et le bitcoin) sont exclus et listés dans /or_marches.
+- **/or_marches_normal** (ou `or marches normal`) : retour aux règles d’avant.
+- **Ce qui ne change pas** :
+  - le permis : rien n’est acheté sans lui ;
+  - le stop chez le courtier, le verrou de gain, le frein du jour et le coupe-circuit, qui restent calculés sur le compte démo ;
+  - la démo seulement ; ton vrai compte n’est jamais touché.
+- **Les plafonds sont écrits dans le pont MT5 lui-même** (3 %, 9 %, 3 positions, sur 1 000 € au plus) : aucune autre partie de l’armée ne peut demander davantage.
+
+**À savoir** : le banc juge la règle sur les marchés que l’équipe peut réellement tenir. Si ces marchés ne donnent pas de permis, l’équipe n’achète pas, même en mode 1 000 €.
+
+**À faire** : `/or_maj`, puis **/or_marches_1000**. Si l’équipe était arrêtée, ajoute **/or_marches_on**. Ensuite, **/or_marches** montre les marchés tenables.
+
+**Contrôle complet de R8.1** :
+
+- 249 tests (258 avec TA-Lib), tous réussis, sous Python 3.11, 3.12 et 3.13, fichier par fichier, avec trois graines, et sur une copie limitée au manifeste ;
+- nouveaux tests : 400 demandes au hasard au pont, sans jamais dépasser 9 % ni 3 positions ; seul le vrai « oui » active le mode ; l’équipe n’achète jamais plus de 3 marchés ;
+- migrations simulées depuis R5, R6.1, R6.2, R7 et R8, retour arrière compris.
+
 
 ## 26 octobre 2026 (R8) — tout internet passé au crible : podcasts, influenceurs, TradingView, forums, discours
 

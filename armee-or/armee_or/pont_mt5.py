@@ -328,10 +328,12 @@ class Pont(EquipesMixin, DemoMixin):
         """
         return self._dimensionner(sens, sl, volume, symbole or self.symbole)
 
-    def _dimensionner(self, sens, sl, volume, s, risque_ordre=RISQUE_ORDRE, or_seul=True, age_positions=AGE_COURS_MAX):
+    def _dimensionner(self, sens, sl, volume, s, risque_ordre=RISQUE_ORDRE, or_seul=True, age_positions=AGE_COURS_MAX,
+                      risque_cumule=RISQUE_CUMULE):
         """Contrôle commun. Équipe multi-marchés : tout symbole, budget par ordre plus petit ; le plafond CUMULÉ
-        (RISQUE_CUMULE, toutes positions du compte) reste celui de R3. age_positions : un marché déjà tenu mais
-        fermé (dernier cours ancien) compte quand même dans ce plafond, depuis son dernier cours."""
+        (RISQUE_CUMULE, toutes positions du compte) reste celui de R3, sauf le mode « capital 1 000 » de R8.1 (ses
+        plafonds sont fixés dans equipes_pont). age_positions : un marché déjà tenu mais fermé (dernier cours ancien)
+        compte quand même dans ce plafond, depuis son dernier cours."""
         self.exiger()
         compte = self.mt5.account_info()
         if compte is None or compte.trade_mode != DEMO:
@@ -369,7 +371,7 @@ class Pont(EquipesMixin, DemoMixin):
             if (sens_p > 0 and p.sl >= courant) or (sens_p < 0 and p.sl <= courant):
                 raise ErreurPont("stop existant atteint ou incohérent : attendre la réconciliation")
             utilise += self._perte(sens_p, p.symbol, p.volume, courant, p.sl)
-        budget = min(compte.equity * risque_ordre, compte.equity * RISQUE_CUMULE - utilise)
+        budget = min(compte.equity * risque_ordre, compte.equity * risque_cumule - utilise)
         minimum = info.volume_min
         perte_min = self._perte(sens, s, minimum, prix, sl)
         marge_min = self.mt5.order_calc_margin(self.mt5.ORDER_TYPE_BUY if sens > 0 else self.mt5.ORDER_TYPE_SELL,

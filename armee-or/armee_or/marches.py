@@ -22,6 +22,10 @@ chemin dédié du pont (marches_ouvrir) : achat seulement, stop obligatoire, 0,5
 et le plafond R3 de 2 % de pertes cumulées jusqu'aux stops, toutes positions du compte comprises (environ 6 marchés
 tenus à la fois). Intention écrite avant l'envoi (r2:ordre_incertain) : une réponse perdue verrouille les entrées
 jusqu'à réconciliation, comme pour les autres équipes.
+
+R8.1 (décision du propriétaire du 26/10/2026) : /or_marches_1000 fait imiter à la démo un compte de 1 000 € : un lot
+minimum par marché si sa perte jusqu'au stop tient dans 3 % de min(1 000, équité), 3 positions au plus (familles
+différentes d'abord), 9 % au total ; plafonds fixés dans le pont (equipes_pont). /or_marches_normal : retour.
 """
 from __future__ import annotations
 
@@ -33,11 +37,14 @@ import time
 import numpy as np
 
 from . import base, config, donnees, indicateurs as I, mt5, qualite as Q, risque, telegram
+from .equipes_pont import CAPITAL_MAX_MARCHES, CAPITAL_REFERENCE, CAPITAL_RISQUE_ORDRE, CAPITAL_RISQUE_TOTAL
 
 _log = logging.getLogger("or.marches")
 
 MAGIQUE = 770050
 CLE = "marches:etat"
+CLE_CAPITAL = "marches:capital"     # R8.1 : la démo imite un compte de 1 000 € (/or_marches_1000, /or_marches_normal)
+RESERVE_COUTS = 1.25                # comme le pont (pont_mt5.RESERVE_COUTS) : le risque estimé garde une marge
 STRATEGIES = {"sma200": "au-dessus de sa moyenne 200 jours", "croisement_20_50": "moyenne 20 j au-dessus de la 50 j "
               "(3e vidéo)", "momentum_12m": "en hausse sur 12 mois (Moskowitz, Ooi et Pedersen, 2012)",
               "toujours_acheter": "toujours acheter (étalon naïf)"}
@@ -451,9 +458,25 @@ def budget_risque(n, vol_portefeuille=VOL_PORTEFEUILLE, rho=CORRELATION):
     return vol_portefeuille / math.sqrt(n * (1 + (n - 1) * rho)) if n else 0.0
 
 
-def lots_marche(equite, valeur_lot, vol, budget, specs):
+def mode_capital():
+    """R8.1 : l'équipe se dimensionne comme un compte de CAPITAL_REFERENCE (décision du propriétaire, 26/10/2026)."""
+    return bool(base.lire(CLE_CAPITAL, False))
+
+
+def lots_marche(equite, valeur_lot, vol, budget, specs, capital=False):
     """-> (lots, explication). valeur_lot : notionnel d'UN lot en devise du compte. Lot minimum accepté s'il ne
-    dépasse pas 2 fois le budget ; au-delà, le marché est trop gros pour ce capital."""
+    dépasse pas 2 fois le budget ; au-delà, le marché est trop gros pour ce capital.
+    capital (R8.1) : un lot minimum, si sa perte jusqu'au stop (STOP_ATR × ATR, avec la réserve de coûts du pont) ne
+    dépasse pas CAPITAL_RISQUE_ORDRE de min(CAPITAL_REFERENCE, équité) ; specs["_atr_rel"] = ATR(20) / cours."""
+    if capital:
+        mini, atr_rel = specs.get("volume_min") or 0.01, specs.get("_atr_rel")
+        if not (valeur_lot and atr_rel and math.isfinite(atr_rel) and atr_rel > 0):
+            return 0.0, "ATR ou valeur du lot inconnue"
+        perte = mini * valeur_lot * STOP_ATR * atr_rel * RESERVE_COUTS
+        permis = CAPITAL_RISQUE_ORDRE * min(CAPITAL_REFERENCE, equite)
+        if perte <= permis:
+            return mini, f"lot minimum, {_n(perte)} risqués jusqu'au stop ({_n(permis)} permis)"
+        return 0.0, f"lot minimum trop risqué pour {CAPITAL_REFERENCE:g} ({_n(perte)} jusqu'au stop, {_n(permis)} permis)"
     if not (valeur_lot and vol and budget):
         return 0.0, "volatilité ou valeur du lot inconnue"
     cible = equite * budget / vol
@@ -478,7 +501,7 @@ def budgets_par_famille(symboles, familles=None):
     return {s: b / compte[familles.get(s, s)] for s in symboles}
 
 
-def selection(candidats, equite, familles=None):
+def selection(candidats, equite, familles=None, capital=False):
     """candidats : {symbole: (valeur_lot, vol, specs)} -> (marchés retenus, budget de chacun, exclus avec raison).
     Le budget dépend des marchés retenus et de leurs familles : on recommence tant que la liste bouge."""
     garde, exclus = dict(candidats), {}
@@ -487,7 +510,7 @@ def selection(candidats, equite, familles=None):
         nouveaux = {}
         for s, (valeur, vol, specs) in candidats.items():
             budget = budgets[s] if s in budgets else budgets_par_famille([*garde, s], familles)[s]
-            lots, note = lots_marche(equite, valeur, vol, budget, specs)
+            lots, note = lots_marche(equite, valeur, vol, budget, specs, capital)
             if lots:
                 nouveaux[s] = (valeur, vol, specs)
             else:
@@ -594,8 +617,23 @@ def bot_marches(chef=None, maintenant=None):
         if (base.lire("marches:qualite") or {}).get(s, {}).get("verdict") == "écarté":
             msgs.append(f"{s} : historique douteux, aucun achat")     # ses sorties restent gérées
             continue
-        candidats[s] = (valeur, vol, specs_tous.get(s) or {})
-    retenus, budgets, exclus = selection(candidats, equite, {s: univers[s]["famille"] for s in candidats})
+        atr_rel = float(I.atr(h, l, c, 20)[-1]) / c[-1]
+        candidats[s] = (valeur, vol, {**(specs_tous.get(s) or {}), "_atr_rel": atr_rel})
+    capital = mode_capital()
+    retenus, budgets, exclus = selection(candidats, equite, {s: univers[s]["famille"] for s in candidats}, capital)
+    places = None                                           # R8.1 : 3 positions au plus, familles nouvelles d'abord
+    if capital:
+        libres = CAPITAL_MAX_MARCHES - len(positions)
+        prises = [univers.get(x, {}).get("famille") for x in positions]
+        prets = sorted(s for s, v in signaux.items() if v[0] == 1 and s in retenus and s not in positions
+                       and not e.get("bloque", {}).get(s))
+        places = []
+        for tour in (0, 1):
+            for s in prets:
+                if len(places) < libres and s not in places and (tour or univers[s]["famille"] not in prises):
+                    places.append(s)
+                    prises.append(univers[s]["famille"])
+        places = set(places)
     for s, ps in positions.items():                         # verrou de gain : le stop ne fait que monter
         if s not in suivi or s not in signaux:
             continue
@@ -638,16 +676,18 @@ def bot_marches(chef=None, maintenant=None):
             annonces.append(f"{s} ({univers[s]['nom']}) : sortie, plus « {STRATEGIES[regle]} » · "
                             f"{gain:+.2f} {compte.get('currency', '')}")
             msgs.append(f"{s} sortie {gain:+.2f}")
-        elif not ouverte and sig == 1 and s in retenus and entrees_ok and not e.get("bloque", {}).get(s):
+        elif (not ouverte and sig == 1 and s in retenus and entrees_ok and not e.get("bloque", {}).get(s)
+              and (places is None or s in places)):
             valeur, vol, specs = retenus[s]
-            lots, note = lots_marche(equite, valeur, vol, budgets[s], specs)
+            lots, note = lots_marche(equite, valeur, vol, budgets[s], specs, capital)
             atr = I.atr(h, l, c, 20)[-1]
             tick = mt5.appel("tick", symbole=s)
             stop = round(tick["ask"] - STOP_ATR * atr, int(specs.get("digits") or 5))
             base.ecrire(INCERTAIN, {"ts": m, "equipe": "marches", "symbole": s, "sens": 1, "volume": lots, "sl": stop,
                                     "strategie": strat, "compte": compte.get("login"), "serveur": compte.get("server")})
             try:                                            # intention écrite AVANT l'envoi, jamais renvoyée ici
-                r = mt5.appel("marches_ouvrir", symbole=s, volume=lots, sl=stop)
+                r = (mt5.appel("marches_ouvrir", symbole=s, volume=lots, sl=stop, capital=True) if capital
+                     else mt5.appel("marches_ouvrir", symbole=s, volume=lots, sl=stop))
             except mt5.ErreurMT5 as ex:
                 base.ecrire("mt5:pause", True)
                 annonces.append(f"{s} : réponse du pont perdue ({ex}) — ordre INCERTAIN, entrées verrouillées "
@@ -740,7 +780,10 @@ def activer(chef=None):
     return ("▶️ Multi-marchés ACTIVÉ sur le compte DÉMO (pause levée). "
             + (f"Permis : {STRATEGIES[strat]}. " if strat else "Pas encore de permis : aucun achat tant que le banc "
                "ne l'accorde pas (/or_marches). ")
-            + "Plafond R3 : 2 % de pertes cumulées jusqu'aux stops, tout le compte. La démo R4 n'est pas relancée "
+            + (f"Comme un compte de {CAPITAL_REFERENCE:g} : {CAPITAL_RISQUE_ORDRE * 100:g} % par trade, "
+               f"{CAPITAL_MAX_MARCHES} positions au plus. " if mode_capital() else
+               "Plafond R3 : 2 % de pertes cumulées jusqu'aux stops, tout le compte. ")
+            + "La démo R4 n'est pas relancée "
             "(sa commande : /or_demo_on) ; une position multi-marchés bloque d'ailleurs ses entrées. "
             "/or_marches_off pour arrêter.")
 
@@ -749,6 +792,18 @@ def commande(c, chef=None):
     c = c.replace("/or_", "").strip()
     if c == "marches_on":
         return activer(chef)
+    if c == "marches_1000":
+        base.ecrire(CLE_CAPITAL, True)
+        return (f"💶 Multi-marchés : le compte démo imite maintenant un compte de {CAPITAL_REFERENCE:g} (décision du "
+                f"26/10/2026). Un lot minimum par marché, {CAPITAL_RISQUE_ORDRE * 100:g} % du capital risqués au plus "
+                f"par trade jusqu'au stop, {CAPITAL_MAX_MARCHES} positions au plus, {CAPITAL_RISQUE_TOTAL * 100:g} % "
+                "au total. Les marchés dont le lot minimum risque plus sont exclus (souvent l'or et le bitcoin). "
+                "Toujours sous permis ; freins du jour et coupe-circuit inchangés. /or_marches pour voir les marchés "
+                "tenables · /or_marches_normal pour revenir aux règles d'avant.")
+    if c == "marches_normal":
+        base.ecrire(CLE_CAPITAL, False)
+        return ("🌍 Multi-marchés : retour aux règles normales (taille selon la volatilité, 0,5 % par ordre, plafond R3 "
+                "de 2 %). Les positions ouvertes gardent leurs stops.")
     if c == "marches_off":
         base.ecrire("marches:actif", False)
         return "⏸ Multi-marchés : plus de nouvel achat ; les positions gardent leurs sorties et leurs stops."
@@ -766,7 +821,8 @@ def ligne_courte():
     pos = lire().get("positions") or {}
     strat = strategie_permise()
     return (f"🌍 Multi-marchés : {'activé' if actif() else 'désactivé'} · permis "
-            f"{STRATEGIES[strat] if strat else 'aucun'} · {len(pos)} marché(s) tenu(s) · /or_marches")
+            f"{STRATEGIES[strat] if strat else 'aucun'} · {len(pos)} marché(s) tenu(s)"
+            + (f" · comme un compte de {CAPITAL_REFERENCE:g}" if mode_capital() else "") + " · /or_marches")
 
 
 def texte_marches():
@@ -808,8 +864,16 @@ def texte_marches():
     tradables, exclus = e.get("tradables") or [], e.get("exclus") or {}
     if tradables or exclus:
         fams = sorted({univers[s]["famille"] for s in tradables if s in univers})
-        lignes.append(f"Capital : {len(tradables)} marchés tenables, risque égal entre {len(fams)} familles "
-                      f"({', '.join(fams) or '—'}) · trop gros pour ce capital : {', '.join(sorted(exclus)) or 'aucun'}")
+        if mode_capital():
+            lignes.append(f"Capital imité : {CAPITAL_REFERENCE:g} ({CAPITAL_RISQUE_ORDRE * 100:g} % par trade, "
+                          f"{CAPITAL_MAX_MARCHES} positions au plus, {CAPITAL_RISQUE_TOTAL * 100:g} % au total) · "
+                          f"{len(tradables)} marchés tenables ({', '.join(sorted(tradables)) or '—'})")
+            if exclus:
+                lignes.append("Trop risqués pour ce capital : " + " · ".join(
+                    f"{s} ({r})" for s, r in sorted(exclus.items())[:12]) + (" …" if len(exclus) > 12 else ""))
+        else:
+            lignes.append(f"Capital : {len(tradables)} marchés tenables, risque égal entre {len(fams)} familles "
+                          f"({', '.join(fams) or '—'}) · trop gros pour ce capital : {', '.join(sorted(exclus)) or 'aucun'}")
     pos = e.get("positions") or {}
     lignes.append("Positions : " + (", ".join(f"{s} {v['lots']:g} lot" + (" 🔒 gain verrouillé" if v.get("verrou") else "")
                                          for s, v in sorted(pos.items())) or "aucune"))

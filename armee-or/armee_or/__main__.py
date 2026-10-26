@@ -21,7 +21,7 @@ from . import config
 COMMANDES = ("demo_on", "demo_off", "demo", "pause", "reprise", "rapport", "levier", "bilan", "mt5", "mt5_fermer", "mt5_reprendre", "mt5_profil",
              "mt5_entrainement", "mt5_ecran", "bougies", "apprentissage", "verif", "mt5_gain", "mt5_tendance", "mt5_permis", "mt5_agressif", "mt5_rentable",
              "video_on", "video_off", "video_fermer", "video_gain", "video_symbole", "marches_on", "marches_off",
-             "marches_fermer")
+             "marches_fermer", "marches_1000", "marches_normal")
 
 
 def _journal():
